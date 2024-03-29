@@ -1,0 +1,9 @@
+version: 1.2
+
+workflows:
+  - name: AmpSeq
+    subclass: WDL
+    primaryDescriptorPath: /WDL/wdl_ampseq.wdl
+  - name: MHap
+    subclass: WDL
+    primaryDescriptorPath: /WDL/wdl_report_layouting.wdl
