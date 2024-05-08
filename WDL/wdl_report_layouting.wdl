@@ -12,7 +12,7 @@ workflow report_layouting {
 		String ampseq_jsonfile = "null"
 		String ampseq_excelfile = "null"
 
-		String sample_id_pattern = "^G|ID"
+		String sample_id_pattern = "^[C,G,M,S]"
 		File markers 
 		Int min_abd = 10
 		Float min_ratio = 0.1
@@ -191,7 +191,7 @@ task report_layouting_process {
 		-gff ~{ref_gff} \
 		-fasta ~{ref_fasta} \
 		-reference_alleles ~{reference_alleles} \
-		-metadata ~{metadata_files} \
+		-metadata Reference/metadata.csv \
 		-join_by ~{join_by} \
 		-Var1 Geo_Level \
 		-Var2 Temp_Level \
