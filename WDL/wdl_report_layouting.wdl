@@ -231,7 +231,7 @@ task report_layouting_process {
 
 	runtime { 
 		cpu: 1 
-		memory: "15 GiB" 
+		memory: "40 GiB" 
 		disks: "local-disk 10 HDD" 
 		bootDiskSizeGb: 10 
 		preemptible: 3 
