@@ -206,7 +206,7 @@ task ampseq_pipeline {
 		# Replace "gs://" with "/cromwell_root/" in the absolute path
 		# absolute_path=$(readlink -f "$reference2")
 		# edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
-		python add_entry_to_json.py ~{config_json} "reference2" "~{reference2}"
+		python /Code/add_entry_to_json.py ~{config_json} "reference2" "~{reference2}"
 	else
 		echo "Reference 2 not provided"
 	fi
