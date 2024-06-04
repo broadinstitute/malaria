@@ -42,7 +42,6 @@ workflow ampseq {
 		String adapter = "None"
 
 		#Command for the decontamination pipeline
-		String run_demultiplexing = "False"
 		Int minreads_threshold = 1000
 		Float contamination_threshold = 0.5
 		String verbose = "False"
@@ -194,36 +193,33 @@ task ampseq_pipeline {
 	set -euxo pipefail
 	mkdir fq_dir
 
-	#Edit the config file if snv_filter and reference_2 are provided
+	###################################################################
+	##Edit the config file if snv_filter and reference_2 are provided##
+	###################################################################
 	cat ~{config_json}
-
-	echo "~{reference2}"
-	echo "~{path_to_snv}"
 
 	if [[ "~{reference2}" != '' ]]; then
-		echo "Reference 2 provided"
-		# Use readlink to get the absolute path and store it in a variable
-		# Replace "gs://" with "/cromwell_root/" in the absolute path
-		# absolute_path=$(readlink -f "$reference2")
-		# edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
+		echo "Reference 2 file provided"
 		python /Code/add_entry_to_json.py ~{config_json} "reference2" "~{reference2}"
 	else
-		echo "Reference 2 not provided"
+		echo "Reference 2 file not provided"
 	fi
 
-	#if [ -e ~{path_to_snv} ]; then
-	#	echo "SNV filter provided"
-	#	# Use readlink to get the absolute path and store it in a variable
-	#	# Replace "gs://" with "/cromwell_root/" in the absolute path
-	#	absolute_path=$(readlink -f "$path_to_snv")
-	#	edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
-	#	python add_entry_to_json.py ~{config_json} "path_to_snv" "${edited_path}"
-	#fi
+	if [[ "~{path_to_snv}" != '' ]]; then
+		echo "Path to SNV file provided"
+		python /Code/add_entry_to_json.py ~{config_json} "path_to_snv" "~{path_to_snv}"
+	else
+		echo "Path to SNV file not provided"
+	fi
 
 	cat ~{config_json}
 
-	#gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
-	#gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
+	###################################################################
+	##Copy files to the working directory and run the AmpSeq pipeline##
+	###################################################################
+
+	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
+	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
 
 	#cp ~{sep = ' ' path_to_r1} fq_dir/
 	#cp ~{sep = ' ' path_to_r2} fq_dir/
@@ -236,39 +232,39 @@ task ampseq_pipeline {
 	#cp ~{path_to_snv} path_to_snv.fasta
 	#ls 
 
-	#Move reference files to the main level	
 	#Check if the first line in barcodes_matches.csv indicates the presence of inline barcodes
-#	if grep -q "," ~{barcodes_matches} ; then
-#		echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices followed by denoising"
-#		find . -type f
-#		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --contamination --separate_reads --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
-#		find . -type f
-#		Rscript /Code/render_report.R -d /cromwell_root/Report/Merge/ -o /cromwell_root/Report/ -p ~{barcodes_matches} -m 1000 -c 0.5 -mf /cromwell_root/Results/missing_files.tsv
-#		find . -type f
-#		tar -czvf Report_Cards.tar.gz /cromwell_root/Report
-#		find . -type f
-#	else
-#		echo "Sequencing run without inline barcodes. Skipping analysis of combinatorial indices and performing only denoising"
-#		find . -type f
-#		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
-#		#python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --separate_reads --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
-#		find . -type f
-#	fi
+	if grep -q "," ~{barcodes_matches} ; then
+		echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices followed by denoising"
+		find . -type f
+		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --contamination --separate_reads --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
+		find . -type f
+		Rscript /Code/render_report.R -d /cromwell_root/Report/Merge/ -o /cromwell_root/Report/ -p ~{barcodes_matches} -m 1000 -c 0.5 -mf /cromwell_root/Results/missing_files.tsv
+		find . -type f
+		tar -czvf Report_Cards.tar.gz /cromwell_root/Report
+		find . -type f
+	else
+		echo "Sequencing run without inline barcodes. Skipping analysis of combinatorial indices and performing only denoising"
+		find . -type f
+		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
+		#python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --separate_reads --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
+		find . -type f
+	fi
 	
-	#run_id_array=(~{sep = ' ' run_id})
-	#unique_id=$(printf "%s\n" "${run_id_array[@]}" | sort -u | tr '\n' '_')
-	#unique_id="${unique_id%_}"
+	run_id_array=(~{sep = ' ' run_id})
+	unique_id=$(printf "%s\n" "${run_id_array[@]}" | sort -u | tr '\n' '_')
+	unique_id="${unique_id%_}"
 	
-	#cp Results/CIGARVariants_Bfilter.out.tsv "${unique_id}_CIGARVariants_Bfilter.out.tsv"
+	cp Results/CIGARVariants_Bfilter.out.tsv "${unique_id}_CIGARVariants_Bfilter.out.tsv"
 
-	mkdir -p Results/PostProc_DADA2
-	echo "Placeholder" > Results/ASVBimeras.txt
-	echo "Placeholder" > Results/seqtab.tsv
-	echo "Placeholder" > Results/PostProc_DADA2/ASVTable.txt
-	echo "Placeholder" > Results/PostProc_DADA2/ASVSeqs.fasta
-	echo "Placeholder" > Results/missing_files.tsv
-	echo "Plaecholder" > Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt
-	echo "Placeholder" > run_id_CIGARVariants_Bfilter.out.tsv
+	#mkdir -p Results/PostProc_DADA2
+	#mkdir -p Results/ASV_to_CIGAR
+	#echo "Placeholder" > Results/ASVBimeras.txt
+	#echo "Placeholder" > Results/seqtab.tsv
+	#echo "Placeholder" > Results/PostProc_DADA2/ASVTable.txt
+	#echo "Placeholder" > Results/PostProc_DADA2/ASVSeqs.fasta
+	#echo "Placeholder" > Results/missing_files.tsv
+	#echo "Plaecholder" > Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt
+	#echo "Placeholder" > run_id_CIGARVariants_Bfilter.out.tsv
 
 	>>>
 	output {
