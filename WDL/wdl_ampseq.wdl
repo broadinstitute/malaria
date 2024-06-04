@@ -148,14 +148,10 @@ task ampseq_pipeline {
 		"pr1": sub(pr1, "gs://", "/cromwell_root/"),
 		"pr2": sub(pr2, "gs://", "/cromwell_root/"),
 		"reference1": sub(reference1, "gs://", "/cromwell_root/"),
-		#"reference2": sub(reference2, "gs://", "/cromwell_root/"),
-		#"path_to_snv": sub(path_to_snv, "gs://", "/cromwell_root/"),
-#		"barcodes_matches": "barcodes_matches.csv", 
-#		"pr1": "primers_fw.fasta", 
-#		"pr2": "primers_rv.fasta", 
-#		"reference1": "reference1.fasta", 
-#		"reference2": "reference2.fasta", 
-#		"path_to_snv": "path_to_snv.fasta", 
+		#"path_to_flist": "barcodes_matches.csv", 
+		#"pr1": "primers_fw.fasta", 
+		#"pr2": "primers_rv.fasta", 
+		#"reference1": "reference1.fasta", 
 		"pattern_fw": pattern_fw,
 		"pattern_rv": pattern_rv,
 		"Class": Class,
@@ -222,7 +218,7 @@ task ampseq_pipeline {
 	#cp ~{sep = ' ' path_to_r1} fq_dir/
 	#cp ~{sep = ' ' path_to_r2} fq_dir/
 	#echo $PWD
-	#cp ~{barcodes_matches} barcodes_matches.csv
+	#cp ~{path_to_flist} barcodes_matches.csv
 	#cp ~{pr1} primers_fw.fasta
 	#cp ~{pr2} primers_rv.fasta
 	#cp ~{reference1} reference1.fasta
