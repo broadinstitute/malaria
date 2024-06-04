@@ -8,7 +8,7 @@ workflow ampseq {
 		File path_to_flist
 		File pr1
 		File pr2
-		File reference1
+		File reference
 		File? reference2
 		File? path_to_snv
 		Array[String] run_id
@@ -54,7 +54,7 @@ workflow ampseq {
 			path_to_flist = path_to_flist,
 			pr1 = pr1,
 			pr2 = pr2,
-			reference1 = reference1,
+			reference = reference,
 			reference2 = reference2,
 			path_to_snv = path_to_snv,
 			run_id = run_id,
@@ -108,7 +108,7 @@ task ampseq_pipeline {
 		File path_to_flist
 		File pr1
 		File pr2
-		File reference1
+		File reference
 		File? reference2
 		File? path_to_snv
 		Array[String] run_id
@@ -147,11 +147,11 @@ task ampseq_pipeline {
 		"path_to_flist": sub(path_to_flist, "gs://", "/cromwell_root/"),
 		"pr1": sub(pr1, "gs://", "/cromwell_root/"),
 		"pr2": sub(pr2, "gs://", "/cromwell_root/"),
-		"reference1": sub(reference1, "gs://", "/cromwell_root/"),
+		"reference": sub(reference, "gs://", "/cromwell_root/"),
 		#"path_to_flist": "barcodes_matches.csv", 
 		#"pr1": "primers_fw.fasta", 
 		#"pr2": "primers_rv.fasta", 
-		#"reference1": "reference1.fasta", 
+		#"reference": "reference.fasta", 
 		"pattern_fw": pattern_fw,
 		"pattern_rv": pattern_rv,
 		"Class": Class,
@@ -221,7 +221,7 @@ task ampseq_pipeline {
 	#cp ~{path_to_flist} barcodes_matches.csv
 	#cp ~{pr1} primers_fw.fasta
 	#cp ~{pr2} primers_rv.fasta
-	#cp ~{reference1} reference1.fasta
+	#cp ~{reference} reference.fasta
 	#cp ~{reference2} reference2.fasta
 	#cp ~{path_to_snv} path_to_snv.fasta
 	#ls 
