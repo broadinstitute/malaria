@@ -5,7 +5,7 @@ workflow ampseq {
 		#General commands
 		Array[File] path_to_r1
 		Array[File] path_to_r2
-		File barcodes_matches
+		File path_to_flist
 		File pr1
 		File pr2
 		File reference1
@@ -51,7 +51,7 @@ workflow ampseq {
 		input:
 			path_to_r1 = path_to_r1,
 			path_to_r2 = path_to_r2,
-			barcodes_matches = barcodes_matches,
+			path_to_flist = path_to_flist,
 			pr1 = pr1,
 			pr2 = pr2,
 			reference1 = reference1,
@@ -105,7 +105,7 @@ task ampseq_pipeline {
 	input {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
-		File barcodes_matches
+		File path_to_flist
 		File pr1
 		File pr2
 		File reference1
@@ -144,7 +144,7 @@ task ampseq_pipeline {
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
-		"barcodes_matches": sub(barcodes_matches, "gs://", "/cromwell_root/"),
+		"path_to_flist": sub(path_to_flist, "gs://", "/cromwell_root/"),
 		"pr1": sub(pr1, "gs://", "/cromwell_root/"),
 		"pr2": sub(pr2, "gs://", "/cromwell_root/"),
 		"reference1": sub(reference1, "gs://", "/cromwell_root/"),
@@ -231,12 +231,12 @@ task ampseq_pipeline {
 	#ls 
 
 	#Check if the first line in barcodes_matches.csv indicates the presence of inline barcodes
-	if grep -q "," ~{barcodes_matches} ; then
+	if grep -q "," ~{path_to_flist} ; then
 		echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices followed by denoising"
 		find . -type f
 		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --contamination --separate_reads --primer_removal --dada2 --postproc_dada2 --asv_to_cigar
 		find . -type f
-		Rscript /Code/render_report.R -d /cromwell_root/Report/Merge/ -o /cromwell_root/Report/ -p ~{barcodes_matches} -m 1000 -c 0.5 -mf /cromwell_root/Results/missing_files.tsv
+		Rscript /Code/render_report.R -d /cromwell_root/Report/Merge/ -o /cromwell_root/Report/ -p ~{path_to_flist} -m 1000 -c 0.5 -mf /cromwell_root/Results/missing_files.tsv
 		find . -type f
 		tar -czvf Report_Cards.tar.gz /cromwell_root/Report
 		find . -type f
