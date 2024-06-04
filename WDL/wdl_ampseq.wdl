@@ -204,9 +204,9 @@ task ampseq_pipeline {
 		echo "Reference 2 provided"
 		# Use readlink to get the absolute path and store it in a variable
 		# Replace "gs://" with "/cromwell_root/" in the absolute path
-		#absolute_path=$(readlink -f "$reference2")
-	#	edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
-	#	python add_entry_to_json.py ~{config_json} "reference2" "${edited_path}"
+		# absolute_path=$(readlink -f "$reference2")
+		# edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
+		python add_entry_to_json.py ~{config_json} "reference2" "~{reference2}"
 	else
 		echo "Reference 2 not provided"
 	fi
@@ -261,7 +261,7 @@ task ampseq_pipeline {
 	
 	#cp Results/CIGARVariants_Bfilter.out.tsv "${unique_id}_CIGARVariants_Bfilter.out.tsv"
 
-	mkdir Results
+	mkdir -p Results/PostProc_DADA2
 	echo "Placeholder" > Results/ASVBimeras.txt
 	echo "Placeholder" > Results/seqtab.tsv
 	echo "Placeholder" > Results/PostProc_DADA2/ASVTable.txt
