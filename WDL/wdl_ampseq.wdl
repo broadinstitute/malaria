@@ -83,7 +83,6 @@ workflow ampseq {
 			include_failed = include_failed,
 			exclude_bimeras = exclude_bimeras,
 			minreads_threshold = minreads_threshold,
-			run_demultiplexing = run_demultiplexing,
 			contamination_threshold = contamination_threshold,
 			verbose = verbose,
 			adapter = adapter
@@ -138,7 +137,6 @@ task ampseq_pipeline {
 		String include_failed = "False"
 		String exclude_bimeras = "False"
 		Int minreads_threshold = 1000
-		String run_demultiplexing = "False"
 		Float contamination_threshold = 0.5
 		String verbose = "False"
 		String adapter = "None"
