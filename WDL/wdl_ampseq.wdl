@@ -197,23 +197,26 @@ task ampseq_pipeline {
 	#Edit the config file if snv_filter and reference_2 are provided
 	cat ~{config_json}
 
-	if [ -e ~{reference2} ]; then
-		echo "Reference 2 provided"
-		# Use readlink to get the absolute path and store it in a variable
-		# Replace "gs://" with "/cromwell_root/" in the absolute path
-		absolute_path=$(readlink -f "$reference2")
-		edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
-		python add_entry_to_json.py ~{config_json} "reference2" "${edited_path}"
-	fi
+	echo "~{reference2}"
+	echo "~{path_to_snv}"
 
-	if [ -e ~{path_to_snv} ]; then
-		echo "SNV filter provided"
-		# Use readlink to get the absolute path and store it in a variable
-		# Replace "gs://" with "/cromwell_root/" in the absolute path
-		absolute_path=$(readlink -f "$path_to_snv")
-		edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
-		python add_entry_to_json.py ~{config_json} "path_to_snv" "${edited_path}"
-	fi
+	#if [ -e ~{reference2} ]; then
+	#	echo "Reference 2 provided"
+	#	# Use readlink to get the absolute path and store it in a variable
+	#	# Replace "gs://" with "/cromwell_root/" in the absolute path
+	#	absolute_path=$(readlink -f "$reference2")
+	#	edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
+	#	python add_entry_to_json.py ~{config_json} "reference2" "${edited_path}"
+	#fi
+
+	#if [ -e ~{path_to_snv} ]; then
+	#	echo "SNV filter provided"
+	#	# Use readlink to get the absolute path and store it in a variable
+	#	# Replace "gs://" with "/cromwell_root/" in the absolute path
+	#	absolute_path=$(readlink -f "$path_to_snv")
+	#	edited_path="${absolute_path//gs:\/\//\/cromwell_root\/}"
+	#	python add_entry_to_json.py ~{config_json} "path_to_snv" "${edited_path}"
+	#fi
 
 	cat ~{config_json}
 
