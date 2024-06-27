@@ -230,7 +230,7 @@ task report_layouting_process {
 	}
 
 	runtime { 
-		cpu: 1 
+		cpu: 8 
 		memory: "40 GiB" 
 		disks: "local-disk 10 HDD" 
 		bootDiskSizeGb: 10 
