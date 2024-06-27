@@ -46,7 +46,6 @@ workflow report_layouting {
 		String PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66"
 		String hap_color_palette = "random"
 		String poly_quantile = 0.75
-		File pairwise_relatedness_table
 		String poly_formula = "NHetLoci>=1&Fws<1"
 
 	}
@@ -88,7 +87,6 @@ workflow report_layouting {
 			PCR_errors_formula = PCR_errors_formula,
 			hap_color_palette = hap_color_palette,
 			poly_quantile = poly_quantile,
-			pairwise_relatedness_table = pairwise_relatedness_table,
 			poly_formula = poly_formula
 	}
 
@@ -148,7 +146,6 @@ task report_layouting_process {
 		String PCR_errors_formula
 		String hap_color_palette
 		String poly_quantile
-		File pairwise_relatedness_table
 		String poly_formula
 	}
 	
@@ -214,7 +211,7 @@ task report_layouting_process {
 		-PCR_errors_formula "~{PCR_errors_formula}" \
 		-hap_color_palette "~{hap_color_palette}" \
 		-poly_quantile ~{poly_quantile} \
-		-pairwise_relatedness_table ~{pairwise_relatedness_table} \
+		-pairwise_relatedness_table 'null' \
 		-poly_formula "~{poly_formula}"
 	
 		ls 
