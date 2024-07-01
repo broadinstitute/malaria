@@ -227,11 +227,11 @@ task report_layouting_process {
 	}
 
 	runtime { 
-		cpu: 8 
+		cpu: 16 
 		memory: "40 GiB" 
 		disks: "local-disk 10 HDD" 
 		bootDiskSizeGb: 10 
-		preemptible: 3 
+		preemptible: 1 
 		maxRetries: 0 
 		docker: 'jorgeamaya/mhap' 
 	} 
