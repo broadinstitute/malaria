@@ -225,6 +225,15 @@ task prepare_files {
 	command <<<
 	set -euxo pipefail
 
+	# Need to check for byte-order mark for interoperability purposes
+	has_bom() { head -c3 "$1" | grep -q $'\xef\xbb\xbf'; }
+	if has_bom ~{panel_bedfile}; then 
+		echo "File has a BOM. Removing."
+		sed -i 's/\xef\xbb\xbf//' ~{panel_bedfile}
+	else
+		echo "File does not have a BOM. Skipping this step."
+	fi
+
 	###################################################################
 	##Make reference fasta file if reference not provided by user    ##
 	###################################################################

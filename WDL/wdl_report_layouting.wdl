@@ -91,11 +91,12 @@ workflow report_layouting {
 	}
 
 	output {
-		File? drs_report_f = report_layouting_process.drs_report
-		File? coi_report_f = report_layouting_process.coi_report
-		File? ibd_connectivity_report_f = report_layouting_process.ibd_connectivity_report
-		File? ibd_transmssion_report_f = report_layouting_process.ibd_transmssion_report
-		File? performance_report_f = report_layouting_process.performance_report
+		File? intermediate_report_f = report_layouting_process.intermediate_report
+#		File? drs_report_f = report_layouting_process.drs_report
+#		File? coi_report_f = report_layouting_process.coi_report
+#		File? ibd_connectivity_report_f = report_layouting_process.ibd_connectivity_report
+#		File? ibd_transmssion_report_f = report_layouting_process.ibd_transmssion_report
+#		File? performance_report_f = report_layouting_process.performance_report
 	}
 }
 
@@ -219,11 +220,12 @@ task report_layouting_process {
 	>>>
 
 	output {
-		File? drs_report = "Results/MHap_Profile_DRS_Report.html"
-		File? coi_report = "Results/MHap_Profile_COI_Report.html"
-		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
-		File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
-		File? performance_report = "Results/MHap_Profile_Performance_Report.html"
+		File? intermediate_report = "Results/metadata_intermediate.csv"
+#		File? drs_report = "Results/MHap_Profile_DRS_Report.html"
+#		File? coi_report = "Results/MHap_Profile_COI_Report.html"
+#		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
+#		File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
+#		File? performance_report = "Results/MHap_Profile_Performance_Report.html"
 	}
 
 	runtime { 
