@@ -333,7 +333,7 @@ task ampseq_pipeline_no_demult {
 	}
 
 	command <<<
-	set -euxo pipefail
+	#set -euxo pipefail
 	cat ~{config_json}
 
 	mkdir fq_dir
