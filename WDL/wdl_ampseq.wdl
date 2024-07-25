@@ -516,10 +516,10 @@ task ampseq_pipeline_denoise {
 		find . -type f
 	fi
 
-	#run_id_array=(~{sep = ' ' run_id})
-	#unique_id=$(printf "%s\n" "${run_id_array[@]}" | sort -u | tr '\n' '_')
-	#unique_id="${unique_id%_}"
-	#cp Results/CIGARVariants_Bfilter.out.tsv "${unique_id}_CIGARVariants_Bfilter.out.tsv"
+	run_id_array=(~{sep = ' ' run_id})
+	unique_id=$(printf "%s\n" "${run_id_array[@]}" | sort -u | tr '\n' '_')
+	unique_id="${unique_id%_}"
+	cp Results/CIGARVariants_Bfilter.out.tsv "${unique_id}_CIGARVariants_Bfilter.out.tsv"
 
 	>>>
 
