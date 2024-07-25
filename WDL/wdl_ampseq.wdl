@@ -146,11 +146,11 @@ workflow ampseq {
 	output {
 		File? panel_reference_fasta_f = prepare_files.reference_out
 		File ASVBimeras_f = ampseq_pipeline_denoise.ASVBimeras
-		File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
-		File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
+		#File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
+		#File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
 		File seqtab_f = ampseq_pipeline_denoise.seqtab
-		File ASVTable_f = ampseq_pipeline_denoise.ASVTable
-		File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
+		#File ASVTable_f = ampseq_pipeline_denoise.ASVTable
+		#File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
 		#File? missing_files_f = if (run_demultiplexing) then ampseq_pipeline_demult.missing_files else ampseq_pipeline_no_demult.missing_files
 		#File? decontamination_sample_cards_f = if (run_demultiplexing) then ampseq_pipeline_demult.decontamination_sample_cards else ampseq_pipeline_no_demult.decontamination_sample_cards
 		#File? decontamination_report_f = if (run_demultiplexing) then ampseq_pipeline_demult.decontamination_report else ampseq_pipeline_no_demult.decontamination_report
@@ -526,11 +526,11 @@ task ampseq_pipeline_denoise {
 	output {
 		File out_list_2 = "out_list.txt"
 		File ASVBimeras = "Results/ASVBimeras.txt"
-		File CIGARVariants_Bfilter = glob("*.out.tsv")[0]
-		File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
+		#File CIGARVariants_Bfilter = glob("*.out.tsv")[0]
+		#File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
 		File seqtab = "Results/seqtab.tsv"
-		File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
-		File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
+		#File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
+		#File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
 	}
 
 	runtime {
