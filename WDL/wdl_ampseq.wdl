@@ -157,8 +157,6 @@ workflow ampseq {
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
-		File? out_list_f = ampseq_pipeline_no_demult.out_list
-		File? out_list_2_f = ampseq_pipeline_denoise.out_list_2
 		File? missing_files_f = ampseq_pipeline_no_demult.missing_files
 		File? decontamination_sample_cards_f = ampseq_pipeline_no_demult.decontamination_sample_cards
 		File? decontamination_report_f = ampseq_pipeline_no_demult.decontamination_report
@@ -334,7 +332,7 @@ task ampseq_pipeline_no_demult {
 	}
 
 	command <<<
-	#set -euxo pipefail
+	set -euxo pipefail
 	cat ~{config_json}
 
 	mkdir fq_dir
@@ -353,9 +351,6 @@ task ampseq_pipeline_no_demult {
 	if [[ "~{path_to_snv}" != '' ]]; then
 		gsutil -m cp -r ~{sep = ' ' path_to_snv} references/
 	fi
-
-	ls fq_dir > out_list.txt
-	ls references >> out_list.txt
 
 	echo "Demultiplexing not requested."
 	echo "No demultiplexing will be performed in the data. Read pairs assumed to be long enough to overlap and be merged."
@@ -379,7 +374,6 @@ task ampseq_pipeline_no_demult {
 	
 	>>>
 	output {
-		File out_list = "out_list.txt"
 		File missing_files = "Results/missing_files.tsv"
 		Array[File] PrimerRem = glob("Results/PrimerRem/*")
 		Array[File] AdaptorRem = glob("Results/AdaptorRem/*")
@@ -500,10 +494,6 @@ task ampseq_pipeline_denoise {
 		gsutil -m cp -r ~{sep = ' ' path_to_snv} references/
 	fi
 
-	ls fq_dir > out_list.txt
-	ls references >> out_list.txt
-	cat ~{config_json} >> out_list.txt
-
 	if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ];then
 		echo "Demultiplex performed in the data. Some read pairs assumed to be too short to overlap and be merged."
 		find . -type f
@@ -512,7 +502,7 @@ task ampseq_pipeline_denoise {
 	else
 		echo "Demultiplex not performed in the data. Read pairs assumed to be long enough to overlap and be merged."
 		find . -type f
-		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2
+		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2 
 		find . -type f
 	fi
 
@@ -524,7 +514,6 @@ task ampseq_pipeline_denoise {
 	>>>
 
 	output {
-		File out_list_2 = "out_list.txt"
 		File ASVBimeras = "Results/ASVBimeras.txt"
 		#File CIGARVariants_Bfilter = glob("*.out.tsv")[0]
 		#File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
