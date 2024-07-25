@@ -125,6 +125,7 @@ workflow ampseq {
 	call ampseq_pipeline_denoise {
 		input:
 			config_json = prepare_files.config_json_out,
+			path_to_flist = path_to_flist,
 			path_to_r1 = path_to_r1,
 			path_to_r2 = path_to_r2,
 			pr1 = pr1,
@@ -392,7 +393,7 @@ task ampseq_pipeline_no_demult {
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq:latest'
+		docker: 'jorgeamaya/ampseq'
 	}
 }
 
@@ -458,6 +459,7 @@ task ampseq_pipeline_denoise {
 	input {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
+		File path_to_flist
 		File pr1
 		File pr2
 		File reference
@@ -483,6 +485,7 @@ task ampseq_pipeline_denoise {
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
 	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
+	gsutil -m cp -r ~{sep = ' ' path_to_flist} references/
 	gsutil -m cp -r ~{sep = ' ' pr1} references/
 	gsutil -m cp -r ~{sep = ' ' pr2} references/
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
