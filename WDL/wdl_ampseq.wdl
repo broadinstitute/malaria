@@ -555,7 +555,7 @@ task ampseq_pipeline_postproc_dada2 {
 
 	command <<<
 	set -euxo pipefail 
-	cat ~{config.json}
+	cat ~{config_json}
 	
 	# Make proper directories and copy required parameters to proper directory
 	mkdir -p Results/
