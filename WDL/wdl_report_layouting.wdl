@@ -223,7 +223,7 @@ task report_layouting_process {
 	output {
 		File? intermediate_report = "Results/metadata_intermediate.csv"
 		File? drs_report = "Results/MHap_Profile_DRS_Report.html"
-		File? drs_minimal_report = "Results/MHap_Profile_DRS_Minimal_Report.html"
+		File? drs_minimal_report = "Results/MHap_Profile_DRS_Minimal_Report.pdf"
 #		File? coi_report = "Results/MHap_Profile_COI_Report.html"
 #		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
 #		File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
