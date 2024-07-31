@@ -142,6 +142,16 @@ workflow ampseq {
 			primer_rem = ampseq_pipeline_no_demult.PrimerRem,
 			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem
 	}
+
+	call ampseq_pipeline_postproc_dada2 {
+		input:
+			config_json = prepare_files.config_json_out,
+			ASVBimeras = ampseq_pipeline_denoise.ASVBimeras,
+			seqtab = ampseq_pipeline_denoise.seqtab,
+			reference = prepare_files.reference_out,
+			reference2 = reference2, 
+			path_to_snv = path_to_snv
+	}
 	
 	output {
 		File? panel_reference_fasta_f = prepare_files.reference_out
@@ -494,7 +504,7 @@ task ampseq_pipeline_denoise {
 		gsutil -m cp -r ~{sep = ' ' path_to_snv} references/
 	fi
 
-	if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ];then
+	if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ]; then
 		echo "Demultiplex performed in the data. Some read pairs assumed to be too short to overlap and be merged."
 		find . -type f
 		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2 --demultiplexed
@@ -533,3 +543,58 @@ task ampseq_pipeline_denoise {
 	}
 }
 
+task ampseq_pipeline_postproc_dada2 {
+	input {
+		File ASVBimeras
+		File seqtab
+		File? reference
+		File? reference2
+		File? path_to_snv
+		File config_json
+	}
+
+	command <<<
+	set -euxo pipefail 
+	cat ~{config.json}
+	
+	# Make proper directories and copy required parameters to proper directory
+	mkdir -p Results/
+	mkdir -p Results/PostProc_DADA2
+	mkdir -p Results/DADA2_NOP
+	mkdir references
+
+	gsutil cp ~{seqtab} "Results/"
+	gsutil cp ~{ASVBimeras} "Results/"
+
+	# Localize optional parameters to proper directory
+	~{"gsutil cp " + reference + " references/"}
+	~{"gsutil cp " + reference2 + " references/"} 
+	~{"gsutil cp " + path_to_snv + " references/"} 
+
+	# Call Amplicon_TerraPipeline.py
+	echo "Running post processing of DADA2 results..."
+	find . -type f
+	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --postproc_dada2
+	find . -type f
+
+	if [ -e "Results/DADA2_NOP/correctedASV.txt" ]; then
+		touch "Results/DADA2_NOP/correctedASV.txt"
+
+	>>>
+
+	output {
+		File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
+		File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
+		File? correctedASV = "Results/DADA2_NOP/correctedASV.txt"
+	}
+
+	runtime {
+		cpu: 1
+		memory: "15 GiB"
+		disks: "local-disk 10 HDD"
+		bootDiskSizeGb: 10
+		preemptible: 3
+		maxRetries: 1
+		docker: 'jorgeamaya/ampseq'
+	}
+}
