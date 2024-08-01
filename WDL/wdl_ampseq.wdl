@@ -578,9 +578,9 @@ task ampseq_pipeline_postproc_dada2 {
 
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem
-	gsutil cp {path_to_flist} references/
-	gsutil cp {pr1} references/
-	gsutil cp {pr2} references/
+	gsutil cp ~{path_to_flist} references/
+	gsutil cp ~{pr1} references/
+	gsutil cp ~{pr2} references/
 
 	gsutil cp ~{seqtab} Results/
 	gsutil cp ~{ASVBimeras} Results/
