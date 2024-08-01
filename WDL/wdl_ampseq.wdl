@@ -150,7 +150,12 @@ workflow ampseq {
 			seqtab = ampseq_pipeline_denoise.seqtab,
 			reference = prepare_files.reference_out,
 			reference2 = reference2, 
-			path_to_snv = path_to_snv
+			path_to_snv = path_to_snv,
+
+			# Note: adaptor_rem and primer_rem not necessary to run postproc_dada2, but req'd for calling Amplicon_TerraPipeline
+			# Revisit the code design after successful testing of postproc_dada2, ASV_to_CIGAR.py, and filtering
+			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem,
+			primer_rem = ampseq_pipeline_no_demult.PrimerRem
 	}
 	
 	output {
@@ -165,6 +170,11 @@ workflow ampseq {
 		#File? decontamination_sample_cards_f = if (run_demultiplexing) then ampseq_pipeline_demult.decontamination_sample_cards else ampseq_pipeline_no_demult.decontamination_sample_cards
 		#File? decontamination_report_f = if (run_demultiplexing) then ampseq_pipeline_demult.decontamination_report else ampseq_pipeline_no_demult.decontamination_report
 
+		###POSTPROC_DADA2 OUTPUTS - Remove after testing
+		File ASVTable_f = ampseq_pipeline_postproc_dada2.ASVTable
+		File ASVSeqs_f = ampseq_pipeline_postproc_dada2.ASVSeqs
+		File? correctedASVs_f = ampseq_pipeline_postproc_dada2.correctedASVs
+		
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
 		File? missing_files_f = ampseq_pipeline_no_demult.missing_files
@@ -349,18 +359,13 @@ task ampseq_pipeline_no_demult {
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
 	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
-	gsutil -m cp -r ~{sep = ' ' path_to_flist} references/
-	gsutil -m cp -r ~{sep = ' ' pr1} references/
-	gsutil -m cp -r ~{sep = ' ' pr2} references/
-	gsutil -m cp -r ~{sep = ' ' reference} references/
+	gsutil cp ~{path_to_flist} references/
+	gsutil cp ~{pr1} references/
+	gsutil -m cp -r ~{pr2} references/
+	gsutil -m cp -r ~{reference} references/
 
-	if [[ "~{reference2}" != '' ]]; then
-		gsutil -m cp -r ~{sep = ' ' reference2} references/
-	fi
-
-	if [[ "~{path_to_snv}" != '' ]]; then
-		gsutil -m cp -r ~{sep = ' ' path_to_snv} references/
-	fi
+	~{"gsutil cp " + reference2 + " references/"}
+	~{"gsutil cp " + path_to_snv + " references/"}
 
 	echo "Demultiplexing not requested."
 	echo "No demultiplexing will be performed in the data. Read pairs assumed to be long enough to overlap and be merged."
@@ -489,20 +494,15 @@ task ampseq_pipeline_denoise {
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
 	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
-	gsutil -m cp -r ~{sep = ' ' path_to_flist} references/
-	gsutil -m cp -r ~{sep = ' ' pr1} references/
-	gsutil -m cp -r ~{sep = ' ' pr2} references/
+	gsutil cp ~{path_to_flist} references/
+	gsutil cp ~{pr1} references/
+	gsutil cp ~{pr2} references/
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem/
-	gsutil -m cp -r ~{sep = ' ' reference} references/
+	gsutil cp ~{reference} references/
 
-	if [[ "~{reference2}" != '' ]]; then
-		gsutil -m cp -r ~{sep = ' ' reference2} references/
-	fi
-
-	if [[ "~{path_to_snv}" != '' ]]; then
-		gsutil -m cp -r ~{sep = ' ' path_to_snv} references/
-	fi
+	~{"gsutil cp " + reference2 + " references/"}
+	~{"gsutil cp " + path_to_snv + " references/"}
 
 	if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ]; then
 		echo "Demultiplex performed in the data. Some read pairs assumed to be too short to overlap and be merged."
@@ -545,6 +545,9 @@ task ampseq_pipeline_denoise {
 
 task ampseq_pipeline_postproc_dada2 {
 	input {
+		Array[File] primer_rem
+		Array[File] adaptor_rem
+
 		File ASVBimeras
 		File seqtab
 		File? reference
@@ -558,10 +561,15 @@ task ampseq_pipeline_postproc_dada2 {
 	cat ~{config_json}
 	
 	# Make proper directories and copy required parameters to proper directory
+	mkdir -p Results/AdaptorRem
+	mkdir -p Results/PrimerRem
 	mkdir -p Results/
 	mkdir -p Results/PostProc_DADA2
 	mkdir -p Results/DADA2_NOP
 	mkdir references
+
+	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem
+	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem
 
 	gsutil cp ~{seqtab} "Results/"
 	gsutil cp ~{ASVBimeras} "Results/"
@@ -577,15 +585,13 @@ task ampseq_pipeline_postproc_dada2 {
 	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --postproc_dada2
 	find . -type f
 
-	if [ -e "Results/DADA2_NOP/correctedASV.txt" ]; then
-		touch "Results/DADA2_NOP/correctedASV.txt"
-
+	touch "Results/DADA2_NOP/correctedASV.txt"
 	>>>
 
 	output {
 		File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
 		File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
-		File? correctedASV = "Results/DADA2_NOP/correctedASV.txt"
+		File? correctedASVs = "Results/DADA2_NOP/correctedASV.txt"
 	}
 
 	runtime {
