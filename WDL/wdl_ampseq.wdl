@@ -545,8 +545,8 @@ task ampseq_pipeline_denoise {
 
 task ampseq_pipeline_postproc_dada2 {
 	input {
-		Array[File] primer_rem
-		Array[File] adaptor_rem
+		Array[File]? primer_rem
+		Array[File]? adaptor_rem
 
 		File ASVBimeras
 		File seqtab
