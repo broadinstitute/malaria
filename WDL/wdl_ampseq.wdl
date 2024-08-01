@@ -146,6 +146,10 @@ workflow ampseq {
 	call ampseq_pipeline_postproc_dada2 {
 		input:
 			config_json = prepare_files.config_json_out,
+			path_to_flist = path_to_flist,
+			pr1 = pr1,
+			pr2 = pr2,
+			run_id = run_id, 
 			ASVBimeras = ampseq_pipeline_denoise.ASVBimeras,
 			seqtab = ampseq_pipeline_denoise.seqtab,
 			reference = prepare_files.reference_out,
@@ -547,6 +551,10 @@ task ampseq_pipeline_postproc_dada2 {
 	input {
 		Array[File]? primer_rem
 		Array[File]? adaptor_rem
+		File path_to_flist
+		File pr1
+		File pr2
+		Array[String] run_id
 
 		File ASVBimeras
 		File seqtab
@@ -570,9 +578,12 @@ task ampseq_pipeline_postproc_dada2 {
 
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem
+	gsutil cp {path_to_flist} references/
+	gsutil cp {pr1} references/
+	gsutil cp {pr2} references/
 
-	gsutil cp ~{seqtab} "Results/"
-	gsutil cp ~{ASVBimeras} "Results/"
+	gsutil cp ~{seqtab} Results/
+	gsutil cp ~{ASVBimeras} Results/
 
 	# Localize optional parameters to proper directory
 	~{"gsutil cp " + reference + " references/"}
