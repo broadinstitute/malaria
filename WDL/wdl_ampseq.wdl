@@ -161,24 +161,43 @@ workflow ampseq {
 			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem,
 			primer_rem = ampseq_pipeline_no_demult.PrimerRem
 	}
+
+	call ampseq_pipeline_asv_to_cigar {
+		input:
+			config_json = prepare_files.config_json_out,
+			path_to_flist = path_to_flist,
+			pr1 = pr1,
+			pr2 = pr2,
+			run_id = run_id,
+			ASVBimeras = ampseq_pipeline_denoise.ASVBimeras,
+			seqtab = ampseq_pipeline_denoise.seqtab,
+			reference = prepare_files.reference_out, 
+			reference2 = reference2, 
+			path_to_snv = path_to_snv,
+			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem,
+			primer_rem = ampseq_pipeline_no_demult.PrimerRem,
+
+			#PostProc_DADA2 results
+			ASVSeqs = ampseq_pipeline_postproc_dada2.ASVSeqs,
+			ASVTable = ampseq_pipeline_postproc_dada2.ASVTable
+	}
 	
 	output {
 		File? panel_reference_fasta_f = prepare_files.reference_out
+		
+		# DADA2
 		File ASVBimeras_f = ampseq_pipeline_denoise.ASVBimeras
-		#File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
-		#File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
 		File seqtab_f = ampseq_pipeline_denoise.seqtab
-		#File ASVTable_f = ampseq_pipeline_denoise.ASVTable
-		#File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
-		#File? missing_files_f = if (run_demultiplexing) then ampseq_pipeline_demult.missing_files else ampseq_pipeline_no_demult.missing_files
-		#File? decontamination_sample_cards_f = if (run_demultiplexing) then ampseq_pipeline_demult.decontamination_sample_cards else ampseq_pipeline_no_demult.decontamination_sample_cards
-		#File? decontamination_report_f = if (run_demultiplexing) then ampseq_pipeline_demult.decontamination_report else ampseq_pipeline_no_demult.decontamination_report
 
-		###POSTPROC_DADA2 OUTPUTS - Remove after testing
+		# PostProc_DADA2
 		File ASVTable_f = ampseq_pipeline_postproc_dada2.ASVTable
 		File ASVSeqs_f = ampseq_pipeline_postproc_dada2.ASVSeqs
 		File? correctedASVs_f = ampseq_pipeline_postproc_dada2.correctedASVs
-		
+
+		# ASV_to_CIGAR
+		File CIGARVariants_Bfilter_f = ampseq_pipeline_asv_to_cigar.CIGARVariants_Bfilter
+		File ASV_to_CIGAR_f = ampseq_pipeline_asv_to_cigar.ASV_to_CIGAR
+
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
 		File? missing_files_f = ampseq_pipeline_no_demult.missing_files
@@ -614,4 +633,79 @@ task ampseq_pipeline_postproc_dada2 {
 		maxRetries: 1
 		docker: 'jorgeamaya/ampseq'
 	}
+}
+
+task ampseq_pipeline_asv_to_cigar {
+		input {
+		Array[File]? primer_rem
+		Array[File]? adaptor_rem
+		File path_to_flist
+		File pr1
+		File pr2
+		Array[String] run_id
+
+		File ASVBimeras
+		File seqtab
+
+		File ASVSeqs
+		File ASVTable
+
+		File? reference
+		File? reference2
+		File? path_to_snv
+		File config_json
+	}
+
+	command <<<
+	set -euxo pipefail 
+	cat ~{config_json}
+	
+	# Make proper directories and copy required parameters to proper directory
+	mkdir -p Results/AdaptorRem
+	mkdir -p Results/PrimerRem
+	mkdir -p Results/
+	mkdir -p Results/PostProc_DADA2
+	mkdir -p Results/ASV_to_CIGAR
+	mkdir -p Results/alignments
+	mkdir references
+
+	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem
+	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem
+	gsutil cp ~{path_to_flist} references/
+	gsutil cp ~{pr1} references/
+	gsutil cp ~{pr2} references/
+
+	gsutil cp ~{seqtab} Results/
+	gsutil cp ~{ASVBimeras} Results/
+	gsutil cp ~{ASVSeqs} Results/PostProc_DADA2
+	gsutil cp ~{ASVTable} Results/PostProc_DADA2
+
+	# Localize optional parameters to proper directory
+	~{"gsutil cp " + reference + " references/"}
+	~{"gsutil cp " + reference2 + " references/"} 
+	~{"gsutil cp " + path_to_snv + " references/"} 
+
+	# Call Amplicon_TerraPipeline.py
+	echo "Converting ASV to CIGAR tables..."
+	find . -type f
+	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --asv_to_cigar
+	find . -type f
+
+	>>>
+
+	output {
+		File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
+		File CIGARVariants_Bfilter = "Results/CIGARVariants_Bfilter.out.tsv"
+	}
+
+	runtime {
+		cpu: 1
+		memory: "15 GiB"
+		disks: "local-disk 10 HDD"
+		bootDiskSizeGb: 10
+		preemptible: 3
+		maxRetries: 1
+		docker: 'jorgeamaya/ampseq'
+	}
+
 }
