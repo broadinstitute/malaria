@@ -197,6 +197,7 @@ workflow ampseq {
 		# ASV_to_CIGAR
 		File CIGARVariants_Bfilter_f = ampseq_pipeline_asv_to_cigar.CIGARVariants_Bfilter
 		File ASV_to_CIGAR_f = ampseq_pipeline_asv_to_cigar.ASV_to_CIGAR
+		File ZeroReadsSampleList_f = ampseq_pipeline_asv_to_cigar.ZeroReadsSampleList
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
@@ -696,6 +697,7 @@ task ampseq_pipeline_asv_to_cigar {
 	output {
 		File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
 		File CIGARVariants_Bfilter = "Results/CIGARVariants_Bfilter.out.tsv"
+		File ZeroReadsSampleList = "Results/ASV_to_CIGAR/ZeroReadsSampleList.txt"
 	}
 
 	runtime {
