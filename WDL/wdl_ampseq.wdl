@@ -648,6 +648,6 @@ task ampseq_pipeline_asv_filtering {
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: 'jorgeamaya/MHap'
+		docker: 'jorgeamaya/ampseq'
 	}
 }
