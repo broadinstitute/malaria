@@ -143,45 +143,6 @@ workflow ampseq {
 			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem
 	}
 
-	call ampseq_pipeline_postproc_dada2 {
-		input:
-			config_json = prepare_files.config_json_out,
-			path_to_flist = path_to_flist,
-			pr1 = pr1,
-			pr2 = pr2,
-			run_id = run_id, 
-			ASVBimeras = ampseq_pipeline_denoise.ASVBimeras,
-			seqtab = ampseq_pipeline_denoise.seqtab,
-			reference = prepare_files.reference_out,
-			reference2 = reference2, 
-			path_to_snv = path_to_snv,
-
-			# Note: adaptor_rem and primer_rem not necessary to run postproc_dada2, but req'd for calling Amplicon_TerraPipeline
-			# Revisit the code design after successful testing of postproc_dada2, ASV_to_CIGAR.py, and filtering
-			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem,
-			primer_rem = ampseq_pipeline_no_demult.PrimerRem
-	}
-
-	call ampseq_pipeline_asv_to_cigar {
-		input:
-			config_json = prepare_files.config_json_out,
-			path_to_flist = path_to_flist,
-			pr1 = pr1,
-			pr2 = pr2,
-			run_id = run_id,
-			ASVBimeras = ampseq_pipeline_denoise.ASVBimeras,
-			seqtab = ampseq_pipeline_denoise.seqtab,
-			reference = prepare_files.reference_out, 
-			reference2 = reference2, 
-			path_to_snv = path_to_snv,
-			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem,
-			primer_rem = ampseq_pipeline_no_demult.PrimerRem,
-
-			#PostProc_DADA2 results
-			ASVSeqs = ampseq_pipeline_postproc_dada2.ASVSeqs,
-			ASVTable = ampseq_pipeline_postproc_dada2.ASVTable
-	}
-	
 	output {
 		File? panel_reference_fasta_f = prepare_files.reference_out
 		
@@ -190,14 +151,13 @@ workflow ampseq {
 		File seqtab_f = ampseq_pipeline_denoise.seqtab
 
 		# PostProc_DADA2
-		File ASVTable_f = ampseq_pipeline_postproc_dada2.ASVTable
-		File ASVSeqs_f = ampseq_pipeline_postproc_dada2.ASVSeqs
-		File? correctedASVs_f = ampseq_pipeline_postproc_dada2.correctedASVs
+		File ASVTable_f = ampseq_pipeline_denoise.ASVTable
+		File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
 
 		# ASV_to_CIGAR
-		File CIGARVariants_Bfilter_f = ampseq_pipeline_asv_to_cigar.CIGARVariants_Bfilter
-		File ASV_to_CIGAR_f = ampseq_pipeline_asv_to_cigar.ASV_to_CIGAR
-		File ZeroReadsSampleList_f = ampseq_pipeline_asv_to_cigar.ZeroReadsSampleList
+		File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
+		File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
+		File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
@@ -511,9 +471,13 @@ task ampseq_pipeline_denoise {
 	###################################################################
 	##Copy files to the working directory and run the AmpSeq pipeline##
 	###################################################################
-
+	mkdir -p Results/
 	mkdir -p Results/PrimerRem
 	mkdir -p Results/AdaptorRem
+	mkdir -p Results/PostProc_DADA2
+	mkdir -p Results/ASV_to_CIGAR
+	mkdir -p Results/alignments
+
 	mkdir fq_dir
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
@@ -530,15 +494,19 @@ task ampseq_pipeline_denoise {
 
 	if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ]; then
 		echo "Demultiplex performed in the data. Some read pairs assumed to be too short to overlap and be merged."
-		find . -type f
 		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2 --demultiplexed
-		find . -type f
 	else
 		echo "Demultiplex not performed in the data. Read pairs assumed to be long enough to overlap and be merged."
-		find . -type f
 		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2 
-		find . -type f
 	fi
+
+	# Run postproc_DADA2
+	echo "Running post processing of DADA2 results..."
+	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --postproc_dada2
+
+	# Run ASV_to_CIGAR
+	echo "Converting ASV to CIGAR tables..."
+	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --asv_to_cigar
 
 	#run_id_array=(~{sep = ' ' run_id})
 	#unique_id=$(printf "%s\n" "${run_id_array[@]}" | sort -u | tr '\n' '_')
@@ -549,80 +517,13 @@ task ampseq_pipeline_denoise {
 
 	output {
 		File ASVBimeras = "Results/ASVBimeras.txt"
-		#File CIGARVariants_Bfilter = glob("*.out.tsv")[0]
-		#File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
+		File CIGARVariants_Bfilter = glob("*.out.tsv")[0]
+		File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
+		File ZeroReadsSampleList = "Results/ASV_to_CIGAR/ZeroReadsSampleList.txt"
+
 		File seqtab = "Results/seqtab.tsv"
-		#File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
-		#File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
-	}
-
-	runtime {
-		cpu: 1
-		memory: "15 GiB"
-		disks: "local-disk 10 HDD"
-		bootDiskSizeGb: 10
-		preemptible: 3
-		maxRetries: 1
-		docker: 'jorgeamaya/ampseq'
-	}
-}
-
-task ampseq_pipeline_postproc_dada2 {
-	input {
-		Array[File]? primer_rem
-		Array[File]? adaptor_rem
-		File path_to_flist
-		File pr1
-		File pr2
-		Array[String] run_id
-
-		File ASVBimeras
-		File seqtab
-		File? reference
-		File? reference2
-		File? path_to_snv
-		File config_json
-	}
-
-	command <<<
-	set -euxo pipefail 
-	cat ~{config_json}
-	
-	# Make proper directories and copy required parameters to proper directory
-	mkdir -p Results/AdaptorRem
-	mkdir -p Results/PrimerRem
-	mkdir -p Results/
-	mkdir -p Results/PostProc_DADA2
-	mkdir -p Results/DADA2_NOP
-	mkdir references
-
-	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem
-	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem
-	gsutil cp ~{path_to_flist} references/
-	gsutil cp ~{pr1} references/
-	gsutil cp ~{pr2} references/
-
-	gsutil cp ~{seqtab} Results/
-	gsutil cp ~{ASVBimeras} Results/
-
-	# Localize optional parameters to proper directory
-	~{"gsutil cp " + reference + " references/"}
-	~{"gsutil cp " + reference2 + " references/"} 
-	~{"gsutil cp " + path_to_snv + " references/"} 
-
-	# Call Amplicon_TerraPipeline.py
-	echo "Running post processing of DADA2 results..."
-	find . -type f
-	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --postproc_dada2
-	find . -type f
-
-	touch "Results/DADA2_NOP/correctedASV.txt"
-	>>>
-
-	output {
 		File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
 		File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
-		File? correctedASVs = "Results/DADA2_NOP/correctedASV.txt"
 	}
 
 	runtime {
@@ -636,78 +537,117 @@ task ampseq_pipeline_postproc_dada2 {
 	}
 }
 
-task ampseq_pipeline_asv_to_cigar {
-		input {
-		Array[File]? primer_rem
-		Array[File]? adaptor_rem
-		File path_to_flist
-		File pr1
-		File pr2
-		Array[String] run_id
+task ampseq_pipeline_asv_filtering {
+	input {
+		String out_prefix 
+		File? panel_bedfile
+		File reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
 
-		File ASVBimeras
-		File seqtab
-
-		File ASVSeqs
+		# Results of post-processing and CIGAR conversion
+		File CIGARVariants
 		File ASVTable
+		File ASV_to_CIGAR
+		File ASVSeqs
+		File ZeroReadsSampleList
 
-		File? reference
-		File? reference2
-		File? path_to_snv
-		File config_json
+		# MHap ASV filtering thresholds [TODO: Ask if defaults are appropriate]
+		String sample_id_pat = '.'
+		Int? min_abd = 10
+		Float? min_ratio = 0.1
+		String? off_target_formula = "dVSITES_ij>=0.3"
+		String? flanking_INDEL_formula = "flanking_INDEL==TRUE&h_ij>=0.66"
+		Int? homopolymer_length = 5
+		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE&h_ij>=0.66"
+		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE&h_ij>=0.66"
+		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
+		String? PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66&p_ij>=0.05"
+		Float? sample_ampl_rate = 0.75
+		Float? locus_ampl_rate = 0.75
 	}
+
+	File ref_for_markers = select_first([panel_bedfile, reference])
+	###########################################
+	# MHap - Define appropriate directories
+	String wd = "Results/"
+	String fd = "Code/MHap/"
+	String rd = "references/"
+	# The directories below are subdirectories of "wd" (from MHap specs)
+	String cigar_variants_dir = "cigar_variants/"
+	String asv_table_dir = "asv_tables/"
+	String asv2cigar_dir = "asv2cigar/"
+	String asv_seq_dir = "asv_seq/"
+	String zero_read_sample_list_dir = "zeroReadSampleList/"
+	# Output filepath
+	File ampseq_obj_path = "Results/" + out_prefix + ".csv"
+	###########################################
+
+	# TO-DO: Check if selecting such defaults are appropriate.
 
 	command <<<
-	set -euxo pipefail 
-	cat ~{config_json}
-	
-	# Make proper directories and copy required parameters to proper directory
-	mkdir -p Results/AdaptorRem
-	mkdir -p Results/PrimerRem
-	mkdir -p Results/
-	mkdir -p Results/PostProc_DADA2
-	mkdir -p Results/ASV_to_CIGAR
-	mkdir -p Results/alignments
-	mkdir references
+		set -euxo pipefail
 
-	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem
-	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem
-	gsutil cp ~{path_to_flist} references/
-	gsutil cp ~{pr1} references/
-	gsutil cp ~{pr2} references/
+		# Create directories - required for MHap script
+		mkdir -p Results/
+		mkdir -p Results/~{cigar_variants_dir}
+		mkdir -p Results/~{asv_table_dir}
+		mkdir -p Results/~{asv2cigar_dir}
+		mkdir -p Results/~{asv_seq_dir}
+		mkdir -p Results/~{zero_read_sample_list_dir}
+		mkdir -p references/
 
-	gsutil cp ~{seqtab} Results/
-	gsutil cp ~{ASVBimeras} Results/
-	gsutil cp ~{ASVSeqs} Results/PostProc_DADA2
-	gsutil cp ~{ASVTable} Results/PostProc_DADA2
+		# Copy correct files to proper directories - required for MHap script
+		gsutil cp ~{reference} references/
+		~{"gsutil cp " + panel_bedfile + " references/"}
 
-	# Localize optional parameters to proper directory
-	~{"gsutil cp " + reference + " references/"}
-	~{"gsutil cp " + reference2 + " references/"} 
-	~{"gsutil cp " + path_to_snv + " references/"} 
+		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}
+		gsutil cp ~{ASVTable} Results/~{ASVTable}
+		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
+		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
+		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
 
-	# Call Amplicon_TerraPipeline.py
-	echo "Converting ASV to CIGAR tables..."
-	find . -type f
-	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --asv_to_cigar
-	find . -type f
+		# Create marker table
+		python /Code/markersTable_from_bed.py -i ~{ref_for_markers} -o Results/markersTable.csv
 
+		#Call MHap_Analysis_pipeline
+		echo "Applying filters to ASVs..."
+		Rscript /Code/MHap_Analysis_pipeline.R \
+		-fd ~{fd} \
+		-wd ~{wd} \
+		-rd ~{rd} \
+		-cigar_files ~{cigar_variants_dir} \
+		-asv_table_files ~{asv_table_dir} \
+		-asv2cigar_files ~{asv2cigar_dir} \
+		-asv_seq_files ~{asv_seq_dir} \
+		-zero_read_sample_list ~{zero_read_sample_list_dir} \
+		-o ~{out_prefix} \
+		-markers Results/markersTable.csv \
+		-sample_id_pattern ~{sample_id_pat} \
+		~{"-min_abd " + min_abd} \
+		~{"-min_ratio " + min_ratio} \
+		~{"-off_target_formula " + off_target_formula} \
+		~{"-flanking_INDEL_formula " + flanking_INDEL_formula} \
+		~{"-homopolymer_length " + homopolymer_length} \
+		~{"-SNV_in_homopolymer_formula " + SNV_in_homopolymer_formula} \
+		~{"-INDEL_in_homopolymer_formula " + INDEL_in_homopolymer_formula} \
+		~{"-bimera_formula " + bimera_formula} \
+		~{"-PCR_errors_formula " + PCR_errors_formula} \
+		~{"-samprate " + sample_ampl_rate} \
+		~{"-lamprate " + locus_ampl_rate}
+
+		echo "Finished filtering ASVs!"
+		
 	>>>
-
 	output {
-		File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
-		File CIGARVariants_Bfilter = "Results/CIGARVariants_Bfilter.out.tsv"
-		File ZeroReadsSampleList = "Results/ASV_to_CIGAR/ZeroReadsSampleList.txt"
+		File markersTable = "Results/markersTable.csv"
+		File ampseq_object = ampseq_obj_path
 	}
-
 	runtime {
 		cpu: 1
-		memory: "15 GiB"
+		memory: "40 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq'
+		docker: 'jorgeamaya/MHap'
 	}
-
 }
