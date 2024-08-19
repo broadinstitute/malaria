@@ -521,7 +521,9 @@ task ampseq_pipeline_denoise {
 
 	# Run ASV_to_CIGAR
 	echo "Converting ASV to CIGAR tables..."
+	find . -type f
 	python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --asv_to_cigar
+	find . -type f
 
 	#run_id_array=(~{sep = ' ' run_id})
 	#unique_id=$(printf "%s\n" "${run_id_array[@]}" | sort -u | tr '\n' '_')
@@ -532,7 +534,7 @@ task ampseq_pipeline_denoise {
 
 	output {
 		File ASVBimeras = "Results/ASVBimeras.txt"
-		File CIGARVariants_Bfilter = glob("*.out.tsv")[0]
+		File CIGARVariants_Bfilter = "Results/CIGARVariants_Bfilter.out.tsv"
 		File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
 		File ZeroReadsSampleList = "Results/ASV_to_CIGAR/ZeroReadsSampleList.txt"
 
