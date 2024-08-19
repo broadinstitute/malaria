@@ -143,6 +143,17 @@ workflow ampseq {
 			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem
 	}
 
+	call ampseq_pipeline_asv_filtering {
+		input: 
+			reference = reference,
+			panel_bedfile = panel_bedfile,
+			CIGARVariants = ampseq_pipeline_denoise.CIGARVariants_Bfilter
+			ASVTable = ampseq_pipeline_denoise.ASVTable,
+			ASVSeqs = ampseq_pipeline_denoise.ASVSeqs,
+			ASV_to_CIGAR = ampseq_pipeline_denoise.ASV_to_CIGAR,
+			ZeroReadsSampleList = ampseq_pipeline_denoise.ZeroReadsSampleList
+	}
+
 	output {
 		File? panel_reference_fasta_f = prepare_files.reference_out
 		
@@ -158,6 +169,10 @@ workflow ampseq {
 		File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
 		File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
 		File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
+
+		# ASV Filtering
+		File ampseq_object_f = ampseq_pipeline_asv_filtering.ampseq_object
+		File markersTable_f = ampseq_pipeline_asv_filtering.markersTable
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
