@@ -147,7 +147,7 @@ workflow ampseq {
 		input: 
 			reference = reference,
 			panel_bedfile = panel_bedfile,
-			CIGARVariants = ampseq_pipeline_denoise.CIGARVariants_Bfilter
+			CIGARVariants = ampseq_pipeline_denoise.CIGARVariants_Bfilter,
 			ASVTable = ampseq_pipeline_denoise.ASVTable,
 			ASVSeqs = ampseq_pipeline_denoise.ASVSeqs,
 			ASV_to_CIGAR = ampseq_pipeline_denoise.ASV_to_CIGAR,
@@ -556,7 +556,7 @@ task ampseq_pipeline_asv_filtering {
 	input {
 		String out_prefix 
 		File? panel_bedfile
-		File reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
+		File? reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
 
 		# Results of post-processing and CIGAR conversion
 		File CIGARVariants
