@@ -614,7 +614,7 @@ task ampseq_pipeline_asv_filtering {
 		gsutil cp ~{reference} references/
 		~{"gsutil cp " + panel_bedfile + " references/"}
 
-		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}
+		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
 		gsutil cp ~{ASVTable} Results/~{ASVTable}
 		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
 		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
