@@ -621,7 +621,7 @@ task ampseq_pipeline_asv_filtering {
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
 
 		# Create marker table
-		python /Code/markersTable_from_bed.py -i ~{ref_for_markers} -o Results/markersTable.csv
+		python /Code/createMarkersTable.py -i ~{ref_for_markers} -o Results/markersTable.csv
 
 		#Call MHap_Analysis_pipeline
 		echo "Applying filters to ASVs..."
