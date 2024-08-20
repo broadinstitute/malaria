@@ -586,7 +586,7 @@ task ampseq_pipeline_asv_filtering {
 	###########################################
 	# MHap - Define appropriate directories
 	String wd = "Results/"
-	String fd = "Code/MHap/"
+	String fd = "/Code/MHap"
 	String rd = "references/"
 	# The directories below are subdirectories of "wd" (from MHap specs)
 	String cigar_variants_dir = "cigar_variants/"
