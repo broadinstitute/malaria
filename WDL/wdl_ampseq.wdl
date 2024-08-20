@@ -594,8 +594,6 @@ task ampseq_pipeline_asv_filtering {
 	String asv2cigar_dir = "asv2cigar/"
 	String asv_seq_dir = "asv_seq/"
 	String zero_read_sample_list_dir = "zeroReadSampleList/"
-	# Output filepath
-	File ampseq_obj_path = "Results/" + out_prefix + ".csv"
 	###########################################
 
 	# TO-DO: Check if selecting such defaults are appropriate.
@@ -656,7 +654,7 @@ task ampseq_pipeline_asv_filtering {
 	>>>
 	output {
 		File markersTable = "Results/markersTable.csv"
-		File ampseq_object = ampseq_obj_path
+		File ampseq_object = "Results/~{out_prefix}.csv"
 	}
 	runtime {
 		cpu: 1
