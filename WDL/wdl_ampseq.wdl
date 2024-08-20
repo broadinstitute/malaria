@@ -572,12 +572,12 @@ task ampseq_pipeline_asv_filtering {
 		Int? min_abd = 10
 		Float? min_ratio = 0.1
 		String? off_target_formula = "dVSITES_ij>=0.3"
-		String? flanking_INDEL_formula = "flanking_INDEL==TRUE&h_ij>=0.66"
+		String? flanking_INDEL_formula = "flanking_INDEL==TRUE\&h_ij>=0.66"
 		Int? homopolymer_length = 5
-		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE&h_ij>=0.66"
-		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE&h_ij>=0.66"
-		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
-		String? PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66&p_ij>=0.05"
+		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE\&h_ij>=0.66"
+		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"
+		String? bimera_formula = "bimera==TRUE\&h_ij>=0.66"
+		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"
 		Float? sample_ampl_rate = 0.75
 		Float? locus_ampl_rate = 0.75
 	}
