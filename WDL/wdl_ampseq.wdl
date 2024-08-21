@@ -591,6 +591,8 @@ task ampseq_pipeline_asv_filtering {
 	String wd = "Results/"
 	String fd = "/Code/MHap"
 	String rd = "references/"
+	String ref_genome_base = basename(reference_genome)
+	String ref_base = if defined(reference) then basename(select_first([reference])) else ""
 	# The directories below are subdirectories of "wd" (from MHap specs)
 	String cigar_variants_dir = "cigar_variants/"
 	String asv_table_dir = "asv_tables/"
@@ -653,8 +655,8 @@ task ampseq_pipeline_asv_filtering {
 		~{"-PCR_errors_formula \'" + PCR_errors_formula + "\'"} \
 		~{"-samprate " + sample_ampl_rate} \
 		~{"-lamprate " + locus_ampl_rate} \
-		--ref_fasta ~{basename(reference_genome)} \
-		--amplicon_fasta ~{basename(reference)} \
+		--ref_fasta ~{ref_genome_base} \
+		~{"--amplicon_fasta " + ref_base} \
 		--poly_formula 'null'
 		--ampseq_export_format '~{ampseq_export_format}'
 
