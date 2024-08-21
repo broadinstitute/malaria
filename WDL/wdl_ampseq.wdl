@@ -621,7 +621,7 @@ task ampseq_pipeline_asv_filtering {
 		~{"gsutil cp " + panel_bedfile + " references/"}
 
 		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
-		gsutil cp ~{ASVTable} Results/~{ASVTable}
+		gsutil cp ~{ASVTable} Results/~{asv_table_dir}
 		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
 		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
@@ -660,7 +660,7 @@ task ampseq_pipeline_asv_filtering {
 		--ampseq_export_format '~{ampseq_export_format}' \
 		--poly_formula 'null' \
 		--cigar_paths 'null' \
-		
+
 
 		echo "Finished filtering ASVs!"
 		
