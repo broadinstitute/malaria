@@ -588,9 +588,9 @@ task ampseq_pipeline_asv_filtering {
 	File ref_for_markers = select_first([panel_bedfile, reference])
 	###########################################
 	# MHap - Define appropriate directories
-	String wd = "Results/"
+	String wd = "./Results/"
 	String fd = "/Code/MHap"
-	String rd = "references/"
+	String rd = "./references/"
 	String ref_genome_base = basename(reference_genome)
 	String ref_base = if defined(reference) then basename(select_first([reference])) else ""
 	# The directories below are subdirectories of "wd" (from MHap specs)
