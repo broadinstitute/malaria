@@ -657,8 +657,10 @@ task ampseq_pipeline_asv_filtering {
 		~{"-lamprate " + locus_ampl_rate} \
 		--ref_fasta ~{ref_genome_base} \
 		~{"--amplicon_fasta " + ref_base} \
-		--poly_formula 'null'
-		--ampseq_export_format '~{ampseq_export_format}'
+		--ampseq_export_format '~{ampseq_export_format}' \
+		--poly_formula 'null' \
+		--cigar_paths 'null' \
+		
 
 		echo "Finished filtering ASVs!"
 		
