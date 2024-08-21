@@ -561,6 +561,7 @@ task ampseq_pipeline_asv_filtering {
 		File? panel_bedfile
 		File? reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
 		File reference_genome
+		String? ampseq_export_format = 'excel'
 
 		# Results of post-processing and CIGAR conversion
 		File CIGARVariants
@@ -627,6 +628,7 @@ task ampseq_pipeline_asv_filtering {
 		python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
 
 		#Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
+		find . -type f
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
 		-fd ~{fd} \
@@ -651,10 +653,10 @@ task ampseq_pipeline_asv_filtering {
 		~{"-PCR_errors_formula \'" + PCR_errors_formula + "\'"} \
 		~{"-samprate " + sample_ampl_rate} \
 		~{"-lamprate " + locus_ampl_rate} \
-		--ref_fasta ~{reference_genome} \
-		--amplicon_fasta ~{reference} \
+		--ref_fasta ~{basename(reference_genome)} \
+		--amplicon_fasta ~{basename(reference)} \
 		--poly_formula 'null'
-		--ampseq_export_format 'excel'
+		--ampseq_export_format '~{ampseq_export_format}'
 
 		echo "Finished filtering ASVs!"
 		
@@ -669,7 +671,7 @@ task ampseq_pipeline_asv_filtering {
 		memory: "40 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
-		preemptible: 3
+		preemptible: 1 #[TODO: Change later]
 		maxRetries: 1
 		docker: 'jorgeamaya/ampseq'
 	}
