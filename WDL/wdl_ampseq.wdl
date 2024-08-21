@@ -11,7 +11,7 @@ workflow ampseq {
 		File? reference
 		File? reference2
 		File? path_to_snv
-		File? reference_genome
+		File reference_genome
 		File? panel_bedfile
 		Array[String] run_id
 
@@ -146,6 +146,7 @@ workflow ampseq {
 	call ampseq_pipeline_asv_filtering {
 		input: 
 			reference = reference,
+			reference_genome = reference_genome,
 			panel_bedfile = panel_bedfile,
 			CIGARVariants = ampseq_pipeline_denoise.CIGARVariants_Bfilter,
 			ASVTable = ampseq_pipeline_denoise.ASVTable,
@@ -559,6 +560,7 @@ task ampseq_pipeline_asv_filtering {
 		String out_prefix 
 		File? panel_bedfile
 		File? reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
+		File reference_genome
 
 		# Results of post-processing and CIGAR conversion
 		File CIGARVariants
@@ -571,13 +573,13 @@ task ampseq_pipeline_asv_filtering {
 		String sample_id_pat = '.'
 		Int? min_abd = 10
 		Float? min_ratio = 0.1
-		String? off_target_formula = "\"dVSITES_ij>=0.3\""
-		String? flanking_INDEL_formula = "\"flanking_INDEL==TRUE\&h_ij>=0.66\""
+		String? off_target_formula = "dVSITES_ij>=0.3"
+		String? flanking_INDEL_formula = "flanking_INDEL==TRUE\&h_ij>=0.66"
 		Int? homopolymer_length = 5
-		String? SNV_in_homopolymer_formula = "\"SNV_in_homopolymer==TRUE\&h_ij>=0.66\""
-		String? INDEL_in_homopolymer_formula = "\"INDEL_in_homopolymer==TRUE\&h_ij>=0.66\""
-		String? bimera_formula = "\"bimera==TRUE&h_ij>=0.66\""
-		String? PCR_errors_formula = "\"h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05\""
+		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE\&h_ij>=0.66"
+		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"
+		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
+		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"
 		Float? sample_ampl_rate = 0.75
 		Float? locus_ampl_rate = 0.75
 	}
@@ -585,9 +587,9 @@ task ampseq_pipeline_asv_filtering {
 	File ref_for_markers = select_first([panel_bedfile, reference])
 	###########################################
 	# MHap - Define appropriate directories
-	String wd = "Results/"
+	String wd = "/Results"
 	String fd = "/Code/MHap"
-	String rd = "references/"
+	String rd = "/references"
 	# The directories below are subdirectories of "wd" (from MHap specs)
 	String cigar_variants_dir = "cigar_variants/"
 	String asv_table_dir = "asv_tables/"
@@ -612,6 +614,7 @@ task ampseq_pipeline_asv_filtering {
 
 		# Copy correct files to proper directories - required for MHap script
 		gsutil cp ~{reference} references/
+		gsutil cp ~{reference_genome} references/
 		~{"gsutil cp " + panel_bedfile + " references/"}
 
 		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
@@ -621,7 +624,7 @@ task ampseq_pipeline_asv_filtering {
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
 
 		# Create marker table
-		python /Code/createMarkersTable.py -i ~{ref_for_markers} -o Results/markersTable.csv
+		python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
 
 		#Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		echo "Applying filters to ASVs..."
@@ -629,25 +632,29 @@ task ampseq_pipeline_asv_filtering {
 		-fd ~{fd} \
 		-wd ~{wd} \
 		-rd ~{rd} \
-		-cigar_files ~{cigar_variants_dir} \
-		-asv_table_files ~{asv_table_dir} \
-		-asv2cigar_files ~{asv2cigar_dir} \
-		-asv_seq_files ~{asv_seq_dir} \
-		-zero_read_sample_list ~{zero_read_sample_list_dir} \
-		-o ~{out_prefix} \
-		-markers Results/markersTable.csv \
-		-sample_id_pattern ~{sample_id_pat} \
+		-cigar_files '~{cigar_variants_dir}' \
+		-asv_table_files '~{asv_table_dir}' \
+		-asv2cigar_files '~{asv2cigar_dir}' \
+		-asv_seq_files '~{asv_seq_dir}' \
+		-zero_read_sample_list '~{zero_read_sample_list_dir}' \
+		-o '~{out_prefix}' \
+		-markers markersTable.csv \
+		-sample_id_pattern '~{sample_id_pat}' \
 		~{"-min_abd " + min_abd} \
 		~{"-min_ratio " + min_ratio} \
-		~{"-off_target_formula " + off_target_formula} \
-		~{"-flanking_INDEL_formula " + flanking_INDEL_formula} \
-		~{"-homopolymer_length " + homopolymer_length} \
-		~{"-SNV_in_homopolymer_formula " + SNV_in_homopolymer_formula} \
-		~{"-INDEL_in_homopolymer_formula " + INDEL_in_homopolymer_formula} \
-		~{"-bimera_formula " + bimera_formula} \
-		~{"-PCR_errors_formula " + PCR_errors_formula} \
+		~{"-off_target_formula \'" + off_target_formula + "\'"} \
+		~{"-flanking_INDEL_formula \'" + flanking_INDEL_formula + "\'"} \
+		~{"-homopolymer_length \'" + homopolymer_length + "\'"} \
+		~{"-SNV_in_homopolymer_formula \'" + SNV_in_homopolymer_formula + "\'"} \
+		~{"-INDEL_in_homopolymer_formula \'" + INDEL_in_homopolymer_formula + "\'"} \
+		~{"-bimera_formula \'" + bimera_formula + "\'"} \
+		~{"-PCR_errors_formula \'" + PCR_errors_formula + "\'"} \
 		~{"-samprate " + sample_ampl_rate} \
-		~{"-lamprate " + locus_ampl_rate}
+		~{"-lamprate " + locus_ampl_rate} \
+		--ref_fasta ~{reference_genome} \
+		--amplicon_fasta ~{reference} \
+		--poly_formula 'null'
+		--ampseq_export_format 'excel'
 
 		echo "Finished filtering ASVs!"
 		
@@ -655,7 +662,7 @@ task ampseq_pipeline_asv_filtering {
 	
 	output {
 		File markersTable = "Results/markersTable.csv"
-		File ampseq_object = "Results/~{out_prefix}.csv"
+		File ampseq_object = "Results/~{out_prefix}.xlsx"
 	}
 	runtime {
 		cpu: 1
