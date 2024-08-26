@@ -642,8 +642,8 @@ task ampseq_pipeline_asv_filtering {
 		-cigar_files '~{cigar_variants_dir}' \
 		-asv_table_files '~{asv_table_dir}' \
 		-asv2cigar_files '~{asv2cigar_dir}' \
-		-asv_seq_files '$~{asv_seq_dir}' \
-		-zero_read_sample_list '$~{zero_read_sample_list_dir}' \
+		-asv_seq_files '~{asv_seq_dir}' \
+		-zero_read_sample_list '~{zero_read_sample_list_dir}' \
 		-o '~{out_prefix}' \
 		-markers markersTable.csv \
 		-sample_id_pattern '~{sample_id_pat}' \
