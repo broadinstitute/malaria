@@ -570,7 +570,7 @@ task ampseq_pipeline_asv_filtering {
 		File ASVSeqs
 		File ZeroReadsSampleList
 
-		# MHap ASV filtering thresholds [TODO: Ask if defaults are appropriate]
+		# MHap ASV filtering thresholds 
 		String sample_id_pat = '.'
 		Int? min_abd = 10
 		Float? min_ratio = 0.1
@@ -588,9 +588,9 @@ task ampseq_pipeline_asv_filtering {
 	File ref_for_markers = select_first([panel_bedfile, reference])
 	###########################################
 	# MHap - Define appropriate directories
-	String wd = "./Results/"
+	String wd = "Results/"
 	String fd = "/Code/MHap"
-	String rd = "./references/"
+	String rd = "references/"
 	String ref_genome_base = basename(reference_genome)
 	String ref_base = if defined(reference) then basename(select_first([reference])) else ""
 	# The directories below are subdirectories of "wd" (from MHap specs)
@@ -629,18 +629,19 @@ task ampseq_pipeline_asv_filtering {
 		# Create marker table
 		python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
 
-		#Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
+		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
+		root_dir=$(pwd)
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
 		-fd ~{fd} \
 		-wd ~{wd} \
 		-rd ~{rd} \
-		-cigar_files '~{cigar_variants_dir}' \
-		-asv_table_files '~{asv_table_dir}' \
-		-asv2cigar_files '~{asv2cigar_dir}' \
-		-asv_seq_files '~{asv_seq_dir}' \
-		-zero_read_sample_list '~{zero_read_sample_list_dir}' \
+		-cigar_files '$root_dir/~{cigar_variants_dir}' \
+		-asv_table_files '$root_dir/~{asv_table_dir}' \
+		-asv2cigar_files '$root_dir/~{asv2cigar_dir}' \
+		-asv_seq_files '$root_dir/~{asv_seq_dir}' \
+		-zero_read_sample_list '$root_dir/~{zero_read_sample_list_dir}' \
 		-o '~{out_prefix}' \
 		-markers markersTable.csv \
 		-sample_id_pattern '~{sample_id_pat}' \
@@ -657,10 +658,9 @@ task ampseq_pipeline_asv_filtering {
 		~{"-lamprate " + locus_ampl_rate} \
 		--ref_fasta ~{ref_genome_base} \
 		~{"--amplicon_fasta " + ref_base} \
-		--ampseq_export_format '~{ampseq_export_format}' \
-		--poly_formula 'null' \
-		--cigar_paths 'null' \
-
+		--ampseq_export_format "~{ampseq_export_format}" \
+		--poly_formula "\'null\'" \
+		--cigar_paths "\'null\'" \
 
 		echo "Finished filtering ASVs!"
 		
