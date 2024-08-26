@@ -631,6 +631,7 @@ task ampseq_pipeline_asv_filtering {
 
 		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
+		find /cromwell_root -type f
 		root_dir=$(pwd)
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
