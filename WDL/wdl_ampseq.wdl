@@ -635,13 +635,13 @@ task ampseq_pipeline_asv_filtering {
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
 		-fd ~{fd} \
-		-wd ~{wd} \
-		-rd ~{rd} \
-		-cigar_files '$root_dir/~{cigar_variants_dir}' \
-		-asv_table_files '$root_dir/~{asv_table_dir}' \
-		-asv2cigar_files '$root_dir/~{asv2cigar_dir}' \
-		-asv_seq_files '$root_dir/~{asv_seq_dir}' \
-		-zero_read_sample_list '$root_dir/~{zero_read_sample_list_dir}' \
+		-wd $root_dir/~{wd} \
+		-rd $root_dir/~{rd} \
+		-cigar_files '~{cigar_variants_dir}' \
+		-asv_table_files '~{asv_table_dir}' \
+		-asv2cigar_files '~{asv2cigar_dir}' \
+		-asv_seq_files '$~{asv_seq_dir}' \
+		-zero_read_sample_list '$~{zero_read_sample_list_dir}' \
 		-o '~{out_prefix}' \
 		-markers markersTable.csv \
 		-sample_id_pattern '~{sample_id_pat}' \
