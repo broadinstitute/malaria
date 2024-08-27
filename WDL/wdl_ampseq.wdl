@@ -364,8 +364,8 @@ task ampseq_pipeline_no_demult {
 	gsutil -m cp -r ~{pr2} references/
 	gsutil -m cp -r ~{reference} references/
 
-	~{"gsutil cp " + reference2 + " references/"}
-	~{"gsutil cp " + path_to_snv + " references/"}
+	~{"gsutil cp " + reference2 + " references/reference2.fasta"}
+	~{"gsutil cp " + path_to_snv + " references/snv_filter"}
 
 	echo "Demultiplexing not requested."
 	echo "No demultiplexing will be performed in the data. Read pairs assumed to be long enough to overlap and be merged."
@@ -483,7 +483,7 @@ task ampseq_pipeline_denoise {
 	Map[String, String] configs = read_json(config_json)
 	String pattern_fw = configs["pattern_fw"]
 	String pattern_rv = configs["pattern_rv"]
-	
+
 	command <<<
 	set -euxo pipefail
 	cat ~{config_json}
@@ -522,8 +522,8 @@ task ampseq_pipeline_denoise {
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem/
 	gsutil cp ~{reference} references/
 
-	~{"gsutil cp " + reference2 + " references/"}
-	~{"gsutil cp " + path_to_snv + " references/"}
+	~{"gsutil cp " + reference2 + " references/reference2.fasta"}
+	~{"gsutil cp " + path_to_snv + " references/snv_filter.tsv"}
 
 	if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ]; then
 		echo "Demultiplex performed in the data. Some read pairs assumed to be too short to overlap and be merged."
