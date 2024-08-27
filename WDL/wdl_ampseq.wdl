@@ -669,7 +669,7 @@ task ampseq_pipeline_asv_filtering {
 	>>>
 	
 	output {
-		File markersTable = "Results/markersTable.csv"
+		File markersTable = "references/markersTable.csv"
 		File ampseq_object = "Results/~{out_prefix}.xlsx"
 	}
 	runtime {
