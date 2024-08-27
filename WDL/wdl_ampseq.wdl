@@ -480,6 +480,10 @@ task ampseq_pipeline_denoise {
 		File config_json
 	}
 
+	Map[String, String] configs = read_json(config_json)
+	String pattern_fw = configs["pattern_fw"]
+	String pattern_rv = configs["pattern_rv"]
+	
 	command <<<
 	set -euxo pipefail
 	cat ~{config_json}
@@ -503,14 +507,14 @@ task ampseq_pipeline_denoise {
 	for file in fq_dir/*~{pattern_fw}; do
 		mv -- "$file" "${file%~{pattern_fw}}_L001_R1_001.fastq.gz"
 	done
-	
+
 	# Match suggested pattern_rv baked into run_DADA2
 	# [TODO: Fix reliance on specific suffixes]
 	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
 	for file in fq_dir/*~{pattern_rv}; do
 		mv -- "$file" "${file%~{pattern_rv}}_L001_R2_001.fastq.gz"
 	done
-
+	
 	gsutil cp ~{path_to_flist} references/
 	gsutil cp ~{pr1} references/
 	gsutil cp ~{pr2} references/
