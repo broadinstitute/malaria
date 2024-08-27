@@ -365,7 +365,7 @@ task ampseq_pipeline_no_demult {
 	gsutil -m cp -r ~{reference} references/
 
 	~{"gsutil cp " + reference2 + " references/reference2.fasta"}
-	~{"gsutil cp " + path_to_snv + " references/snv_filter"}
+	~{"gsutil cp " + path_to_snv + " references/snv_filter.tsv"}
 
 	echo "Demultiplexing not requested."
 	echo "No demultiplexing will be performed in the data. Read pairs assumed to be long enough to overlap and be merged."
