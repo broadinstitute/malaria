@@ -386,9 +386,6 @@ task ampseq_pipeline_no_demult {
 		python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --primer_removal
 		find . -type f
 	fi
-	
-	cat primer_fw_no_adapter.fasta
-	cat primer_rv_no_adapter.fasta
 	>>>
 	output {
 		File missing_files = "Results/missing_files.tsv"
