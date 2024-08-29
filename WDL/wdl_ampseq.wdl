@@ -387,6 +387,8 @@ task ampseq_pipeline_no_demult {
 		find . -type f
 	fi
 	
+	cat primer_fw_no_adapter.fasta
+	cat primer_rv_no_adapter.fasta
 	>>>
 	output {
 		File missing_files = "Results/missing_files.tsv"
