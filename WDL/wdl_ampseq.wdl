@@ -401,7 +401,7 @@ task ampseq_pipeline_no_demult {
 		memory: "15 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
-		preemptible: 3
+		preemptible: 0
 		maxRetries: 1
 		docker: 'jorgeamaya/ampseq'
 	}
@@ -567,7 +567,7 @@ task ampseq_pipeline_denoise {
 		memory: "15 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
-		preemptible: 3
+		preemptible: 0
 		maxRetries: 1
 		docker: 'jorgeamaya/ampseq'
 	}
