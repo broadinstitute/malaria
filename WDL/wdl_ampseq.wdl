@@ -149,7 +149,7 @@ workflow ampseq {
 			reference = reference,
 			reference_genome = reference_genome,
 			panel_bedfile = panel_bedfile,
-			markersTable = markersTable
+			markersTable = markersTable,
 			CIGARVariants = ampseq_pipeline_denoise.CIGARVariants_Bfilter,
 			ASVTable = ampseq_pipeline_denoise.ASVTable,
 			ASVSeqs = ampseq_pipeline_denoise.ASVSeqs,
