@@ -576,6 +576,7 @@ task ampseq_pipeline_asv_filtering {
 		String out_prefix 
 		File? panel_bedfile
 		File? reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
+		File? markersTable
 		File reference_genome
 		String? ampseq_export_format = 'excel'
 
@@ -616,9 +617,6 @@ task ampseq_pipeline_asv_filtering {
 	String asv_seq_dir = "asv_seq/"
 	String zero_read_sample_list_dir = "zeroReadSampleList/"
 	###########################################
-
-	# TO-DO: Check if selecting such defaults are appropriate.
-
 	command <<<
 		set -euxo pipefail
 
@@ -641,9 +639,15 @@ task ampseq_pipeline_asv_filtering {
 		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
 		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
+		~{"gsutil cp " + markersTable + " references/markersTable.csv"}
 
 		# Create marker table
-		python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
+		if [ -f "references/markersTable.csv" ]; then
+			echo "Markers table provided! Skipping creation of marker table from reference..."
+		else
+			echo "Markers table not provided. Creating marker table from reference..."
+			python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
+			echo "Finished creating markers table from reference."
 
 		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
