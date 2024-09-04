@@ -3,7 +3,7 @@ version 1.0
 workflow report_layouting {
 	input {
 	#	Array[File] cigar_files
-		File metadata_files
+	#	File metadata_files
 		
 		#String nTasks = "null"
 
@@ -53,7 +53,7 @@ workflow report_layouting {
 	call report_layouting_process {
 		input:
 		#	cigar_files = cigar_files,
-			metadata_files = metadata_files,
+		#	metadata_files = metadata_files,
 		#	nTasks = nTasks,
 		#	cigar_paths = cigar_paths,
 		#	cigar_dir = cigar_dir,
@@ -104,7 +104,7 @@ workflow report_layouting {
 task report_layouting_process {
 	input {
 	#	Array[File] cigar_files
-		File metadata_files
+	#	File metadata_files
 
 		#String nTasks
 
@@ -153,24 +153,17 @@ task report_layouting_process {
 	
 	command <<<
 		set -euxo pipefail
-		mkdir cigar_dir
+		#mkdir cigar_dir
 		mkdir Reference
 		mkdir Results
-		#cp ~{sep = ' ' cigar_files} cigar_dir
-		gsutil -m cp -r ~{sep = ' ' cigar_files} cigar_dir/
 		cp ~{ref_gff} Reference/.
 		cp ~{ref_fasta} Reference/.
 		cp ~{reference_alleles} Reference/.
 		cp ~{selected_checkboxes} Reference/.
 		echo "CIGAR TABLES"
 		ls cigar_dir
-		
-		echo "Sample_id,Geo_Level,Temp_Level,Longitude,Latitude" > Reference/metadata.csv
-		cat ~{sep = ' ' metadata_files} >> Reference/metadata.csv
-		
+				
 		echo -e "gene_names_drug_resistance__\nPfDHFR\nPfMDR1\nPfDHPS\nPfKelch13C580Y\nPF3D7_1447900\ngene_ids_drug_resistance__\nPF3D7_0417200\nPF3D7_0523000\nPF3D7_0810800\nPF3D7_1343700\nPF3D7_1447900\ngene_names_diversity__\nCSP\nAMA1\nSERA2\nTRAP\ngene_ids_diversity__\nPF3D7_0304600\nPF3D7_1133400\nPF3D7_0207900\nPF3D7_1335900" >> ~{selected_checkboxes}
-
-		echo ~{metadata_files} 
 
 		Rscript /Code/MHap_Tertiary_Analysis_pipeline.R -fd /Code 
 		-ampseqj ~{ampseq_jsonfile} \
@@ -184,7 +177,6 @@ task report_layouting_process {
 		-gff ~{ref_gff} \
 		-fasta ~{ref_fasta} \
 		-reference_alleles ~{reference_alleles} \
-		-metadata Reference/metadata.csv \
 		-join_by ~{join_by} \
 		-Var1 Geo_Level \
 		-Var2 Temp_Level \
