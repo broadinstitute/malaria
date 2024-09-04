@@ -176,8 +176,8 @@ task report_layouting_process {
 		-join_by ~{join_by} \
 		-Var1 Country \
 		-Var2 Year \
-		-Longitude Longitude \
-		-Latitude Latitude \
+		-Longitude null \
+		-Latitude null \
 		-na_var_rm ~{na_var_rm} \
 		-na_hap_rm ~{na_hap_rm} \
 		-drugs ~{drugs} \
