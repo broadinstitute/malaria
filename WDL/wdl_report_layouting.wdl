@@ -10,7 +10,7 @@ workflow report_layouting {
 		#String cigar_paths = "null"
 		#String cigar_dir = "cigar_dir"
 		String ampseq_jsonfile = "null"
-		String ampseq_excelfile = "null"
+		String ampseq_excelfile
 
 		#String sample_id_pattern = "^[C,G,M,S]"
 		#File markers 
@@ -153,7 +153,6 @@ task report_layouting_process {
 	
 	command <<<
 		set -euxo pipefail
-		#mkdir cigar_dir
 		mkdir Reference
 		mkdir Results
 		cp ~{ref_gff} Reference/.
@@ -161,7 +160,6 @@ task report_layouting_process {
 		cp ~{reference_alleles} Reference/.
 		cp ~{selected_checkboxes} Reference/.
 		echo "CIGAR TABLES"
-		ls cigar_dir
 				
 		echo -e "gene_names_drug_resistance__\nPfDHFR\nPfMDR1\nPfDHPS\nPfKelch13C580Y\nPF3D7_1447900\ngene_ids_drug_resistance__\nPF3D7_0417200\nPF3D7_0523000\nPF3D7_0810800\nPF3D7_1343700\nPF3D7_1447900\ngene_names_diversity__\nCSP\nAMA1\nSERA2\nTRAP\ngene_ids_diversity__\nPF3D7_0304600\nPF3D7_1133400\nPF3D7_0207900\nPF3D7_1335900" >> ~{selected_checkboxes}
 
