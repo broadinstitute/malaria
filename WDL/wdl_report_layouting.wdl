@@ -21,8 +21,8 @@ workflow report_layouting {
 		Boolean Drug_Surveillance_Report = true
 		Boolean Variants_of_Interest_Report = true
 
-		Float sample_ampl_rate = 0.75
-		Float locus_ampl_rate = 0.75
+		Float sample_ampl_rate = 0.2
+		Float locus_ampl_rate = 0.2
 
 		File ref_gff
 		File ref_fasta
