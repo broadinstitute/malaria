@@ -175,7 +175,7 @@ workflow ampseq {
 
 		# ASV Filtering
 		File ampseq_object_f = ampseq_pipeline_asv_filtering.ampseq_object
-		File markersTable_f = ampseq_pipeline_asv_filtering.markersTable
+		File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
 		File config_json_out_f = prepare_files.config_json_out
@@ -650,6 +650,7 @@ task ampseq_pipeline_asv_filtering {
 			echo "Markers table not provided. Creating marker table from reference..."
 			python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
 			echo "Finished creating markers table from reference."
+		fi
 
 		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
@@ -658,9 +659,9 @@ task ampseq_pipeline_asv_filtering {
 		root_dir=$(pwd)
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
-		-fd ~{fd} \
-		-wd $root_dir/~{wd} \
-		-rd $root_dir/~{rd} \
+		-fd "~{fd}" \
+		-wd "$root_dir/~{wd}" \
+		-rd "$root_dir/~{rd}" \
 		-cigar_files '~{cigar_variants_dir}' \
 		-asv_table_files '~{asv_table_dir}' \
 		-asv2cigar_files '~{asv2cigar_dir}' \
@@ -686,12 +687,12 @@ task ampseq_pipeline_asv_filtering {
 		--poly_formula 'null' \
 		--cigar_paths 'null'
 
-		echo "Finished filtering ASVs!"
-		
+		echo 'Finished filtering ASVs!'
+
 	>>>
 	
 	output {
-		File markersTable = "references/markersTable.csv"
+		File markersTable_o = "references/markersTable.csv"
 		File ampseq_object = "Results/~{out_prefix}.xlsx"
 	}
 	runtime {
