@@ -174,8 +174,8 @@ task report_layouting_process {
 		-fasta ~{ref_fasta} \
 		-reference_alleles ~{reference_alleles} \
 		-join_by ~{join_by} \
-		-Var1 Geo_Level \
-		-Var2 Temp_Level \
+		-Var1 Country \
+		-Var2 Year \
 		-Longitude Longitude \
 		-Latitude Latitude \
 		-na_var_rm ~{na_var_rm} \
