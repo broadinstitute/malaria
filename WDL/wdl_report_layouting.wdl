@@ -9,7 +9,7 @@ workflow report_layouting {
 
 		#String cigar_paths = "null"
 		#String cigar_dir = "cigar_dir"
-		String ampseq_jsonfile = "null"
+	#	String ampseq_jsonfile = "null"
 		String ampseq_excelfile
 
 		#String sample_id_pattern = "^[C,G,M,S]"
@@ -57,7 +57,7 @@ workflow report_layouting {
 		#	nTasks = nTasks,
 		#	cigar_paths = cigar_paths,
 		#	cigar_dir = cigar_dir,
-			ampseq_jsonfile = ampseq_jsonfile,
+		#	ampseq_jsonfile = ampseq_jsonfile,
 			ampseq_excelfile = ampseq_excelfile,
 		#	sample_id_pattern = sample_id_pattern,
 		#	markers = markers,
@@ -110,7 +110,7 @@ task report_layouting_process {
 
 		#String cigar_paths
 		#String cigar_dir
-		String ampseq_jsonfile
+		#String ampseq_jsonfile
 		String ampseq_excelfile
 
 		#String sample_id_pattern
@@ -164,7 +164,6 @@ task report_layouting_process {
 		echo -e "gene_names_drug_resistance__\nPfDHFR\nPfMDR1\nPfDHPS\nPfKelch13C580Y\nPF3D7_1447900\ngene_ids_drug_resistance__\nPF3D7_0417200\nPF3D7_0523000\nPF3D7_0810800\nPF3D7_1343700\nPF3D7_1447900\ngene_names_diversity__\nCSP\nAMA1\nSERA2\nTRAP\ngene_ids_diversity__\nPF3D7_0304600\nPF3D7_1133400\nPF3D7_0207900\nPF3D7_1335900" >> ~{selected_checkboxes}
 
 		Rscript /Code/MHap_Tertiary_Analysis_pipeline.R -fd /Code -ampseqe ~{ampseq_excelfile} \
-		-ampseqj ~{ampseq_jsonfile} \
 		-o "MHap_Profile" \
 		-samprate ~{sample_ampl_rate} \
 		-lamprate ~{locus_ampl_rate} \
