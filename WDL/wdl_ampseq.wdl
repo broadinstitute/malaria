@@ -684,7 +684,7 @@ task ampseq_pipeline_asv_filtering {
 		~{"--amplicon_fasta " + ref_base} \
 		--ampseq_export_format "~{ampseq_export_format}" \
 		--poly_formula 'null' \
-		--cigar_paths 'null' \
+		--cigar_paths 'null'
 
 		echo "Finished filtering ASVs!"
 		
