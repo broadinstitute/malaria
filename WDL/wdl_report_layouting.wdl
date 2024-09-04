@@ -5,17 +5,17 @@ workflow report_layouting {
 		Array[File] cigar_files
 		File metadata_files
 		
-		String nTasks = "null"
+		#String nTasks = "null"
 
-		String cigar_paths = "null"
-		String cigar_dir = "cigar_dir"
+		#String cigar_paths = "null"
+		#String cigar_dir = "cigar_dir"
 		String ampseq_jsonfile = "null"
 		String ampseq_excelfile = "null"
 
-		String sample_id_pattern = "^[C,G,M,S]"
-		File markers 
-		Int min_abd = 10
-		Float min_ratio = 0.1
+		#String sample_id_pattern = "^[C,G,M,S]"
+		#File markers 
+		#Int min_abd = 10
+		#Float min_ratio = 0.1
 
 		Boolean PerformanceReport = true
 		Boolean Drug_Surveillance_Report = true
@@ -41,9 +41,9 @@ workflow report_layouting {
 		String? pop_levels = "null"
 
 		Int nchunks = 500
-		String off_target_formula = "dVSITES_ij>=0.3"
-		String flanking_INDEL_formula = "flanking_INDEL==TRUE&h_ij>=0.66"
-		String PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66"
+		#String off_target_formula = "dVSITES_ij>=0.3"
+		#String flanking_INDEL_formula = "flanking_INDEL==TRUE&h_ij>=0.66"
+		#String PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66"
 		String hap_color_palette = "random"
 		String poly_quantile = 0.75
 		String poly_formula = "NHetLoci>=1&Fws<1"
@@ -52,17 +52,17 @@ workflow report_layouting {
 	
 	call report_layouting_process {
 		input:
-			cigar_files = cigar_files,
+		#	cigar_files = cigar_files,
 			metadata_files = metadata_files,
-			nTasks = nTasks,
-			cigar_paths = cigar_paths,
-			cigar_dir = cigar_dir,
+		#	nTasks = nTasks,
+		#	cigar_paths = cigar_paths,
+		#	cigar_dir = cigar_dir,
 			ampseq_jsonfile = ampseq_jsonfile,
 			ampseq_excelfile = ampseq_excelfile,
-			sample_id_pattern = sample_id_pattern,
-			markers = markers,
-			min_abd = min_abd,
-			min_ratio = min_ratio,
+		#	sample_id_pattern = sample_id_pattern,
+		#	markers = markers,
+		#	min_abd = min_abd,
+		#	min_ratio = min_ratio,
 			PerformanceReport = PerformanceReport,
 			sample_ampl_rate = sample_ampl_rate,
 			locus_ampl_rate = locus_ampl_rate,
@@ -82,17 +82,17 @@ workflow report_layouting {
 			ibd_ncol = ibd_ncol,
 			pop_levels = pop_levels,
 			nchunks = nchunks,
-			off_target_formula = off_target_formula,
-			flanking_INDEL_formula = flanking_INDEL_formula,
-			PCR_errors_formula = PCR_errors_formula,
+		#	off_target_formula = off_target_formula,
+		#	flanking_INDEL_formula = flanking_INDEL_formula,
+		#	PCR_errors_formula = PCR_errors_formula,
 			hap_color_palette = hap_color_palette,
 			poly_quantile = poly_quantile,
 			poly_formula = poly_formula
 	}
 
 	output {
-		File? intermediate_report_f = report_layouting_process.intermediate_report
-		File? drs_report_f = report_layouting_process.drs_report
+	#	File? intermediate_report_f = report_layouting_process.intermediate_report
+	#	File? drs_report_f = report_layouting_process.drs_report
 		File? drs_minimal_report_f = report_layouting_process.drs_minimal_report
 #		File? coi_report_f = report_layouting_process.coi_report
 #		File? ibd_connectivity_report_f = report_layouting_process.ibd_connectivity_report
@@ -106,17 +106,17 @@ task report_layouting_process {
 		Array[File] cigar_files
 		File metadata_files
 
-		String nTasks
+		#String nTasks
 
-		String cigar_paths
-		String cigar_dir
+		#String cigar_paths
+		#String cigar_dir
 		String ampseq_jsonfile
 		String ampseq_excelfile
 
-		String sample_id_pattern
-		File markers 
-		Int min_abd
-		Float min_ratio
+		#String sample_id_pattern
+		#File markers 
+		#Int min_abd
+		#Float min_ratio
 
 		Boolean PerformanceReport
 
@@ -143,9 +143,9 @@ task report_layouting_process {
 		String? pop_levels
 
 		Int nchunks
-		String off_target_formula
-		String flanking_INDEL_formula
-		String PCR_errors_formula
+		#String off_target_formula
+		#String flanking_INDEL_formula
+		#String PCR_errors_formula
 		String hap_color_palette
 		String poly_quantile
 		String poly_formula
@@ -161,7 +161,6 @@ task report_layouting_process {
 		cp ~{ref_gff} Reference/.
 		cp ~{ref_fasta} Reference/.
 		cp ~{reference_alleles} Reference/.
-		cp ~{markers} Reference/.
 		cp ~{selected_checkboxes} Reference/.
 		echo "CIGAR TABLES"
 		ls cigar_dir
@@ -173,15 +172,10 @@ task report_layouting_process {
 
 		echo ~{metadata_files} 
 
-		Rscript /Code/MHap_Analysis_pipeline.R -fd /Code -cigar_paths ~{cigar_paths} \
-		-cigar_files "cigar_dir" \
+		Rscript /Code/MHap_Tertiary_Analysis_pipeline.R -fd /Code 
 		-ampseqj ~{ampseq_jsonfile} \
 		-ampseqe ~{ampseq_excelfile} \
 		-o "MHap_Profile" \
-		-sample_id_pattern "~{sample_id_pattern}" \
-		-markers ~{markers} \
-		-min_abd ~{min_abd} \
-		-min_ratio ~{min_ratio} \
 		-samprate ~{sample_ampl_rate} \
 		-lamprate ~{locus_ampl_rate} \
 		-PerformanceReport ~{PerformanceReport} \
@@ -200,17 +194,12 @@ task report_layouting_process {
 		-na_hap_rm ~{na_hap_rm} \
 		-drugs ~{drugs} \
 		-include_all_drug_markers ~{include_all_drug_markers} \
-		-t ~{nTasks} \
-		-tid 1 \
 		-ibd ~{ibd_thres} \
 		-parallel ~{parallel} \
 		-ibd_ncol ~{ibd_ncol} \
 		-pop_levels ~{pop_levels} \
 		-nchunks ~{nchunks} \
 		-selected_checkboxes ~{selected_checkboxes} \
-		-off_target_formula "~{off_target_formula}" \
-		-flanking_INDEL_formula	"~{flanking_INDEL_formula}" \
-		-PCR_errors_formula "~{PCR_errors_formula}" \
 		-hap_color_palette "~{hap_color_palette}" \
 		-poly_quantile ~{poly_quantile} \
 		-pairwise_relatedness_table 'null' \
@@ -221,13 +210,13 @@ task report_layouting_process {
 	>>>
 
 	output {
-		File? intermediate_report = "Results/metadata_intermediate.csv"
-		File? drs_report = "Results/MHap_Profile_DRS_Report.html"
+	#	File? intermediate_report = "Results/metadata_intermediate.csv"
+	#	File? drs_report = "Results/MHap_Profile_DRS_Report.html"
 		File? drs_minimal_report = "Results/MHap_Profile_DRS_Minimal_Report.html"
 #		File? coi_report = "Results/MHap_Profile_COI_Report.html"
 #		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
 #		File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
-		File? performance_report = "Results/MHap_Profile_Performance_Report.html"
+	#	File? performance_report = "Results/MHap_Profile_Performance_Report.html"
 	}
 
 	runtime { 
