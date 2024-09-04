@@ -10,7 +10,7 @@ workflow report_layouting {
 		#String cigar_paths = "null"
 		#String cigar_dir = "cigar_dir"
 	#	String ampseq_jsonfile = "null"
-		String ampseq_excelfile
+		File ampseq_excelfile
 
 		#String sample_id_pattern = "^[C,G,M,S]"
 		#File markers 
@@ -111,7 +111,7 @@ task report_layouting_process {
 		#String cigar_paths
 		#String cigar_dir
 		#String ampseq_jsonfile
-		String ampseq_excelfile
+		File ampseq_excelfile
 
 		#String sample_id_pattern
 		#File markers 
