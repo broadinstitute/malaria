@@ -2,7 +2,7 @@ version 1.0
 
 workflow report_layouting {
 	input {
-		Array[File] cigar_files
+	#	Array[File] cigar_files
 		File metadata_files
 		
 		#String nTasks = "null"
@@ -103,7 +103,7 @@ workflow report_layouting {
 
 task report_layouting_process {
 	input {
-		Array[File] cigar_files
+	#	Array[File] cigar_files
 		File metadata_files
 
 		#String nTasks
