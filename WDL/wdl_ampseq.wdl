@@ -2,49 +2,52 @@ version 1.0
 
 workflow ampseq {
 	input {	
-		#General commands
-		Array[File] path_to_r1
-		Array[File] path_to_r2
-		File path_to_flist
-		File pr1
-		File pr2
-		File? reference
-		File? reference2
+		# Required files
+		Array[File] fastq1s
+		Array[File] fastq2s
+		File sample_id_list
+		File forward_primers_file
+		File reverse_primers_file
+		File reference_amplicons
+		File reference_genome
+
+		# Optional reference files
+		File? reference_amplicons_2 
+		File? panel_bedfile
 		File? markersTable
 		File? path_to_snv
-		File reference_genome
-		File? panel_bedfile
+
 		Array[String] run_id
 
 		String pattern_fw = "*_L001_R1_001.fastq.gz"
 		String pattern_rv = "*_L001_R2_001.fastq.gz"
 
-		#Commands for AmpSeq
-		String Class = "parasite"
-		String maxEE = "5,5"
-		String trimRight = "0,0"
-		Int minLen = 30
-		String truncQ = "5,5"
-		String matchIDs = "0"
-		Int max_consist = 10
-		Float omegaA = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
-		String saveRdata = ""
-		Int justConcatenate = 0
-		Int maxMismatch = 0
-		String no_ref = 'False'
-		String adjust_mode = "absolute"
-		String strain = "3D7"
-		String strain2 = "DD2"
-		String polyN = "5"
-		String min_reads = "0"
-		String min_samples = "0"
-		String max_snv_dist = "-1"
-		String max_indel_dist = "-1"
-		String include_failed = "False"
-		String exclude_bimeras = "False"
-		String adapter = "None"
+		# DADA2 Parameters - To delete
+		# String Class = "parasite"
+		# String maxEE = "5,5"
+		# String trimRight = "0,0"
+		# Int minLen = 30
+		# String truncQ = "5,5"
+		# String matchIDs = "0"
+		# Int max_consist = 10
+		# Float omegaA = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+		# String saveRdata = ""
+		# Int justConcatenate = 0
+		# Int maxMismatch = 0
+		# String no_ref = 'False'
+		# String adjust_mode = "absolute"
+		# String strain = "3D7"
+		# String strain2 = "DD2"
+		# String polyN = "5"
+		# String min_reads = "0"
+		# String min_samples = "0"
+		# String max_snv_dist = "-1"
+		# String max_indel_dist = "-1"
+		# String include_failed = "False"
+		# String exclude_bimeras = "False"
+		# String adapter = "None"
 
-		#Command for the decontamination pipeline
+		# Command for the decontamination pipeline
 		Int minreads_threshold = 1000
 		Float contamination_threshold = 0.5
 		String verbose = "False"
@@ -53,57 +56,60 @@ workflow ampseq {
 
 	call prepare_files {
 		input:
-			path_to_r1 = path_to_r1,
-			path_to_r2 = path_to_r2,
-			path_to_flist = path_to_flist,
-			pr1 = pr1,
-			pr2 = pr2,
-			reference = reference,
-			reference2 = reference2,
+			path_to_r1 = fastq1s,
+			path_to_r2 = fastq1s,
+			path_to_flist = sample_id_list,
+			pr1 = forward_primers_file,
+			pr2 = reverse_primers_file,
+			reference = reference_amplicons,
+			reference2 = reference_amplicons_2,
 			path_to_snv = path_to_snv,
 			reference_genome = reference_genome,
 			panel_bedfile = panel_bedfile,
 			pattern_fw = pattern_fw,
 			pattern_rv = pattern_rv,
-			Class = Class,
-			maxEE = maxEE,
-			trimRight = trimRight,
-			minLen = minLen,
-			truncQ = truncQ,
-			matchIDs = matchIDs,
-			max_consist = max_consist,
-			omegaA = omegaA,
-			saveRdata = saveRdata,
-			justConcatenate = justConcatenate,
-			maxMismatch = maxMismatch,
-			no_ref = no_ref,
-			adjust_mode = adjust_mode,
-			strain = strain,
-			strain2 = strain2,
-			polyN = polyN,
-			min_reads = min_reads,
-			min_samples = min_samples,
-			max_snv_dist = max_snv_dist,
-			max_indel_dist = max_indel_dist,
-			include_failed = include_failed,
-			exclude_bimeras = exclude_bimeras,
 			minreads_threshold = minreads_threshold,
 			contamination_threshold = contamination_threshold,
-			verbose = verbose,
-			adapter = adapter
+			verbose = verbose
+			# Class = Class,
+			# maxEE = maxEE,
+			# trimRight = trimRight,
+			# minLen = minLen,
+			# truncQ = truncQ,
+			# matchIDs = matchIDs,
+			# max_consist = max_consist,
+			# omegaA = omegaA,
+			# saveRdata = saveRdata,
+			# justConcatenate = justConcatenate,
+			# maxMismatch = maxMismatch,
+			# no_ref = no_ref,
+			# adjust_mode = adjust_mode,
+			# strain = strain,
+			# strain2 = strain2,
+			# polyN = polyN,
+			# min_reads = min_reads,
+			# min_samples = min_samples,
+			# max_snv_dist = max_snv_dist,
+			# max_indel_dist = max_indel_dist,
+			# include_failed = include_failed,
+			# exclude_bimeras = exclude_bimeras,
+			# minreads_threshold = minreads_threshold,
+			# contamination_threshold = contamination_threshold,
+			# verbose = verbose,
+			# adapter = adapter
 	}
 
 	if(!run_demultiplexing) {
 		call ampseq_pipeline_no_demult {
 			input:
 				config_json = prepare_files.config_json_out,
-				path_to_flist = path_to_flist,
-				path_to_r1 = path_to_r1,
-				path_to_r2 = path_to_r2,
-				pr1 = pr1,
-				pr2 = pr2,
+				path_to_flist = sample_id_list,
+				path_to_r1 = fastq1s,
+				path_to_r2 = fastq2s,
+				pr1 = forward_primers_file,
+				pr2 = reverse_primers_file,
 				reference = prepare_files.reference_out,
-				reference2 = reference2,
+				reference2 = reference_amplicons_2,
 				path_to_snv = path_to_snv
 		}
 	}
@@ -126,13 +132,13 @@ workflow ampseq {
 	call ampseq_pipeline_denoise {
 		input:
 			config_json = prepare_files.config_json_out,
-			path_to_flist = path_to_flist,
-			path_to_r1 = path_to_r1,
-			path_to_r2 = path_to_r2,
-			pr1 = pr1,
-			pr2 = pr2,
+			path_to_flist = sample_id_list,
+			path_to_r1 = fastq1s,
+			path_to_r2 = fastq2s,
+			pr1 = forward_primers_file,
+			pr2 = reverse_primers_file,
 			reference = prepare_files.reference_out,
-			reference2 = reference2,
+			reference2 = reference_amplicons_2,
 			run_id = run_id,
 			path_to_snv = path_to_snv,
 	#		primer_rem = if (run_demultiplexing) then ampseq_pipeline_demult.PrimerRem else ampseq_pipeline_no_demult.PrimerRem,
@@ -146,7 +152,7 @@ workflow ampseq {
 
 	call ampseq_pipeline_asv_filtering {
 		input: 
-			reference = reference,
+			reference = reference_amplicons,
 			reference_genome = reference_genome,
 			panel_bedfile = panel_bedfile,
 			markersTable = markersTable,
@@ -158,30 +164,30 @@ workflow ampseq {
 	}
 
 	output {
-		File? panel_reference_fasta_f = prepare_files.reference_out
+		# File panel_reference_fasta_f = prepare_files.reference_out
 		
 		# DADA2
-		File ASVBimeras_f = ampseq_pipeline_denoise.ASVBimeras
-		File seqtab_f = ampseq_pipeline_denoise.seqtab
+		# File ASVBimeras_f = ampseq_pipeline_denoise.ASVBimeras
+		# File seqtab_f = ampseq_pipeline_denoise.seqtab
 
 		# PostProc_DADA2
-		File ASVTable_f = ampseq_pipeline_denoise.ASVTable
-		File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
+		# File ASVTable_f = ampseq_pipeline_denoise.ASVTable
+		# File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
 
 		# ASV_to_CIGAR
-		File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
-		File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
-		File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
+		# File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
+		# File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
+		# File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
 
 		# ASV Filtering
 		File ampseq_object_f = ampseq_pipeline_asv_filtering.ampseq_object
-		File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
+		# File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
-		File config_json_out_f = prepare_files.config_json_out
-		File? missing_files_f = ampseq_pipeline_no_demult.missing_files
-		File? decontamination_sample_cards_f = ampseq_pipeline_no_demult.decontamination_sample_cards
-		File? decontamination_report_f = ampseq_pipeline_no_demult.decontamination_report
+		# File config_json_out_f = prepare_files.config_json_out
+		# File? missing_files_f = ampseq_pipeline_no_demult.missing_files
+		# File? decontamination_sample_cards_f = ampseq_pipeline_no_demult.decontamination_sample_cards
+		# File? decontamination_report_f = ampseq_pipeline_no_demult.decontamination_report
 	}
 }
 
