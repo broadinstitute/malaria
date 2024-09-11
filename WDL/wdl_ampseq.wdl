@@ -5,7 +5,7 @@ workflow ampseq {
 		# Required files
 		Array[File] fastq1s
 		Array[File] fastq2s
-		File sample_id_list
+		Array[String] sample_ids
 		File forward_primers_file
 		File reverse_primers_file
 		File reference_amplicons
@@ -58,7 +58,7 @@ workflow ampseq {
 		input:
 			path_to_r1 = fastq1s,
 			path_to_r2 = fastq1s,
-			path_to_flist = sample_id_list,
+			sample_id_list = sample_ids,
 			pr1 = forward_primers_file,
 			pr2 = reverse_primers_file,
 			reference = reference_amplicons,
@@ -100,10 +100,10 @@ workflow ampseq {
 	}
 
 	if(!run_demultiplexing) {
-		call ampseq_pipeline_no_demult {
+		call amplicon_no_demultiplexing {
 			input:
 				config_json = prepare_files.config_json_out,
-				path_to_flist = sample_id_list,
+				path_to_flist = prepare_files.path_to_flist_o,
 				path_to_r1 = fastq1s,
 				path_to_r2 = fastq2s,
 				pr1 = forward_primers_file,
@@ -129,10 +129,10 @@ workflow ampseq {
 #		}
 #	}
 ##
-	call ampseq_pipeline_denoise {
+	call amplicon_denoising {
 		input:
 			config_json = prepare_files.config_json_out,
-			path_to_flist = sample_id_list,
+			path_to_flist = prepare_files.path_to_flist_o,
 			path_to_r1 = fastq1s,
 			path_to_r2 = fastq2s,
 			pr1 = forward_primers_file,
@@ -146,21 +146,21 @@ workflow ampseq {
 
 			###REMOVE THIS VARIABLES AFTER TESTING###
 
-			primer_rem = ampseq_pipeline_no_demult.PrimerRem,
-			adaptor_rem = ampseq_pipeline_no_demult.AdaptorRem
+			primer_rem = amplicon_no_demultiplexing.PrimerRem,
+			adaptor_rem = amplicon_no_demultiplexing.AdaptorRem
 	}
 
-	call ampseq_pipeline_asv_filtering {
+	call asv_filtering {
 		input: 
 			reference = reference_amplicons,
 			reference_genome = reference_genome,
 			panel_bedfile = panel_bedfile,
-			markersTable = markersTable,
-			CIGARVariants = ampseq_pipeline_denoise.CIGARVariants_Bfilter,
-			ASVTable = ampseq_pipeline_denoise.ASVTable,
-			ASVSeqs = ampseq_pipeline_denoise.ASVSeqs,
-			ASV_to_CIGAR = ampseq_pipeline_denoise.ASV_to_CIGAR,
-			ZeroReadsSampleList = ampseq_pipeline_denoise.ZeroReadsSampleList
+			markersTable = markersTable,		
+			CIGARVariants = amplicon_denoising.CIGARVariants_Bfilter,
+			ASVTable = amplicon_denoising.ASVTable,
+			ASVSeqs = amplicon_denoising.ASVSeqs,
+			ASV_to_CIGAR = amplicon_denoising.ASV_to_CIGAR,
+			ZeroReadsSampleList = amplicon_denoising.ZeroReadsSampleList
 	}
 
 	output {
@@ -180,7 +180,7 @@ workflow ampseq {
 		# File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
 
 		# ASV Filtering
-		File ampseq_object_f = ampseq_pipeline_asv_filtering.ampseq_object
+		File ampseq_object_f = asv_filtering.ampseq_object
 		# File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
@@ -195,7 +195,7 @@ task prepare_files {
 	input {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
-		File path_to_flist
+		Array[String] sample_id_list
 		File pr1
 		File pr2
 		File? reference
@@ -232,14 +232,13 @@ task prepare_files {
 		String verbose = "False"
 		String adapter = "None"
 	}
-
-	String flist_refdir = "references/" + basename(path_to_flist)
+	File path_to_flist = write_lines(sample_id_list)
 	String pr1_refdir = "references/" + basename(pr1)
 	String pr2_refdir = "references/" + basename(pr2)
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
-		"path_to_flist": flist_refdir,
+		"path_to_flist": "references/samples.txt",
 		"pr1": pr1_refdir,
 		"pr2": pr2_refdir,
 		"reference": "references/reference.fasta",
@@ -312,6 +311,9 @@ task prepare_files {
 
 	cat ~{config_json}
 
+	mkdir references
+	cp ~{path_to_flist} "samples.txt"
+
 	if [[ "~{reference2}" != '' ]]; then
 		echo "Reference 2 file provided"
 		python /Code/add_entry_to_json.py ~{config_json} "reference2" "references/reference2.fasta"
@@ -332,6 +334,7 @@ task prepare_files {
 
 	output {
 		File config_json_out = "config_json.json"
+		File path_to_flist_o = "samples.txt"
 		File reference_out = "reference.fasta"
 	}
 
@@ -346,7 +349,7 @@ task prepare_files {
 	}
 }
 
-task ampseq_pipeline_no_demult {
+task amplicon_no_demultiplexing {
 	input {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
@@ -471,7 +474,7 @@ task ampseq_pipeline_no_demult {
 #	}
 #}
 #
-task ampseq_pipeline_denoise {
+task amplicon_denoising {
 	input {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
@@ -579,7 +582,7 @@ task ampseq_pipeline_denoise {
 	}
 }
 
-task ampseq_pipeline_asv_filtering {
+task asv_filtering {
 	input {
 		String out_prefix 
 		File? panel_bedfile
@@ -587,6 +590,11 @@ task ampseq_pipeline_asv_filtering {
 		File? markersTable
 		File reference_genome
 		String? ampseq_export_format = 'excel'
+
+		# Metadata columns	
+		File sample_metadata
+		String? metadata_variable1_name
+		String? metadata_variable2_name
 
 		# Results of post-processing and CIGAR conversion
 		File CIGARVariants
@@ -606,8 +614,8 @@ task ampseq_pipeline_asv_filtering {
 		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"
 		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
 		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"
-		Float? sample_ampl_rate = 0.75
-		Float? locus_ampl_rate = 0.75
+		# Float? sample_ampl_rate = 0.75
+		# Float? locus_ampl_rate = 0.75
 	}
 
 	File ref_for_markers = select_first([panel_bedfile, reference])
@@ -624,6 +632,7 @@ task ampseq_pipeline_asv_filtering {
 	String asv2cigar_dir = "asv2cigar/"
 	String asv_seq_dir = "asv_seq/"
 	String zero_read_sample_list_dir = "zeroReadSampleList/"
+
 	###########################################
 	command <<<
 		set -euxo pipefail
@@ -685,14 +694,16 @@ task ampseq_pipeline_asv_filtering {
 		~{"-INDEL_in_homopolymer_formula \'" + INDEL_in_homopolymer_formula + "\'"} \
 		~{"-bimera_formula \'" + bimera_formula + "\'"} \
 		~{"-PCR_errors_formula \'" + PCR_errors_formula + "\'"} \
-		~{"-samprate " + sample_ampl_rate} \
-		~{"-lamprate " + locus_ampl_rate} \
 		--ref_fasta ~{ref_genome_base} \
 		~{"--amplicon_fasta " + ref_base} \
 		--ampseq_export_format "~{ampseq_export_format}" \
 		--poly_formula 'null' \
-		--cigar_paths 'null'
-
+		--cigar_paths 'null' \
+		--metadata ~{sample_metadata} \
+		--join_by "Sample_id" \
+		~{"-Variable1 \'" + metadata_variable1_name + "\'"} \
+		~{"-Variable2 \'" + select_first([metadata_variable2_name, metadata_variable1_name]) + "\'"}
+		
 		echo 'Finished filtering ASVs!'
 
 	>>>
