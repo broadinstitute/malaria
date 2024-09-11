@@ -533,6 +533,7 @@ task amplicon_denoising {
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem/
 	gsutil cp ~{reference} references/
+	gsutil cp ~{sample_metadata} references/metadata.csv
 
 	~{"gsutil cp " + reference2 + " references/reference2.fasta"}
 	~{"gsutil cp " + path_to_snv + " references/snv_filter.tsv"}
@@ -701,7 +702,7 @@ task asv_filtering {
 		--ampseq_export_format "~{ampseq_export_format}" \
 		--poly_formula 'null' \
 		--cigar_paths 'null' \
-		--metadata ~{sample_metadata} \
+		--metadata references/metadata.csv \
 		--join_by "Sample_id" \
 		~{"--Variable1 \'" + metadata_variable1_name + "\'"} \
 		~{"--Variable2 \'" + select_first([metadata_variable2_name, metadata_variable1_name]) + "\'"}
