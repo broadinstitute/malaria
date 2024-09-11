@@ -533,7 +533,6 @@ task amplicon_denoising {
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem/
 	gsutil cp ~{reference} references/
-	gsutil cp ~{sample_metadata} references/metadata.csv
 
 	~{"gsutil cp " + reference2 + " references/reference2.fasta"}
 	~{"gsutil cp " + path_to_snv + " references/snv_filter.tsv"}
@@ -653,6 +652,8 @@ task asv_filtering {
 		gsutil cp ~{reference} references/
 		gsutil cp ~{reference_genome} references/
 		~{"gsutil cp " + panel_bedfile + " references/"}
+		gsutil cp ~{sample_metadata} references/metadata.csv
+		
 
 		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
 		gsutil cp ~{ASVTable} Results/~{asv_table_dir}
