@@ -700,6 +700,8 @@ task asv_filtering {
 		~{"-INDEL_in_homopolymer_formula \'" + INDEL_in_homopolymer_formula + "\'"} \
 		~{"-bimera_formula \'" + bimera_formula + "\'"} \
 		~{"-PCR_errors_formula \'" + PCR_errors_formula + "\'"} \
+		~{"-samprate " + sample_ampl_rate} \
+		~{"-lamprate " + locus_ampl_rate} \
 		--ref_fasta ~{ref_genome_base} \
 		~{"--amplicon_fasta " + ref_base} \
 		--ampseq_export_format "~{ampseq_export_format}" \
