@@ -313,6 +313,8 @@ task prepare_files {
 
 	mkdir references
 	cp ~{path_to_flist} "samples.txt"
+	# Add sample_id as first line of file
+	sed -i '1s/^/sample_id\n/' samples.txt
 
 	if [[ "~{reference2}" != '' ]]; then
 		echo "Reference 2 file provided"
