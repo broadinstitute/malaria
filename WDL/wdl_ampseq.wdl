@@ -238,7 +238,7 @@ task prepare_files {
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
-		"path_to_flist": "samples.txt",
+		"path_to_flist": "references/samples.txt",
 		"pr1": pr1_refdir,
 		"pr2": pr2_refdir,
 		"reference": "references/reference.fasta",
@@ -372,7 +372,7 @@ task amplicon_no_demultiplexing {
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
 	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
-	gsutil cp ~{path_to_flist} references/
+	gsutil cp ~{path_to_flist} references/samples.txt
 	gsutil cp ~{pr1} references/
 	gsutil -m cp -r ~{pr2} references/
 	gsutil -m cp -r ~{reference} references/
@@ -527,7 +527,7 @@ task amplicon_denoising {
 		mv -- "$file" "${file%~{pattern_rv}}_L001_R2_001.fastq.gz"
 	done
 	
-	gsutil cp ~{path_to_flist} references/
+	gsutil cp ~{path_to_flist} references/samples.txt
 	gsutil cp ~{pr1} references/
 	gsutil cp ~{pr2} references/
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
