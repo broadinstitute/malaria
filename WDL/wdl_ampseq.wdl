@@ -238,7 +238,7 @@ task prepare_files {
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
-		"path_to_flist": "references/samples.txt",
+		"path_to_flist": "samples.txt",
 		"pr1": pr1_refdir,
 		"pr2": pr2_refdir,
 		"reference": "references/reference.fasta",
