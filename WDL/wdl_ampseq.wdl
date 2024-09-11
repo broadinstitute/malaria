@@ -703,8 +703,8 @@ task asv_filtering {
 		--cigar_paths 'null' \
 		--metadata ~{sample_metadata} \
 		--join_by "Sample_id" \
-		~{"-Variable1 \'" + metadata_variable1_name + "\'"} \
-		~{"-Variable2 \'" + select_first([metadata_variable2_name, metadata_variable1_name]) + "\'"}
+		~{"--Variable1 \'" + metadata_variable1_name + "\'"} \
+		~{"--Variable2 \'" + select_first([metadata_variable2_name, metadata_variable1_name]) + "\'"}
 		
 		echo 'Finished filtering ASVs!'
 
