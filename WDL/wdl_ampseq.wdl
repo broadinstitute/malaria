@@ -533,6 +533,7 @@ task amplicon_denoising {
 	gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
 	gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem/
 	gsutil cp ~{reference} references/
+	gsutil cp ~{path_to_flist} references/samples.txt
 
 	~{"gsutil cp " + reference2 + " references/reference2.fasta"}
 	~{"gsutil cp " + path_to_snv + " references/snv_filter.tsv"}
