@@ -703,7 +703,7 @@ task asv_filtering {
 		--ampseq_export_format "~{ampseq_export_format}" \
 		--poly_formula 'null' \
 		--cigar_paths 'null' \
-		--metadata references/metadata.csv \
+		--metadata metadata.csv \
 		--join_by "Sample_id" \
 		~{"--Variable1 \'" + metadata_variable1_name + "\'"} \
 		~{"--Variable2 \'" + select_first([metadata_variable2_name, metadata_variable1_name]) + "\'"}
