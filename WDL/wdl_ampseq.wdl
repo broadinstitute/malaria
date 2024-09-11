@@ -617,8 +617,9 @@ task asv_filtering {
 		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"
 		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
 		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"
-		# Float? sample_ampl_rate = 0.75
-		# Float? locus_ampl_rate = 0.75
+		#[TODO: Migrate these filters to MHap pipeline]
+		Float? sample_ampl_rate = 0.3
+		Float? locus_ampl_rate = 0.3
 	}
 
 	File ref_for_markers = select_first([panel_bedfile, reference])
