@@ -652,7 +652,7 @@ task asv_filtering {
 		gsutil cp ~{reference} references/
 		gsutil cp ~{reference_genome} references/
 		~{"gsutil cp " + panel_bedfile + " references/"}
-		gsutil cp ~{sample_metadata} references/metadata.csv
+		gsutil cp ~{sample_metadata} Results/metadata.csv
 		
 
 		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
