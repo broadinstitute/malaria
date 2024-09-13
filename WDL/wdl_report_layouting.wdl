@@ -39,6 +39,8 @@ workflow report_layouting {
 		Boolean parallel = true
 		Int ibd_ncol = 4
 		String? pop_levels = "null"
+		String metadata_longitude_name = 'Longitude'
+		String metadata_latitude_name = 'Latitude'
 
 		Int nchunks = 500
 		#String off_target_formula = "dVSITES_ij>=0.3"
@@ -87,7 +89,9 @@ workflow report_layouting {
 		#	PCR_errors_formula = PCR_errors_formula,
 			hap_color_palette = hap_color_palette,
 			poly_quantile = poly_quantile,
-			poly_formula = poly_formula
+			poly_formula = poly_formula,
+			metadata_longitude_name = metadata_longitude_name,
+			metadata_latitude_name = metadata_latitude_name
 	}
 
 	output {
@@ -141,6 +145,8 @@ task report_layouting_process {
 		Boolean parallel
 		Int ibd_ncol
 		String? pop_levels
+		String metadata_latitude_name = 'Latitude'
+		String metadata_longitude_name = 'Longitude'
 
 		Int nchunks
 		#String off_target_formula
@@ -176,8 +182,8 @@ task report_layouting_process {
 		-join_by ~{join_by} \
 		-Var1 Country \
 		-Var2 Year \
-		-Longitude null \
-		-Latitude null \
+		-Longitude ~{metadata_longitude_name} \
+		-Latitude ~{metadata_latitude_name} \
 		-na_var_rm ~{na_var_rm} \
 		-na_hap_rm ~{na_hap_rm} \
 		-drugs ~{drugs} \
