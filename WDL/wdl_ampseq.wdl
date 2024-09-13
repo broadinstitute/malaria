@@ -598,6 +598,8 @@ task asv_filtering {
 		File sample_metadata
 		String? metadata_variable1_name
 		String? metadata_variable2_name
+		String? metadata_latitude_name = 'Latitude'
+		String? metadata_longitude_name = 'Longitude'
 
 		# Results of post-processing and CIGAR conversion
 		File CIGARVariants
@@ -617,6 +619,7 @@ task asv_filtering {
 		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"
 		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
 		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"
+
 		#[TODO: Migrate these filters to MHap pipeline]
 		Float? sample_ampl_rate = 0.3
 		Float? locus_ampl_rate = 0.3
@@ -709,6 +712,8 @@ task asv_filtering {
 		--cigar_paths 'null' \
 		--metadata metadata.csv \
 		--join_by "Sample_id" \
+		--Latitude "~{metadata_latitude_name}" \
+		--Longitude "~{metadata_longitude_name}" \
 		~{"--Variable1 \'" + metadata_variable1_name + "\'"} \
 		~{"--Variable2 \'" + select_first([metadata_variable2_name, metadata_variable1_name]) + "\'"}
 		
