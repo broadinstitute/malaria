@@ -95,7 +95,9 @@ workflow report_layouting {
 			poly_quantile = poly_quantile,
 			poly_formula = poly_formula,
 			metadata_longitude_name = metadata_longitude_name,
-			metadata_latitude_name = metadata_latitude_name
+			metadata_latitude_name = metadata_latitude_name,
+			metadata_variable1_name = metadata_variable1_name,
+			metadata_variable2_name = metadata_variable2_name
 	}
 
 	output {
