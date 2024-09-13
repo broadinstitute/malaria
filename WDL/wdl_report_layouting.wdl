@@ -39,6 +39,10 @@ workflow report_layouting {
 		Boolean parallel = true
 		Int ibd_ncol = 4
 		String? pop_levels = "null"
+
+		# Metadata variables
+		String metadata_variable1_name = 'Country'
+		String metadata_variable2_name = 'Run'
 		String metadata_longitude_name = 'Longitude'
 		String metadata_latitude_name = 'Latitude'
 
@@ -145,6 +149,8 @@ task report_layouting_process {
 		Boolean parallel
 		Int ibd_ncol
 		String? pop_levels
+		String metadata_variable1_name = 'Country'
+		String metadata_variable2_name = 'Run'
 		String metadata_latitude_name = 'Latitude'
 		String metadata_longitude_name = 'Longitude'
 
@@ -180,8 +186,8 @@ task report_layouting_process {
 		-fasta ~{ref_fasta} \
 		-reference_alleles ~{reference_alleles} \
 		-join_by ~{join_by} \
-		-Var1 Country \
-		-Var2 Year \
+		-Var1 ~{metadata_variable1_name} \
+		-Var2 ~{metadata_variable2_name} \
 		-Longitude ~{metadata_longitude_name} \
 		-Latitude ~{metadata_latitude_name} \
 		-na_var_rm ~{na_var_rm} \
