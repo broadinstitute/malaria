@@ -19,7 +19,7 @@ workflow report_layouting {
 
 		Boolean PerformanceReport = true
 		Boolean Drug_Surveillance_Report = true
-		Boolean Variants_of_Interest_Report = true
+		Boolean Variants_of_Interest_Report = false
 
 		Float sample_ampl_rate = 0.2
 		Float locus_ampl_rate = 0.2
@@ -29,13 +29,13 @@ workflow report_layouting {
 		File reference_alleles
 		File selected_checkboxes
 	
-		String join_by = "Sample_id"
+		String join_by = "null"
 		Boolean na_var_rm = true
 		Boolean na_hap_rm = true
 		String drugs = "Artemisinin,Chloroquine,Pyrimethamine,Sulfadoxine,Lumefantrine,Mefloquine"
 		Boolean include_all_drug_markers = true
 
-		String ibd_thres = 0.99
+		String ibd_thres = "null"
 		Boolean parallel = true
 		Int ibd_ncol = 4
 		String? pop_levels = "null"
@@ -46,13 +46,13 @@ workflow report_layouting {
 		String metadata_longitude_name = 'Longitude'
 		String metadata_latitude_name = 'Latitude'
 
-		Int nchunks = 500
+		Int nchunks = 100
 		#String off_target_formula = "dVSITES_ij>=0.3"
 		#String flanking_INDEL_formula = "flanking_INDEL==TRUE&h_ij>=0.66"
 		#String PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66"
 		String hap_color_palette = "random"
-		String poly_quantile = 0.75
-		String poly_formula = "NHetLoci>=1&Fws<1"
+		String poly_quantile = "null"
+		String poly_formula = "null"
 
 	}
 	

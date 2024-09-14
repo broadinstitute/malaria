@@ -596,7 +596,7 @@ task asv_filtering {
 
 		# Metadata columns	
 		File sample_metadata
-		String? metadata_variable1_name
+		String? metadata_variable1_name = 'Country'
 		String? metadata_variable2_name
 		String? metadata_latitude_name = 'Latitude'
 		String? metadata_longitude_name = 'Longitude'
