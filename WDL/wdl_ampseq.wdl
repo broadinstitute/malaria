@@ -141,10 +141,9 @@ workflow ampseq {
 			reference2 = reference_amplicons_2,
 			run_id = run_id,
 			path_to_snv = path_to_snv,
+			###REMOVE THIS VARIABLES AFTER TESTING###
 	#		primer_rem = if (run_demultiplexing) then ampseq_pipeline_demult.PrimerRem else ampseq_pipeline_no_demult.PrimerRem,
 	#		adaptor_rem = if (run_demultiplexing) then ampseq_pipeline_demult.AdaptorRem else ampseq_pipeline_no_demult.AdaptorRem
-
-			###REMOVE THIS VARIABLES AFTER TESTING###
 
 			primer_rem = amplicon_no_demultiplexing.PrimerRem,
 			adaptor_rem = amplicon_no_demultiplexing.AdaptorRem
