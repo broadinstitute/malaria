@@ -22,31 +22,6 @@ workflow ampseq {
 		String pattern_fw = "*_L001_R1_001.fastq.gz"
 		String pattern_rv = "*_L001_R2_001.fastq.gz"
 
-		# DADA2 Parameters - To delete
-		# String Class = "parasite"
-		# String maxEE = "5,5"
-		# String trimRight = "0,0"
-		# Int minLen = 30
-		# String truncQ = "5,5"
-		# String matchIDs = "0"
-		# Int max_consist = 10
-		# Float omegaA = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
-		# String saveRdata = ""
-		# Int justConcatenate = 0
-		# Int maxMismatch = 0
-		# String no_ref = 'False'
-		# String adjust_mode = "absolute"
-		# String strain = "3D7"
-		# String strain2 = "DD2"
-		# String polyN = "5"
-		# String min_reads = "0"
-		# String min_samples = "0"
-		# String max_snv_dist = "-1"
-		# String max_indel_dist = "-1"
-		# String include_failed = "False"
-		# String exclude_bimeras = "False"
-		# String adapter = "None"
-
 		# Command for the decontamination pipeline
 		Int minreads_threshold = 1000
 		Float contamination_threshold = 0.5
@@ -71,32 +46,6 @@ workflow ampseq {
 			minreads_threshold = minreads_threshold,
 			contamination_threshold = contamination_threshold,
 			verbose = verbose
-			# Class = Class,
-			# maxEE = maxEE,
-			# trimRight = trimRight,
-			# minLen = minLen,
-			# truncQ = truncQ,
-			# matchIDs = matchIDs,
-			# max_consist = max_consist,
-			# omegaA = omegaA,
-			# saveRdata = saveRdata,
-			# justConcatenate = justConcatenate,
-			# maxMismatch = maxMismatch,
-			# no_ref = no_ref,
-			# adjust_mode = adjust_mode,
-			# strain = strain,
-			# strain2 = strain2,
-			# polyN = polyN,
-			# min_reads = min_reads,
-			# min_samples = min_samples,
-			# max_snv_dist = max_snv_dist,
-			# max_indel_dist = max_indel_dist,
-			# include_failed = include_failed,
-			# exclude_bimeras = exclude_bimeras,
-			# minreads_threshold = minreads_threshold,
-			# contamination_threshold = contamination_threshold,
-			# verbose = verbose,
-			# adapter = adapter
 	}
 
 	if(!run_demultiplexing) {
@@ -119,16 +68,16 @@ workflow ampseq {
 #			input: 
 #				config_json = prepare_files.config_json_out,
 #				path_to_flist = path_to_flist,
-#				path_to_r1 = path_to_r1,
-#				path_to_r2 = path_to_r2,
-#				pr1 = pr1,
-#				pr2 = pr2,
+#				path_to_r1 = fatsq1s,
+#				path_to_r2 = fatsq2s,
+#				pr1 = forward_primers_file,
+#				pr2 = reverse_primers_file,
 #				reference = prepare_files.reference_out,
-#				reference2 = reference2,
+#				reference2 = reference_amplicons_2,
 #				path_to_snv = path_to_snv
 #		}
 #	}
-##
+
 	call amplicon_denoising {
 		input:
 			config_json = prepare_files.config_json_out,
@@ -231,7 +180,13 @@ task prepare_files {
 		String verbose = "False"
 		String adapter = "None"
 	}
-	File path_to_flist = write_lines(sample_id_list)
+	File path_to_flist = write_lines(
+		zip(sample_id_list, zip(sample_id_list, sample_id_list)).map {
+			t => 
+				sep = "\t"
+				"${t._1}${sep}${t._2._1}${sep}${t._2._2}"
+		}	
+	)
 	String pr1_refdir = "references/" + basename(pr1)
 	String pr2_refdir = "references/" + basename(pr2)
 
@@ -346,7 +301,7 @@ task prepare_files {
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: "jorgeamaya/fileprep_ampseq"
+		docker: "jorgeamaya/fileprep_ampseq:v1.0"
 	}
 }
 
@@ -413,7 +368,7 @@ task amplicon_no_demultiplexing {
 		bootDiskSizeGb: 10
 		preemptible: 0
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq'
+		docker: 'jorgeamaya/ampseq:v1.0'
 	}
 }
 
@@ -580,7 +535,7 @@ task amplicon_denoising {
 		bootDiskSizeGb: 10
 		preemptible: 0
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq'
+		docker: 'jorgeamaya/ampseq:v1.0'
 	}
 }
 
@@ -731,6 +686,6 @@ task asv_filtering {
 		bootDiskSizeGb: 10
 		preemptible: 1 #[TODO: Change later]
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq'
+		docker: 'jorgeamaya/ampseq:v1.0'
 	}
 }
