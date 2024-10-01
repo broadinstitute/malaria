@@ -180,13 +180,7 @@ task prepare_files {
 		String verbose = "False"
 		String adapter = "None"
 	}
-	File path_to_flist = write_lines(
-		zip(sample_id_list, zip(sample_id_list, sample_id_list)).map {
-			t => 
-				sep = "\t"
-				"${t._1}${sep}${t._2._1}${sep}${t._2._2}"
-		}	
-	)
+	File path_to_flist = write_lines(sample_id_list)
 	String pr1_refdir = "references/" + basename(pr1)
 	String pr2_refdir = "references/" + basename(pr2)
 
