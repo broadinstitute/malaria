@@ -148,7 +148,7 @@ workflow ampseq {
 		# File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
 
 		# ASV Filtering
-		# File ampseq_object_f = asv_filtering.ampseq_object
+		File ampseq_object_f = asv_filtering.ampseq_object
 		# File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
 
 		###REMOVE THIS VARIABLES AFTER TESTING###
