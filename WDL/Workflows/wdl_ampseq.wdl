@@ -55,26 +55,41 @@ workflow ampseq {
 			verbose = verbose
 	}
 
-#	if(defined(barcodes_index)) {
-#		call contamination_detection_t.contamination_detection {
+	if(defined(barcodes_index)) {
+		call contamination_detection_t.contamination_detection {
+			input: 
+				config_json = prepare_files.config_json_out,
+				path_to_flist = prepare_files.path_to_flist_o,
+				fastq1s = fastq1s,
+				fastq2s = fastq2s,
+				forward_primers_file = forward_primers_file,
+				reverse_primers_file = reverse_primers_file,
+				barcodes_index = barcodes_index
+		}
+	}
+
+	if(!run_demultiplexing) {
+		call amplicon_no_demultiplexing_t.amplicon_no_demultiplexing {
+			input:
+				config_json = prepare_files.config_json_out,
+				path_to_flist = prepare_files.path_to_flist_o,
+				fastq1s = fastq1s,
+				fastq2s = fastq2s,
+				forward_primers_file = forward_primers_file,
+				reverse_primers_file = reverse_primers_file,
+				reference = prepare_files.reference_out,
+				reference2 = reference_amplicons_2,
+				path_to_snv = path_to_snv
+		}
+	}
+
+#	if(run_demultiplexing) {
+#		call ampseq_pipeline_demult {
 #			input: 
 #				config_json = prepare_files.config_json_out,
-#				path_to_flist = prepare_files.path_to_flist_o,
-#				fastq1s = fastq1s,
-#				fastq2s = fastq2s,
-#				forward_primers_file = forward_primers_file,
-#				reverse_primers_file = reverse_primers_file,
-#				barcodes_index = barcodes_index
-#		}
-#	}
-
-#	if(!run_demultiplexing) {
-#		call amplicon_no_demultiplexing_t.amplicon_no_demultiplexing {
-#			input:
-#				config_json = prepare_files.config_json_out,
-#				path_to_flist = prepare_files.path_to_flist_o,
-#				fastq1s = fastq1s,
-#				fastq2s = fastq2s,
+#				path_to_flist = path_to_flist,
+#				fastq1s = fatsq1s,
+#				fastq2s = fatsq2s,
 #				forward_primers_file = forward_primers_file,
 #				reverse_primers_file = reverse_primers_file,
 #				reference = prepare_files.reference_out,
@@ -83,53 +98,38 @@ workflow ampseq {
 #		}
 #	}
 
-##	if(run_demultiplexing) {
-##		call ampseq_pipeline_demult {
-##			input: 
-##				config_json = prepare_files.config_json_out,
-##				path_to_flist = path_to_flist,
-##				fastq1s = fatsq1s,
-##				fastq2s = fatsq2s,
-##				forward_primers_file = forward_primers_file,
-##				reverse_primers_file = reverse_primers_file,
-##				reference = prepare_files.reference_out,
-##				reference2 = reference_amplicons_2,
-##				path_to_snv = path_to_snv
-##		}
-##	}
-#
-#	call amplicon_denoising_t.amplicon_denoising {
-#		input:
-#			config_json = prepare_files.config_json_out,
-#			path_to_flist = prepare_files.path_to_flist_o,
-#			fastq1s = fastq1s,
-#			fastq2s = fastq2s,
-#			forward_primers_file = forward_primers_file,
-#			reverse_primers_file = reverse_primers_file,
-#			reference = prepare_files.reference_out,
-#			reference2 = reference_amplicons_2,
-#			run_id = run_id,
-#			path_to_snv = path_to_snv,
-#			###REMOVE THIS VARIABLES AFTER TESTING###
-#	#		primer_rem = if (run_demultiplexing) then ampseq_pipeline_demult.PrimerRem else ampseq_pipeline_no_demult.PrimerRem,
-#	#		adaptor_rem = if (run_demultiplexing) then ampseq_pipeline_demult.AdaptorRem else ampseq_pipeline_no_demult.AdaptorRem
-#
-#			primer_rem = amplicon_no_demultiplexing.PrimerRem,
-#			adaptor_rem = amplicon_no_demultiplexing.AdaptorRem
-#	}
-#
-#	call asv_filtering_t.asv_filtering {
-#		input: 
-#			reference = reference_amplicons,
-#			reference_genome = reference_genome,
-#			panel_bedfile = panel_bedfile,
-#			markersTable = markersTable,		
-#			CIGARVariants = amplicon_denoising.CIGARVariants_Bfilter,
-#			ASVTable = amplicon_denoising.ASVTable,
-#			ASVSeqs = amplicon_denoising.ASVSeqs,
-#			ASV_to_CIGAR = amplicon_denoising.ASV_to_CIGAR,
-#			ZeroReadsSampleList = amplicon_denoising.ZeroReadsSampleList
-#	}
+	call amplicon_denoising_t.amplicon_denoising {
+		input:
+			config_json = prepare_files.config_json_out,
+			path_to_flist = prepare_files.path_to_flist_o,
+			fastq1s = fastq1s,
+			fastq2s = fastq2s,
+			forward_primers_file = forward_primers_file,
+			reverse_primers_file = reverse_primers_file,
+			reference = prepare_files.reference_out,
+			reference2 = reference_amplicons_2,
+			run_id = run_id,
+			path_to_snv = path_to_snv,
+			###REMOVE THIS VARIABLES AFTER TESTING###
+	#		primer_rem = if (run_demultiplexing) then ampseq_pipeline_demult.PrimerRem else ampseq_pipeline_no_demult.PrimerRem,
+	#		adaptor_rem = if (run_demultiplexing) then ampseq_pipeline_demult.AdaptorRem else ampseq_pipeline_no_demult.AdaptorRem
+
+			primer_rem = amplicon_no_demultiplexing.PrimerRem,
+			adaptor_rem = amplicon_no_demultiplexing.AdaptorRem
+	}
+
+	call asv_filtering_t.asv_filtering {
+		input: 
+			reference = reference_amplicons,
+			reference_genome = reference_genome,
+			panel_bedfile = panel_bedfile,
+			markersTable = markersTable,		
+			CIGARVariants = amplicon_denoising.CIGARVariants_Bfilter,
+			ASVTable = amplicon_denoising.ASVTable,
+			ASVSeqs = amplicon_denoising.ASVSeqs,
+			ASV_to_CIGAR = amplicon_denoising.ASV_to_CIGAR,
+			ZeroReadsSampleList = amplicon_denoising.ZeroReadsSampleList
+	}
 
 	output {
 		#File panel_reference_fasta_f = prepare_files.reference_out
