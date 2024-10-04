@@ -54,7 +54,7 @@ version 1.0
 #		bootDiskSizeGb: 10
 #		preemptible: 3
 #		maxRetries: 1
-#		docker: 'jorgeamaya/ampseq'
+#		docker: 'jorgeamaya/ampseq:latest'
 #	}
 #}
 #

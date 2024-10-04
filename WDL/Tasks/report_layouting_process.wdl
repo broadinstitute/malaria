@@ -118,6 +118,6 @@ task report_layouting_process {
 		bootDiskSizeGb: 10 
 		preemptible: 1 
 		maxRetries: 0 
-		docker: 'jorgeamaya/mhap:v1.0' 
+		docker: 'jorgeamaya/mhap:latest' 
 	} 
 }

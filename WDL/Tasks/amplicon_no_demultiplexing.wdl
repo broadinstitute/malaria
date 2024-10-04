@@ -51,6 +51,6 @@ task amplicon_no_demultiplexing {
 		bootDiskSizeGb: 10
 		preemptible: 0
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq:v1.0'
+		docker: 'jorgeamaya/ampseq:latest'
 	}
 }

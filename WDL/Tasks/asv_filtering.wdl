@@ -147,6 +147,6 @@ task asv_filtering {
 		bootDiskSizeGb: 10
 		preemptible: 3 
 		maxRetries: 1
-		docker: 'jorgeamaya/ampseq:v1.0'
+		docker: 'jorgeamaya/ampseq:latest'
 	}
 }
