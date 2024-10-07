@@ -90,10 +90,6 @@ workflow ampseq {
 			reference2 = reference_amplicons_2,
 			run_id = run_id,
 			path_to_snv = path_to_snv,
-			###REMOVE THIS VARIABLES AFTER TESTING###
-	#		primer_rem = if (run_demultiplexing) then ampseq_pipeline_demult.PrimerRem else ampseq_pipeline_no_demult.PrimerRem,
-	#		adaptor_rem = if (run_demultiplexing) then ampseq_pipeline_demult.AdaptorRem else ampseq_pipeline_no_demult.AdaptorRem
-
 			primer_rem = amplicon_no_demultiplexing.PrimerRem,
 			adaptor_rem = amplicon_no_demultiplexing.AdaptorRem
 	}
@@ -112,30 +108,8 @@ workflow ampseq {
 	}
 
 	output {
-		# File panel_reference_fasta_f = prepare_files.reference_out
-		
-		# DADA2
-		# File ASVBimeras_f = ampseq_pipeline_denoise.ASVBimeras
-		# File seqtab_f = ampseq_pipeline_denoise.seqtab
-
-		# PostProc_DADA2
-		# File ASVTable_f = ampseq_pipeline_denoise.ASVTable
-		# File ASVSeqs_f = ampseq_pipeline_denoise.ASVSeqs
-
-		# ASV_to_CIGAR
-		# File CIGARVariants_Bfilter_f = ampseq_pipeline_denoise.CIGARVariants_Bfilter
-		# File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
-		# File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
-
 		# ASV Filtering
 		File ampseq_object_f = asv_filtering.ampseq_object
-		# File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
-
-		###REMOVE THIS VARIABLES AFTER TESTING###
-		# File config_json_out_f = prepare_files.config_json_out
-		# File? missing_files_f = ampseq_pipeline_no_demult.missing_files
-		# File? decontamination_sample_cards_f = ampseq_pipeline_no_demult.decontamination_sample_cards
-		# File? decontamination_report_f = ampseq_pipeline_no_demult.decontamination_report
 	}
 }
 
@@ -237,7 +211,7 @@ task prepare_files {
 	fi
 
 	###################################################################
-	##Make reference fasta file if reference not provided by user    ##
+	# Make reference fasta file if reference not provided by user     #
 	###################################################################
 
 	if [[ "~{reference}" != '' ]]; then
@@ -254,7 +228,7 @@ task prepare_files {
 	fi
 
 	###################################################################
-	##Edit the config file if snv_filter and reference_2 are provided##
+	# Edit the config file if snv_filter and reference_2 are provided##
 	###################################################################
 
 	cat ~{config_json}
@@ -316,6 +290,10 @@ task amplicon_no_demultiplexing {
 	set -euxo pipefail
 	cat ~{config_json}
 
+	###################################################################
+	# Copy files to appropriate folders within Docker                 #
+	###################################################################
+
 	mkdir fq_dir
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' path_to_r1} fq_dir/
@@ -331,7 +309,10 @@ task amplicon_no_demultiplexing {
 	echo "Demultiplexing not requested."
 	echo "No demultiplexing will be performed in the data. Read pairs assumed to be long enough to overlap and be merged."
 
-	#Check if the first line in barcodes_matches.csv indicates the presence of inline barcodes
+	###################################################################
+	# Check if barcodes are present in barcodes.csv file              #
+	###################################################################
+
 	if grep -q "," "references/$(basename -- ~{path_to_flist})" ; then
 		echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices."
 		find . -type f
@@ -449,7 +430,7 @@ task amplicon_denoising {
 	cat ~{config_json}
 
 	###################################################################
-	##Copy files to the working directory and run the AmpSeq pipeline##
+	# Copy files to the working directory and run the AmpSeq pipeline #
 	###################################################################
 	mkdir -p Results/
 	mkdir -p Results/PrimerRem
@@ -523,7 +504,7 @@ task amplicon_denoising {
 	}
 
 	runtime {
-		cpu: 1
+		cpu: 1  # [TODO: Request more cores and properly parallelize dada2]
 		memory: "15 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
@@ -537,7 +518,7 @@ task asv_filtering {
 	input {
 		String out_prefix 
 		File? panel_bedfile
-		File? reference		#[TODO: Ask about compatibility for second reference panel (i.e. reference2)]
+		File? reference	
 		File? markersTable
 		File reference_genome
 		String? ampseq_export_format = 'excel'
@@ -558,19 +539,19 @@ task asv_filtering {
 
 		# MHap ASV filtering thresholds 
 		String sample_id_pat = '.'
-		Int? min_abd = 10
-		Float? min_ratio = 0.1
-		String? off_target_formula = "dVSITES_ij>=0.3"
-		String? flanking_INDEL_formula = "flanking_INDEL==TRUE\&h_ij>=0.66"
-		Int? homopolymer_length = 5
-		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE\&h_ij>=0.66"
-		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"
-		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"
-		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"
+		Int? min_abd = 10                                                                        # Minimum read depth to accept an ASV
+		Float? min_ratio = 0.1                                                                   # Minimum ratio between major and minor alleles to accept a minor allele
+		String? off_target_formula = "dVSITES_ij>=0.3"											 # Formula used to identify and remove off-target PCR products
+		String? flanking_INDEL_formula = "flanking_INDEL==TRUE\&h_ij>=0.66"						 # Formula to mask INDELs in the 3' and 5' ends of the ASVs
+		Int? homopolymer_length = 5															     # Minimum number of single nucleotide tandem repeats to define homopolymeric regions in an ASV
+		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE\&h_ij>=0.66"              # Formula to mask SNVs in the homopolymeric regions of ASVs
+		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"          # Formula to mask INDELs in the homopolymeric regions of ASVs   
+		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"                                       # Formula to detect bimeras
+		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"                   # Formula to detect other kinds of PCR errors
 
 		#[TODO: Migrate these filters to MHap pipeline]
-		Float? sample_ampl_rate = 0.3
-		Float? locus_ampl_rate = 0.3
+		Float? sample_ampl_rate = 0.3                                                            # Minimum proportion of amplified loci by a sample required to keep a sample
+		Float? locus_ampl_rate = 0.3                                                             # Minimum proportion of amplified samples at a locus required to keep a locus
 	}
 
 	File ref_for_markers = select_first([panel_bedfile, reference])
@@ -615,7 +596,7 @@ task asv_filtering {
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
 		~{"gsutil cp " + markersTable + " references/markersTable.csv"}
 
-		# Create marker table
+		# Create marker table if it is not provided by the user.
 		if [ -f "references/markersTable.csv" ]; then
 			echo "Markers table provided! Skipping creation of marker table from reference..."
 		else
