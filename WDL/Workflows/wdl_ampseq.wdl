@@ -110,10 +110,6 @@ workflow ampseq {
 			reference2 = reference_amplicons_2,
 			run_id = run_id,
 			path_to_snv = path_to_snv,
-			###REMOVE THIS VARIABLES AFTER TESTING###
-	#		primer_rem = if (run_demultiplexing) then ampseq_pipeline_demult.PrimerRem else ampseq_pipeline_no_demult.PrimerRem,
-	#		adaptor_rem = if (run_demultiplexing) then ampseq_pipeline_demult.AdaptorRem else ampseq_pipeline_no_demult.AdaptorRem
-
 			primer_rem = amplicon_no_demultiplexing.PrimerRem,
 			adaptor_rem = amplicon_no_demultiplexing.AdaptorRem
 	}
@@ -132,7 +128,11 @@ workflow ampseq {
 	}
 
 	output {
-		File panel_reference_fasta_f = prepare_files.reference_out
+		# ASV Filtering
+		File ampseq_object_f = asv_filtering.ampseq_object
+
+		# Keep this variables for testing purposes
+		#File panel_reference_fasta_f = prepare_files.reference_out
 		
 		# DADA2
 		# File ASVBimeras_f = ampseq_pipeline_denoise.ASVBimeras
@@ -147,8 +147,6 @@ workflow ampseq {
 		# File ASV_to_CIGAR_f = ampseq_pipeline_denoise.ASV_to_CIGAR
 		# File ZeroReadsSampleList_f = ampseq_pipeline_denoise.ZeroReadsSampleList
 
-		# ASV Filtering
-		File ampseq_object_f = asv_filtering.ampseq_object
 		# File markersTable_f = ampseq_pipeline_asv_filtering.markersTable_o
 
 		###REMOVE THIS VARIABLES AFTER TESTING###

@@ -26,7 +26,10 @@ task contamination_detection {
 
 	echo "Performing contamination detection"
 
-	#Check if the first line in barcodes_matches.csv indicates the presence of inline barcodes
+	###################################################################
+	# Check if barcodes are present in barcodes.csv file              #
+	###################################################################
+
 	echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices."
 	find . -type f
 	python /Code/CI_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --contamination

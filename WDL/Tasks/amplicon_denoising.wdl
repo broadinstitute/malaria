@@ -25,7 +25,7 @@ task amplicon_denoising {
 	cat ~{config_json}
 
 	###################################################################
-	##Copy files to the working directory and run the AmpSeq pipeline##
+	# Copy files to the working directory and run the AmpSeq pipeline #
 	###################################################################
 	mkdir -p Results/
 	mkdir -p Results/PrimerRem

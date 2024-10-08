@@ -96,7 +96,7 @@ task prepare_files {
 	fi
 
 	###################################################################
-	##Make reference fasta file if reference not provided by user    ##
+	# Make reference fasta file if reference not provided by user     #
 	###################################################################
 
 	if [[ "~{reference_amplicons}" != '' ]]; then
@@ -113,7 +113,7 @@ task prepare_files {
 	fi
 
 	###################################################################
-	##Edit the config file if snv_filter and reference_2 are provided##
+	# Edit the config file if snv_filter and reference_2 are provided #
 	###################################################################
 
 	cat ~{config_json}

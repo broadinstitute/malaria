@@ -17,6 +17,10 @@ task amplicon_no_demultiplexing {
 	set -euxo pipefail
 	cat ~{config_json}
 
+	###################################################################
+	# Copy files to appropriate folders within Docker                 #
+	###################################################################
+
 	mkdir fq_dir
 	mkdir references
 	gsutil -m cp -r ~{sep = ' ' fastq1s} fq_dir/
