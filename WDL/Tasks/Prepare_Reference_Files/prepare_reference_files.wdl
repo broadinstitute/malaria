@@ -1,6 +1,6 @@
 version 1.0
 
-task prepare_files {
+task prepare_reference_files {
 	input {
 		Array[String] sample_ids
 		File forward_primers_file
@@ -38,6 +38,7 @@ task prepare_files {
 		Float contamination_threshold = 0.5
 		String verbose = "False"
 		String adapter = "None"
+		File? barcodes_index
 	}
 	File path_to_flist = write_lines(sample_ids)
 	String forward_primers_file_refdir = "references/" + basename(forward_primers_file)
@@ -81,6 +82,7 @@ task prepare_files {
 	File config_json = write_json(in_map)
 
 	command <<<
+	export TMPDIR=tmp
 	set -euxo pipefail
 
 	###################################################################
@@ -113,7 +115,8 @@ task prepare_files {
 	fi
 
 	###################################################################
-	# Edit the config file if snv_filter and reference_2 are provided #
+	# Edit the config file if snv_filter, reference_2 and 		  #
+	# and barcode_index are provided 				  #
 	###################################################################
 
 	cat ~{config_json}
@@ -135,6 +138,13 @@ task prepare_files {
 		python /Code/add_entry_to_json.py ~{config_json} "path_to_snv" "references/snv_filter.tsv"
 	else
 		echo "Path to SNV file not provided"
+	fi
+	
+	if [[ "~{barcodes_index}" != '' ]]; then
+		echo "Barcode index file provided"
+		python /Code/add_entry_to_json.py ~{config_json} "path_to_barcodes" "references/barcodes_index.csv"
+	else
+		echo "Barcode index file not provided"
 	fi
 
 	cat ~{config_json} >> config_json.json

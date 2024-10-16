@@ -12,6 +12,7 @@ task contamination_detection {
 	}
 
 	command <<<
+	export TMPDIR=tmp
 	set -euxo pipefail
 	cat ~{config_json}
 
@@ -34,11 +35,12 @@ task contamination_detection {
 	find . -type f
 	python /Code/CI_TerraPipeline.py --config ~{config_json} --terra --meta --adaptor_removal --contamination
 	find . -type f
-	Rscript /Code/render_report.R -d /cromwell_root/Report/Merge/ -o /cromwell_root/Report/ -p ~{path_to_flist} -m 1000 -c 0.5 -mf /cromwell_root/Results/missing_files.tsv
-	find . -type f
-	tar -czvf Report_Cards.tar.gz /cromwell_root/Report
-	find . -type f
+	#Rscript /Code/render_report.R -d /cromwell_root/Report/Merge/ -o /cromwell_root/Report/ -p ~{path_to_flist} -m 1000 -c 0.5 -mf /cromwell_root/Results/missing_files.tsv
+	#find . -type f
+	#tar -czvf Report_Cards.tar.gz /cromwell_root/Report
+	#find . -type f
 	>>>
+
 	output {
 		File missing_files = "Results/missing_files.tsv"
 		File? contamination_detection_sample_cards = "Report_Cards.tar.gz"

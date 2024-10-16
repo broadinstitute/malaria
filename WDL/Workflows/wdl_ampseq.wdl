@@ -81,6 +81,7 @@ workflow ampseq {
 #	}
 #
 	#if(!run_demultiplexing) {
+
 	scatter (id in range(length(fastq1s))) {
 		call cutadapters_t.cutadapters {
 			input:
@@ -93,8 +94,6 @@ workflow ampseq {
 		}
 	}
 
-	
-
 	scatter (id in range(length(flatten(cutadapters.fastq1s_noadapters)))) {
 		call trimprimers_t.trimprimers {
 			input:
@@ -106,7 +105,7 @@ workflow ampseq {
 
 	}
 
-#
+
 #	if(run_demultiplexing) {
 #		call ampseq_pipeline_demult {
 #			input: 
@@ -122,21 +121,19 @@ workflow ampseq {
 #		}
 #	}
 
-#	call amplicon_denoising_t.amplicon_denoising {
-#		input:
-#			config_json = prepare_reference_files.config_json_out,
-#			path_to_flist = prepare_reference_files.path_to_flist_o,
-#			fastq1s = fastq1s,
-#			fastq2s = fastq2s,
-#			forward_primers_file = forward_primers_file,
-#			reverse_primers_file = reverse_primers_file,
-#			reference = prepare_reference_files.reference_out,
-#			reference2 = reference_amplicons_2,
-#			run_id = run_id,
-#			path_to_snv = path_to_snv,
-#			primer_rem = trimprimers.PrimerRem,
-#			adaptor_rem = cutadapters.AdaptorRem
-#	}
+	call amplicon_denoising_t.amplicon_denoising {
+		input:
+			fastq1s = fastq1s,
+			fastq2s = fastq2s,
+			forward_primers_file = forward_primers_file,
+			reverse_primers_file = reverse_primers_file,
+			reference = prepare_reference_files.reference_out,
+			reference2 = reference_amplicons_2,
+			run_id = run_id,
+			path_to_snv = path_to_snv,
+			primer_rem = trimprimers.PrimerRem,
+			adaptor_rem = cutadapters.AdaptorRem
+	}
 #
 #	call asv_filtering_t.asv_filtering {
 #		input: 
@@ -181,7 +178,7 @@ workflow ampseq {
 
 		Array[Array[File]] cutadaptersout_f_f = cutadapters.fastq1s_noadapters
 		Array[Array[File]] cutadaptersout_r_f = cutadapters.fastq2s_noadapters
-		Array[Array[File]] trimprimersout_f_f = trimprimers.primerrem
+#		Array[Array[File]] trimprimersout_f_f = trimprimers.primerrem
 	}
 }
 
