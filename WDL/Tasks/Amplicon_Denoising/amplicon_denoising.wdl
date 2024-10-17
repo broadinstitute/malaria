@@ -2,6 +2,18 @@ version 1.0
 
 task amplicon_denoising {
 	input {
+		String Class                # Name of the column in the metadata file for sample class
+		Float maxEE                 # Maximum expected error rate
+		Int trimRight               # Number of bases to trim from the 3' end
+		Int minLen                  # Minimum length of reads to retain
+		Int truncQ                  # Quality threshold for truncating reads
+		Boolean matchIDs            # Whether to match IDs on fastqs
+		Int max_consist             # Maximum number of mismatches in overlap region
+		Float omegaA                # Alpha parameter for consensus quality score
+		Int justConcatenate         # Whether to just concatenate reads without merging
+		Int maxMismatch             # Maximum number of mismatches allowed during merging
+		String saveRdata            # Whether to save the intermediate R data files
+
 		Array[File] fastq1s
 		Array[File] fastq2s
 		File path_to_flist
@@ -13,16 +25,30 @@ task amplicon_denoising {
 		Array[File]? primer_rem
 		Array[File]? adaptor_rem
 		Array[String] run_id
-		File config_json
 	}
 
-	Map[String, String] configs = read_json(config_json)
-	String pattern_fw = configs["pattern_fw"]
-	String pattern_rv = configs["pattern_rv"]
-
 	command <<<
+	export TMPDIR=tmp
 	set -euxo pipefail
-	cat ~{config_json}
+
+	Rscript ${path_to_program} \
+                -p "~{path_to_meta}" \
+                -r "~{path_to_fq}" \
+                -b "~{path_to_flist}" \
+                -d "~{res_dir}/~{subdir}" \
+                -o "~{res_dir}/~{subdir}/seqtab.tsv" \
+                -c "~{Class}" \
+                -ee "~{maxEE}" \
+                -tR "~{trimRight}" \
+                -mL "~{minLen}" \
+                -tQ "~{truncQ}" \
+                -id "~{matchIDs}" \
+                -mC "~{max_consist}" \
+                -wA "~{omegaA}" \
+                -jC "~{justConcatenate}" \
+                -mM "~{maxMismatch}" \
+                -s "~{saveRdata}" \
+                ${bimera}
 
 	###################################################################
 	# Copy files to the working directory and run the AmpSeq pipeline #
