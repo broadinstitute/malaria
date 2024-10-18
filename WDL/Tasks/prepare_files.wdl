@@ -3,13 +3,16 @@ version 1.0
 task prepare_files {
 	input {
 		Array[String] sample_ids
-		File forward_primers_file
-		File reverse_primers_file
+		File amplicon_info
+
 		File? reference_amplicons
 		File? reference_amplicons_2
+
+		File? forward_primers_file
+		File? reverse_primers_file
+
 		File? path_to_snv
 		File? reference_genome
-		File? panel_bedfile
 		String pattern_fw = "*_L001_R1_001.fastq.gz"
 		String pattern_rv = "*_L001_R2_001.fastq.gz"
 		String Class = "parasite"
@@ -39,9 +42,11 @@ task prepare_files {
 		String verbose = "False"
 		String adapter = "None"
 	}
+	
 	File path_to_flist = write_lines(sample_ids)
-	String forward_primers_file_refdir = "references/" + basename(forward_primers_file)
-	String reverse_primers_file_refdir = "references/" + basename(reverse_primers_file)
+	
+	String forward_primers_file_refdir = "primers_fw.fasta" 
+	String reverse_primers_file_refdir = "primers_rv.fasta"
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
@@ -78,6 +83,7 @@ task prepare_files {
 		"verbose": verbose,
 		"adapter": adapter
 	}
+
 	File config_json = write_json(in_map)
 
 	command <<<
@@ -88,55 +94,89 @@ task prepare_files {
 	###################################################################
 
 	has_bom() { head -c3 "$1" | grep -q $'\xef\xbb\xbf'; }
-	if has_bom ~{panel_bedfile}; then 
+	if has_bom ~{amplicon_info}; then 
 		echo "File has a BOM. Removing."
-		sed -i 's/\xef\xbb\xbf//' ~{panel_bedfile}
+		sed -i 's/\xef\xbb\xbf//' ~{amplicon_info}
 	else
 		echo "File does not have a BOM. Skipping this step."
 	fi
 
+	mv ~{path_to_flist} samples.txt
+
 	###################################################################
 	# Make reference fasta file if reference not provided by user     #
 	###################################################################
+	cut -f1,4,5 ~{amplicon_info} | tail -n +2 > amplicon_panel.bed
 
 	if [[ "~{reference_amplicons}" != '' ]]; then
-		echo "Reference file provided."
+		echo "Amplicon reference file provided."
 		cp ~{reference_amplicons} reference.fasta
-	elif [[ "~{reference_amplicons}" == '' && "~{reference_genome}" != '' && "~{panel_bedfile}" != '' ]]; then
-		echo "Reference file not provided."
-		echo "Reference genome and panel's bed file provided."
-		echo "Creating reference file"
-		bedtools getfasta -fi ~{reference_genome} -bed ~{panel_bedfile} -fo reference.fasta
+	elif [[ "~{reference_amplicons}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		echo "Amplicon reference file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating amplicon reference file."
+		bedtools getfasta -fi ~{reference_genome} -bed amplicon_panel.bed -fo reference.fasta
+		echo "Created amplicon sequence file."
 	else
-		echo "Neither reference file provided nor reference genome and panel's bed file provided."
+		echo "Neither reference file provided nor reference genome and amplicon panel info file provided."
 		echo "Please provide any of these files to run the pipeline."
 	fi
 
 	###################################################################
-	# Edit the config file if snv_filter and reference_2 are provided #
+	# Make forward and reverse primer files from amplicon_info        #
 	###################################################################
 
-	cat ~{config_json}
+	if [[ "~{forward_primers_file}" != '' ]]; then
+		echo "Forward primers file provided."
+		cp ~{forward_primers_file} primers_fw.fasta
+	elif [[ "~{forward_primers_file}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		echo "Forward primers file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating forward primers file."
 
-	mkdir references
-	cp ~{path_to_flist} "samples.txt"
-	# Add sample_id as first line of file
-	sed -i '1s/^/sample_id\n/' samples.txt
-
-	if [[ "~{reference_amplicons_2}" != '' ]]; then
-		echo "Reference 2 file provided"
-		python /Code/add_entry_to_json.py ~{config_json} "reference_amplicons_2" "references/reference2.fasta"
+		# Create forward primer fasta from amplicon_info
+		awk -F'\t' '{print $1 "\t" $2 "\t" $4-1}' ~{amplicon_info} | tail -n +2 > primers_fw.bed
+		bedtools getfasta -fo primers_fw.fasta -fi ~{reference_genome} -bed primers_fw.bed
+		
+		echo "Created forward primers file."
+		rm primers_fw.bed
 	else
-		echo "Reference 2 file not provided"
+		echo "Neither forward primers file provided nor reference genome and amplicon panel info file provided."
+		echo "Please provide any of these files to run the pipeline."
+	fi
+
+	if [[ "~{reverse_primers_file}" != '' ]]; then
+		echo "Reverse primers file provided."
+		cp ~{reverse_primers_file} primers_rv.fasta
+	elif [[ "~{reverse_primers_file}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		echo "Reverse primers file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating reverse primers file."
+
+		# Create reverse primer fasta from amplicon_info
+		sed 's/\r//' ~{amplicon_info} | awk -F"\t" '{print $1 "\t" $5 "\t" $3 "\t\t\t-"}' | tail -n +2 > primers_rv.bed
+		bedtools getfasta -fo primers_rv.fasta -fi ~{reference_genome} -bed primers_rv.bed
+		
+		echo "Created reverse primers file."
+		rm primers_rv.bed
+	else
+		echo "Neither reverse primers file provided nor reference genome and amplicon panel info file provided."
+		echo "Please provide any of these files to run the pipeline."
+	fi
+
+
+
+	###################################################################
+	# Add reference_amplicons_2 and path_to_snv into config_json      #
+	###################################################################
+	if [[ "~{reference_amplicons_2}" != '' ]]; then
+		echo "Reference amplicon 2 provided"
+		mv ~{reference_amplicons_2} reference2.fasta
+		python /Code/add_entry_to_json.py ~{config_json} "reference_amplicons_2" "reference2.fasta"
 	fi
 
 	if [[ "~{path_to_snv}" != '' ]]; then
 		echo "Path to SNV file provided"
-		python /Code/add_entry_to_json.py ~{config_json} "path_to_snv" "references/snv_filter.tsv"
-	else
-		echo "Path to SNV file not provided"
+		mv ~{path_to_snv} snv_filter.tsv
+		python /Code/add_entry_to_json.py ~{config_json} "path_to_snv" "snv_filter.tsv"
 	fi
-
 	cat ~{config_json} >> config_json.json
 
 	>>>
@@ -145,6 +185,11 @@ task prepare_files {
 		File config_json_out = "config_json.json"
 		File path_to_flist_o = "samples.txt"
 		File reference_out = "reference.fasta"
+		File panel_bedfile = "amplicon_panel.bed"
+
+		File? forward_primers_o = "primers_fw.fasta"
+		File? reverse_primers_o = "primers_rv.fasta"
+
 	}
 
 	runtime {

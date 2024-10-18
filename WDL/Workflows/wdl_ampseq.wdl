@@ -13,15 +13,15 @@ workflow ampseq {
 		Array[File] fastq1s
 		Array[File] fastq2s
 		Array[String] sample_ids
-		File forward_primers_file
-		File reverse_primers_file
+		File? forward_primers_file
+		File? reverse_primers_file
 		File reference_genome
 		Array[String] run_id
+		File amplicon_info
 
 		# Optional reference files
 		File? reference_amplicons
 		File? reference_amplicons_2 
-		File? panel_bedfile
 		File? markersTable
 		File? path_to_snv
 
@@ -41,13 +41,13 @@ workflow ampseq {
 	call prepare_files_t.prepare_files {
 		input:
 			sample_ids = sample_ids,
+			amplicon_info = amplicon_info,
 			forward_primers_file = forward_primers_file,
 			reverse_primers_file = reverse_primers_file,
 			reference_amplicons = reference_amplicons,
 			reference_amplicons_2 = reference_amplicons_2,
 			path_to_snv = path_to_snv,
 			reference_genome = reference_genome,
-			panel_bedfile = panel_bedfile,
 			pattern_fw = pattern_fw,
 			pattern_rv = pattern_rv,
 			minreads_threshold = minreads_threshold,
@@ -62,8 +62,8 @@ workflow ampseq {
 				path_to_flist = prepare_files.path_to_flist_o,
 				fastq1s = fastq1s,
 				fastq2s = fastq2s,
-				forward_primers_file = forward_primers_file,
-				reverse_primers_file = reverse_primers_file,
+				forward_primers_file = select_first([forward_primers_file, prepare_files.forward_primers_o]),
+				reverse_primers_file = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 				barcodes_index = barcodes_index
 		}
 	}
@@ -75,8 +75,8 @@ workflow ampseq {
 				path_to_flist = prepare_files.path_to_flist_o,
 				fastq1s = fastq1s,
 				fastq2s = fastq2s,
-				forward_primers_file = forward_primers_file,
-				reverse_primers_file = reverse_primers_file,
+				forward_primers_file = select_first([forward_primers_file, prepare_files.forward_primers_o]),
+				reverse_primers_file = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 				reference = prepare_files.reference_out,
 				reference2 = reference_amplicons_2,
 				path_to_snv = path_to_snv
@@ -104,8 +104,8 @@ workflow ampseq {
 			path_to_flist = prepare_files.path_to_flist_o,
 			fastq1s = fastq1s,
 			fastq2s = fastq2s,
-			forward_primers_file = forward_primers_file,
-			reverse_primers_file = reverse_primers_file,
+			forward_primers_file = select_first([forward_primers_file, prepare_files.forward_primers_o]),
+			reverse_primers_file = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 			reference = prepare_files.reference_out,
 			reference2 = reference_amplicons_2,
 			run_id = run_id,
@@ -118,7 +118,7 @@ workflow ampseq {
 		input: 
 			reference = reference_amplicons,
 			reference_genome = reference_genome,
-			panel_bedfile = panel_bedfile,
+			panel_bedfile = prepare_files.panel_bedfile,
 			markersTable = markersTable,		
 			CIGARVariants = amplicon_denoising.CIGARVariants_Bfilter,
 			ASVTable = amplicon_denoising.ASVTable,
