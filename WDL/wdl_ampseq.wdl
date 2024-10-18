@@ -457,7 +457,7 @@ task amplicon_denoising {
 	# [TODO: Fix reliance on specific suffixes]
 	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
 	for file in fq_dir/*~{pattern_rv}; do
-		new_file="${file%~{pattern_rv}}_L001_R1_001.fastq.gz"
+		new_file="${file%~{pattern_rv}}_L001_R2_001.fastq.gz"
 
 		if [[ "$file" != "$new_file" ]]; then
 			mv -- "$file" "$new_file"
