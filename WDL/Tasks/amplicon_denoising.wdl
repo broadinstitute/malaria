@@ -21,6 +21,7 @@ task amplicon_denoising {
 	String pattern_rv = configs["pattern_rv"]
 
 	command <<<
+	export TMPDIR=tmp
 	set -euxo pipefail
 	cat ~{config_json}
 
@@ -41,14 +42,18 @@ task amplicon_denoising {
 	# Match suggested pattern_fw baked into run_DADA2
 	# [TODO: Fix reliance on specific suffixes]
 	for file in fq_dir/*~{pattern_fw}; do
-		mv -- "$file" "${file%~{pattern_fw}}_L001_R1_001.fastq.gz"
+		if [[ "$file" != *_L001_R1_001.fastq.gz ]]; then
+			mv -- "$file" "${file%~{pattern_fw}}_L001_R1_001.fastq.gz"
+		fi
 	done
 
 	# Match suggested pattern_rv baked into run_DADA2
 	# [TODO: Fix reliance on specific suffixes]
 	gsutil -m cp -r ~{sep = ' ' fastq2s} fq_dir/
 	for file in fq_dir/*~{pattern_rv}; do
-		mv -- "$file" "${file%~{pattern_rv}}_L001_R2_001.fastq.gz"
+		if [[ "$file" != *_L001_R2_001.fastq.gz ]]; then
+			mv -- "$file" "${file%~{pattern_fw}}_L001_R2_001.fastq.gz"
+		fi
 	done
 	
 	gsutil cp ~{path_to_flist} references/samples.txt

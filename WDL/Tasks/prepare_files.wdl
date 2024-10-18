@@ -45,8 +45,8 @@ task prepare_files {
 	
 	File path_to_flist = write_lines(sample_ids)
 	
-	String forward_primers_file_refdir = "primers_fw.fasta" 
-	String reverse_primers_file_refdir = "primers_rv.fasta"
+	String forward_primers_file_refdir = "references/primers_fw.fasta" 
+	String reverse_primers_file_refdir = "references/primers_rv.fasta"
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
@@ -101,6 +101,7 @@ task prepare_files {
 		echo "File does not have a BOM. Skipping this step."
 	fi
 
+	mkdir references
 	mv ~{path_to_flist} samples.txt
 
 	###################################################################
