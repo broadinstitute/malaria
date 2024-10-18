@@ -51,7 +51,7 @@ task amplicon_denoising {
 
 	# Match suggested pattern_rv baked into run_DADA2
 	# [TODO: Fix reliance on specific suffixes]
-	gsutil -m cp -r ~{sep = ' ' path_to_r2} fq_dir/
+	gsutil -m cp -r ~{sep = ' ' fastq2s} fq_dir/
 	for file in fq_dir/*~{pattern_rv}; do
 		new_file="${file%~{pattern_rv}}_L001_R2_001.fastq.gz"
 
