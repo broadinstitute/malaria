@@ -396,9 +396,9 @@ task amplicon_no_demultiplexing {
 #	}
 #	runtime {
 #		cpu: 1
-#		memory: "15 GiB"
-#		disks: "local-disk 10 HDD"
-#		bootDiskSizeGb: 10
+#		memory: "30 GiB"
+#		disks: "local-disk 20 HDD"
+#		bootDiskSizeGb: 20
 #		preemptible: 3
 #		maxRetries: 1
 #		docker: 'jorgeamaya/ampseq'
@@ -513,9 +513,9 @@ task amplicon_denoising {
 
 	runtime {
 		cpu: 1  # [TODO: Request more cores and properly parallelize dada2]
-		memory: "15 GiB"
-		disks: "local-disk 10 HDD"
-		bootDiskSizeGb: 10
+		memory: "30 GiB"
+		disks: "local-disk 20 HDD"
+		bootDiskSizeGb: 20
 		preemptible: 0
 		maxRetries: 1
 		docker: 'jorgeamaya/ampseq:v1.0'
