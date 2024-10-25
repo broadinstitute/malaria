@@ -6,6 +6,7 @@ workflow ampseq {
 		Array[File] fastq1s
 		Array[File] fastq2s
 		Array[String] sample_ids
+		File? amplicon_info
 		File? forward_primers_file
 		File? reverse_primers_file
 		File reference_amplicons
@@ -34,6 +35,7 @@ workflow ampseq {
 			path_to_r1 = fastq1s,
 			path_to_r2 = fastq1s,
 			sample_id_list = sample_ids,
+			amplicon_info = amplicon_info,
 			pr1 = select_first([forward_primers_file, prepare_files.forward_primers_o]),
 			pr2 = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 			reference = reference_amplicons,
@@ -118,6 +120,7 @@ task prepare_files {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
 		Array[String] sample_id_list
+		File? amplicon_info
 		File? pr1
 		File? pr2
 		File? reference
