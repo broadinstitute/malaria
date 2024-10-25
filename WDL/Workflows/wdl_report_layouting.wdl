@@ -58,7 +58,7 @@ workflow report_layouting {
 
 	}
 	
-	call report_layouting_process_t.report_layouting_process {
+	call report_layouting_process_t.report_layouting_process as t_001_report_layouting_process {
 		input:
 		#	cigar_files = cigar_files,
 		#	metadata_files = metadata_files,
@@ -103,13 +103,13 @@ workflow report_layouting {
 	}
 
 	output {
-	#	File? intermediate_report_f = report_layouting_process.intermediate_report
-	#	File? drs_report_f = report_layouting_process.drs_report
-		File? drs_minimal_report_f = report_layouting_process.drs_minimal_report
-#		File? coi_report_f = report_layouting_process.coi_report
-#		File? ibd_connectivity_report_f = report_layouting_process.ibd_connectivity_report
-#		File? ibd_transmssion_report_f = report_layouting_process.ibd_transmssion_report
-#		File? performance_report_f = report_layouting_process.performance_report
+	#	File? intermediate_report_f = t_001_report_layouting_process.intermediate_report
+	#	File? drs_report_f = t_001_report_layouting_process.drs_report
+		File? drs_minimal_report_f = t_001_report_layouting_process.drs_minimal_report
+#		File? coi_report_f = t_001_report_layouting_process.coi_report
+#		File? ibd_connectivity_report_f = t_001_report_layouting_process.ibd_connectivity_report
+#		File? ibd_transmssion_report_f = t_001_report_layouting_process.ibd_transmssion_report
+#		File? performance_report_f = t_001_report_layouting_process.performance_report
 	}
 }
 
