@@ -219,10 +219,10 @@ task prepare_files {
 
 	cut -f1,4,5 ~{amplicon_info} | tail -n +2 > amplicon_panel.bed
 
-	if [[ "~{reference_amplicons}" != '' ]]; then
+	if [[ "~{reference}" != '' ]]; then
 		echo "Amplicon reference file provided."
-		cp ~{reference_amplicons} reference.fasta
-	elif [[ "~{reference_amplicons}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		cp ~{reference} reference.fasta
+	elif [[ "~{reference}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
 		echo "Amplicon reference file not provided. Reference genome and amplicon panel info file provided."
 		echo "Creating amplicon reference file."
 		bedtools getfasta -fi ~{reference_genome} -bed amplicon_panel.bed -fo reference.fasta
