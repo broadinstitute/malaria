@@ -6,8 +6,8 @@ workflow ampseq {
 		Array[File] fastq1s
 		Array[File] fastq2s
 		Array[String] sample_ids
-		File forward_primers_file
-		File reverse_primers_file
+		File? forward_primers_file
+		File? reverse_primers_file
 		File reference_amplicons
 		File reference_genome
 
@@ -34,8 +34,8 @@ workflow ampseq {
 			path_to_r1 = fastq1s,
 			path_to_r2 = fastq1s,
 			sample_id_list = sample_ids,
-			pr1 = forward_primers_file,
-			pr2 = reverse_primers_file,
+			pr1 = select_first([forward_primers_file, prepare_files.forward_primers_o]),
+			pr2 = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 			reference = reference_amplicons,
 			reference2 = reference_amplicons_2,
 			path_to_snv = path_to_snv,
@@ -55,8 +55,8 @@ workflow ampseq {
 				path_to_flist = prepare_files.path_to_flist_o,
 				path_to_r1 = fastq1s,
 				path_to_r2 = fastq2s,
-				pr1 = forward_primers_file,
-				pr2 = reverse_primers_file,
+				pr1 = select_first([forward_primers_file, prepare_files.forward_primers_o]),
+				pr2 = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 				reference = prepare_files.reference_out,
 				reference2 = reference_amplicons_2,
 				path_to_snv = path_to_snv
@@ -84,8 +84,8 @@ workflow ampseq {
 			path_to_flist = prepare_files.path_to_flist_o,
 			path_to_r1 = fastq1s,
 			path_to_r2 = fastq2s,
-			pr1 = forward_primers_file,
-			pr2 = reverse_primers_file,
+			pr1 = select_first([forward_primers_file, prepare_files.forward_primers_o]),
+			pr2 = select_first([reverse_primers_file, prepare_files.reverse_primers_o]),
 			reference = prepare_files.reference_out,
 			reference2 = reference_amplicons_2,
 			run_id = run_id,
@@ -118,8 +118,8 @@ task prepare_files {
 		Array[File] path_to_r1
 		Array[File] path_to_r2
 		Array[String] sample_id_list
-		File pr1
-		File pr2
+		File? pr1
+		File? pr2
 		File? reference
 		File? reference2
 		File? path_to_snv
@@ -155,8 +155,8 @@ task prepare_files {
 		String adapter = "None"
 	}
 	File path_to_flist = write_lines(sample_id_list)
-	String pr1_refdir = "references/" + basename(pr1)
-	String pr2_refdir = "references/" + basename(pr2)
+	String pr1_refdir = "references/primers_fw.fasta"
+	String pr2_refdir = "references/primers_rv.fasta"
 
 	Map[String, String] in_map = {
 		"path_to_fq": "fq_dir",
@@ -214,16 +214,58 @@ task prepare_files {
 	# Make reference fasta file if reference not provided by user     #
 	###################################################################
 
-	if [[ "~{reference}" != '' ]]; then
-		echo "Reference file provided."
-		cp ~{reference} reference.fasta
-	elif [[ "~{reference}" == '' && "~{reference_genome}" != '' && "~{panel_bedfile}" != '' ]]; then
-		echo "Reference file not provided."
-		echo "Reference genome and panel's bed file provided."
-		echo "Creating reference file"
-		bedtools getfasta -fi ~{reference_genome} -bed ~{panel_bedfile} -fo reference.fasta
+	cut -f1,4,5 ~{amplicon_info} | tail -n +2 > amplicon_panel.bed
+
+	if [[ "~{reference_amplicons}" != '' ]]; then
+		echo "Amplicon reference file provided."
+		cp ~{reference_amplicons} reference.fasta
+	elif [[ "~{reference_amplicons}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		echo "Amplicon reference file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating amplicon reference file."
+		bedtools getfasta -fi ~{reference_genome} -bed amplicon_panel.bed -fo reference.fasta
+		echo "Created amplicon sequence file."
 	else
-		echo "Neither reference file provided nor reference genome and panel's bed file provided."
+		echo "Neither reference file provided nor reference genome and amplicon panel info file provided."
+		echo "Please provide any of these files to run the pipeline."
+	fi
+
+	###################################################################
+	# Make forward and reverse primer files from amplicon_info        #
+	###################################################################
+
+	if [[ "~{pr1}" != '' ]]; then
+		echo "Forward primers file provided."
+		cp ~{pr1} primers_fw.fasta
+	elif [[ "~{pr1}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		echo "Forward primers file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating forward primers file."
+
+		# Create forward primer fasta from amplicon_info
+		awk -F'\t' '{print $1 "\t" $2 "\t" $4-1}' ~{amplicon_info} | tail -n +2 > primers_fw.bed
+		bedtools getfasta -fo primers_fw.fasta -fi ~{reference_genome} -bed primers_fw.bed
+		
+		echo "Created forward primers file."
+		rm primers_fw.bed
+	else
+		echo "Neither forward primers file provided nor reference genome and amplicon panel info file provided."
+		echo "Please provide any of these files to run the pipeline."
+	fi
+
+	if [[ "~{pr2}" != '' ]]; then
+		echo "Reverse primers file provided."
+		cp ~{pr2} primers_rv.fasta
+	elif [[ "~{pr2}" == '' && "~{reference_genome}" != '' && "~{amplicon_info}" != '' ]]; then
+		echo "Reverse primers file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating reverse primers file."
+
+		# Create reverse primer fasta from amplicon_info
+		sed 's/\r//' ~{amplicon_info} | awk -F"\t" '{print $1 "\t" $5 "\t" $3 "\t\t\t-"}' | tail -n +2 > primers_rv.bed
+		bedtools getfasta -fo primers_rv.fasta -fi ~{reference_genome} -bed primers_rv.bed
+		
+		echo "Created reverse primers file."
+		rm primers_rv.bed
+	else
+		echo "Neither reverse primers file provided nor reference genome and amplicon panel info file provided."
 		echo "Please provide any of these files to run the pipeline."
 	fi
 
@@ -260,6 +302,9 @@ task prepare_files {
 		File config_json_out = "config_json.json"
 		File path_to_flist_o = "samples.txt"
 		File reference_out = "reference.fasta"
+
+		File? forward_primers_o = "primers_fw.fasta"
+		File? reverse_primers_o = "primers_rv.fasta"
 	}
 
 	runtime {
