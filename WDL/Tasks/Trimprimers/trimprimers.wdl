@@ -14,22 +14,33 @@ task trimprimers {
         export TMPDIR=tmp
         set -euxo pipefail
 
-        echo "Removing primers"
         mkdir Results
 
+        ################################################################### 
+        # Trim primers from the reads using cutadapt                      #
+        ################################################################### 
+        echo "Removing primers"
+
+        echo "Primer files ~{forward_primers_file} and ~{reverse_primers_file}"
+        echo "Removing primers from ~{trimmed_fastq1} and ~{trimmed_fastq2}"
+
+        # Setting cores to 0 to use all available cores
         cutadapt -g file:~{forward_primers_file} \
             -G file:~{reverse_primers_file} \
-            -o Results/${sample}_mixed_op_1.fq.gz \
-            -p Results/${sample}_mixed_op_2.fq.gz \
+            -o Results/~{basename}_mixed_op_1.fq.gz \
+            -p Results/~{basename}_mixed_op_2.fq.gz \
             --pair-adapters --action=trim \
             --discard-untrimmed \
-            -j 0 \  # setting cores to 0 to use all available cores
-            ~{trimmed_fastq1} ~{trimmed_fastq2}
+            -j 0 \
+            "~{trimmed_fastq1}" "~{trimmed_fastq2}"
+
+        echo "Primer removal done"
 
     >>>
+
     output {
-        File fastq1_no_primers = "Results/~{basename}_mixed_op_1.fq.gz"
-        File fastq2_no_primers = "Results/~{basename}_mixed_op_2.fq.gz"
+        File fastq1_no_primers_o = "Results/~{basename}_mixed_op_1.fq.gz"
+        File fastq2_no_primers_o = "Results/~{basename}_mixed_op_2.fq.gz"
     }
     runtime {
         cpu: 4

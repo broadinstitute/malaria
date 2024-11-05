@@ -1,42 +1,12 @@
 """
 Align ASVs to target amplicon reference and report variants as CIGAR strings
 """
-import argparse
-import sys
 import os
+import sys
 import subprocess
 import re
 
 from Bio import SeqIO, AlignIO
-
-# parse amplicon dust mask info
-def parse_dustmasker(mask_info):
-	"""
-	Parse DUST accloc format mask info
-	Description:
-	This function parses DUST accloc format mask information from a file and organizes it into a dictionary. It extracts gene names, start positions, and end positions from the input file and constructs a dictionary where each gene is associated with a set of positions that are masked.
-
-	Parameters:
-	mask_info (str): The file path to the DUST accloc format mask information file.
-Returns:
-	mask (dict): A dictionary containing the parsed mask information. The keys are gene names, and the values are sets of positions that are masked for each gene.
-	"""
-	if not mask_info:
-		return
-	mask = {}
-	with open(mask_info) as f:
-		for line in f:
-			line = line.strip().split("\t")
-			gene = line[0].split(":")[0][1:]
-			if gene not in mask:
-				mask[gene] = set()
-			start = int(line[1])+1 # mask info is 0-based, but we want 1-based
-			end = int(line[2])+2 # +1 for 1-based and +1 to include last pos in range
-			mask[gene].update(list(range(start, end))) # add all pos in between start and end
-	if not mask:
-		print("ERROR: No mask data loaded! Is the file the correct format?")
-		sys.exit(1)
-	return mask
 
 # parse amplicon database
 def parse_amp_db(fasta_file):
@@ -480,7 +450,33 @@ def get_zero_reads_samples(file, out):
 				w.write(f"{num_samp_zero_reads}\t{sample}\n")
 		return True
 
-			
-
-
-
+#TO DELETE? THIS MASK CURRENTLY NOT BEING USED. DISCUSS WITH UCSF TEAM
+# parse amplicon dust mask info
+#def parse_dustmasker(mask_info):
+#	"""
+#	Parse DUST accloc format mask info
+#	Description:
+#	This function parses DUST accloc format mask information from a file and organizes it into a dictionary. It extracts gene names, start positions, and end positions from the input file and constructs a dictionary where each gene is associated with a set of positions that are masked.
+#
+#	Parameters:
+#	mask_info (str): The file path to the DUST accloc format mask information file.
+#Returns:
+#	mask (dict): A dictionary containing the parsed mask information. The keys are gene names, and the values are sets of positions that are masked for each gene.
+#	"""
+#	if not mask_info:
+#		return
+#	mask = {}
+#	with open(mask_info) as f:
+#		for line in f:
+#			line = line.strip().split("\t")
+#			gene = line[0].split(":")[0][1:]
+#			if gene not in mask:
+#				mask[gene] = set()
+#			start = int(line[1])+1 # mask info is 0-based, but we want 1-based
+#			end = int(line[2])+2 # +1 for 1-based and +1 to include last pos in range
+#			mask[gene].update(list(range(start, end))) # add all pos in between start and end
+#	if not mask:
+#		print("ERROR: No mask data loaded! Is the file the correct format?")
+#		sys.exit(1)
+#	return mask
+#

@@ -4,7 +4,7 @@ task asv_filtering {
 	input {
 		String out_prefix 
 		File? panel_bedfile
-		File? reference
+		File? reference_amplicons
 		File? markersTable
 		File reference_genome
 		String? ampseq_export_format = 'excel'
@@ -19,8 +19,8 @@ task asv_filtering {
 		# Results of post-processing and CIGAR conversion
 		File CIGARVariants
 		File ASVTable
-		File ASV_to_CIGAR
 		File ASVSeqs
+		File ASV_to_CIGAR
 		File ZeroReadsSampleList
 
 		# MHap ASV filtering thresholds 
@@ -40,14 +40,14 @@ task asv_filtering {
 		Float? locus_ampl_rate = 0.3                                                             # Minimum proportion of amplified samples at a locus required to keep a locus
 	}
 
-	File ref_for_markers = select_first([panel_bedfile, reference])
+	File ref_for_markers = select_first([panel_bedfile, reference_amplicons])
 	###########################################
 	# MHap - Define appropriate directories
 	String wd = "Results/"
-	String fd = "/Code/MHap"
+	String fd = "/Code/"
 	String rd = "references/"
 	String ref_genome_base = basename(reference_genome)
-	String ref_base = if defined(reference) then basename(select_first([reference])) else ""
+	String ref_base = if defined(reference_amplicons) then basename(select_first([reference_amplicons])) else ""
 	# The directories below are subdirectories of "wd" (from MHap specs)
 	String cigar_variants_dir = "cigar_variants/"
 	String asv_table_dir = "asv_tables/"
@@ -57,6 +57,7 @@ task asv_filtering {
 
 	###########################################
 	command <<<
+		export TMPDIR=tmp
 		set -euxo pipefail
 
 		# Create directories - required for MHap script
@@ -69,7 +70,7 @@ task asv_filtering {
 		mkdir -p references/
 
 		# Copy correct files to proper directories - required for MHap script
-		gsutil cp ~{reference} references/
+		gsutil cp ~{reference_amplicons} references/
 		gsutil cp ~{reference_genome} references/
 		~{"gsutil cp " + panel_bedfile + " references/"}
 		gsutil cp ~{sample_metadata} Results/metadata.csv
@@ -93,8 +94,8 @@ task asv_filtering {
 
 		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
-		find /cromwell_root -type f
-		ls -l1 /cromwell_root
+		#find /cromwell_root -type f
+		#ls -l1 /cromwell_root
 		root_dir=$(pwd)
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
@@ -138,7 +139,7 @@ task asv_filtering {
 	
 	output {
 		File markersTable_o = "references/markersTable.csv"
-		File ampseq_object = "Results/~{out_prefix}.xlsx"
+		File ampseq_object_o = "Results/~{out_prefix}.xlsx"
 	}
 	runtime {
 		cpu: 1
@@ -146,7 +147,7 @@ task asv_filtering {
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3 
-		maxRetries: 1
-		docker: 'jorgeamaya/ampseq:latest'
+		maxRetries: 0
+		docker: 'jorgeamaya/asvfilters:latest'
 	}
 }

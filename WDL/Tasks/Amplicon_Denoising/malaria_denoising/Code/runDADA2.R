@@ -31,21 +31,25 @@ if (!require("viridisLite")) {
   library("viridis")
 }
 
-qprofile <- function(fastq, work_dir) {
-  # Plot Quality profiles before filtering
-  fastq_name = sub("\\.fq\\.gz$", "", basename(fastq))
-  pdf(paste0(work_dir,"/QProfile/", fastq_name, ".pdf"))
-  try(print(plotQualityProfile(fastq)), silent = TRUE)
-  dev.off()
-}
+#qprofile <- function(fastq, work_dir) {
+#  # Plot Quality profiles before filtering
+#  fastq_name = sub("\\.fq\\.gz$", "", basename(fastq))
+#  pdf(paste0(work_dir,"/QProfile/", fastq_name, ".pdf"))
+#  try(print(plotQualityProfile(fastq)), silent = TRUE)
+#  dev.off()
+#}
 
 # Custom filtering, denoising parameters (if not default) can be provided as a separate config file?
 parser <- ArgumentParser()
-parser$add_argument("-p", "--path_to_meta", help="Path to input meta file listing fastqs (required)")
-parser$add_argument("-r", "--path_to_data_repo", help="Path to original fastq files (required)")
-parser$add_argument("-b", "--path_to_flist", help="The path to a one column file with the sample_id of the samples in the experiment (required)")
+parser$add_argument("-b", "--sample_ids", nargs="+", help="Samples names")
+parser$add_argument("-f1", "--orig_f", nargs="+", help="Forward fastq files before any processing (required)")
+parser$add_argument("-f2", "--orig_r", nargs="+", help="Reverse fastq files before any processing (required)")
+parser$add_argument("-p1", "--fnFs", nargs="+", help="Forward fastq files after primer removal (required)")
+parser$add_argument("-p2", "--fnRs", nargs="+", help="Reverse fastq files after primer removal (required)")
+parser$add_argument("-a1", "--adap_f", nargs="+", help="Forward fastq files after adaptor removal (required)")
+parser$add_argument("-a2", "--adap_r", nargs="+", help="Reverse fastq files after adaptor removal (required)")
 parser$add_argument("-c", "--class", help="Class specifying 'parasite' or 'vector' (required if '--default' is specified)")
-parser$add_argument("-d", "--dir", help="Working directory path for writing all dada2 output files")
+parser$add_argument("-d", "--work_dir", help="Working directory path for writing all dada2 output files")
 parser$add_argument("-o", "--output_filename", help="output tab-separated filename (required)")
 parser$add_argument("-s", "--save_run", help="save Run as R workspace image")
 parser$add_argument("-ee", "--maxEE", help="Maximum expected errors for filtering forward and reverse read")
@@ -60,37 +64,17 @@ parser$add_argument("-mM", "--maxMismatch", type="integer", help="Specify the ma
 parser$add_argument("--bimera", action='store_true', help="Optionally output list of sequences identified as bimeras")
 args <- parser$parse_args()
 
-#work_dir = '/Users/jorgeamaya/Desktop/amplicon_decontamination_pipeline/Results/DADA2_OP'
-#path_to_meta = '/Users/jorgeamaya/Desktop/amplicon_decontamination_pipeline/Results/PrimerRem/mixed_op_prim_meta.tsv'
-#output_filename = '/Users/jorgeamaya/Desktop/amplicon_decontamination_pipeline/Results/DADA2_OP/seqtab.tsv'
-#path_to_data_repo = '/Users/jorgeamaya/Desktop/Broad_Test/Data_Repo_iSeq/S1_to_S96'
-#path_to_flist = '/Users/jorgeamaya/Desktop/amplicon_decontamination_pipeline/Data/experiments7c.csv'
-
-#matchIDs <- '0'
-#maxEE <- '5,5'
-#trimRight <- '0,0'
-#minLen <- '30'
-#truncQ <- '5,5'
-#max_consist <- '10'
-#omega_a <- '1e-120'
-#class = 'parasite'
-#justConcatenate <- '0'
-#maxMismatch ='0'
-#bimera = TRUE
-#save_run = "dada2.RData"
+########################################
+# 	PARSE PARAMETERS               #
+########################################
 
 # Universal parameters
-path_to_meta = args$path_to_meta
-path_to_data_repo = args$path_to_data_repo
-path_to_flist = args$path_to_flist
-work_dir <- args$dir
+sample_ids = unlist(strsplit(args$sample_ids, " ")) 
+work_dir = args$work_dir
 output_filename = args$output_filename
 save_run = args$save_run
-
-# obtain/initialize Parameters
-# (Universal) Parameters
-randomize=TRUE
-selfConsist=TRUE
+randomize = TRUE
+selfConsist = TRUE
 filter = TRUE
 matchIDs <- args$matchIDs
 class = args$class
@@ -108,14 +92,8 @@ truncQ <- args$truncQ
 max_consist <- args$max_consist
 omega_a <- args$omega_a
 
-if (file.exists(path_to_meta)) {
-  metafile <- fread(path_to_meta, sep = "\t", header=FALSE)
-  sample.names <- metafile$V1
-  fnFs <- metafile$V2
-  fnRs <- metafile$V3
-} else {
-  stop(paste("metafile",path_to_meta,"not found!"))
-}
+fnFs <- unlist(strsplit(args$fnFs, " "))
+fnRs <- unlist(strsplit(args$fnRs, " "))
 
 if (is.null(matchIDs)||matchIDs == '') {
   matchIDs = TRUE
@@ -206,7 +184,6 @@ if (class == "parasite") {
   stop("Please provide valid option for the '--class' argument")
 }
 
-#Output parameters
 if (dirname(output_filename) != ".") {
   output_filename <- output_filename
   } else {
@@ -215,50 +192,51 @@ if (dirname(output_filename) != ".") {
 
 #Datatable to summarize parmeters
 parameter_df <- data.frame(maxEE=maxEE,
-		trimRight=trimRight,
-  	minLen=minLen,
-		truncQ=truncQ,
-  	matchIDs=matchIDs,
-		max_consist=max_consist,
-		randomize=randomize,
-		selfConsist=selfConsist,
-		OMEGA_A=omega_a,
-  	justConcatenate=justConcatenate)
+	trimRight=trimRight,
+	minLen=minLen,
+	truncQ=truncQ,
+	matchIDs=matchIDs,
+	max_consist=max_consist,
+	randomize=randomize,
+	selfConsist=selfConsist,
+	OMEGA_A=omega_a,
+	justConcatenate=justConcatenate)
 
 print(parameter_df)
+
+########################################
+#                DADA2                 #
+########################################
 
 # List files and sample names
 if (length(fnFs) == 0 || length(fnFs) != length(fnRs)) {
 	stop("fastq files incomplete or not found")
 }
 
+#TO DELETE? THESE PLOTS ARE CURRENTLY NOT BEING USED. DISCUSS WITH UCSF TEAM
 # Plot Quality profiles before filtering
-lapply(fnFs, qprofile, work_dir)
-lapply(fnRs, qprofile, work_dir)
-
-########################################
-#                DADA2                 #
-########################################
+#lapply(fnFs, qprofile, work_dir)
+#lapply(fnRs, qprofile, work_dir)
 
 # Create paths for filtered fastq
-filtFs <- file.path(work_dir, "filtered", paste0(sample.names, "_filt_R1.fastq.gz"))
-filtRs <- file.path(work_dir, "filtered", paste0(sample.names, "_filt_R2.fastq.gz"))
+filtFs <- file.path(work_dir, "filtered", paste0(sample_ids, "_filt_R1.fastq.gz"))
+filtRs <- file.path(work_dir, "filtered", paste0(sample_ids, "_filt_R2.fastq.gz"))
 
-names(filtFs) <- sample.names
-names(filtRs) <- sample.names
+names(filtFs) <- sample_ids
+names(filtRs) <- sample_ids
 
-# Filter read
+## Filter read
 if (filter == TRUE) {
 	print("filtering samples...")
-  out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
-            maxN=0, maxEE=maxEE, trimRight=trimRight, truncQ=truncQ, minLen=minLen,
-            rm.phix=TRUE, compress=TRUE, multithread=FALSE, verbose=TRUE,
-            matchIDs=matchIDs)
+	out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
+	maxN=0, maxEE=maxEE, trimRight=trimRight, truncQ=truncQ, minLen=minLen,
+	rm.phix=TRUE, compress=TRUE, multithread=TRUE, verbose=TRUE,
+	matchIDs=matchIDs)
 	print("filtering done!")
 } else {
 	print("skipping filter except mandatory removal of N's... ")
 	out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncQ=c(0,0), maxN=0, rm.phix=TRUE,
-            compress=TRUE, multithread=FALSE, verbose=TRUE, matchIDs=matchIDs)
+	compress=TRUE, multithread=TRUE, verbose=TRUE, matchIDs=matchIDs)
 }
 
 # Report and Correct for samples with zero reads after filter
@@ -267,31 +245,32 @@ zeros = sub("^([^_]+_[^_]+)_.*", "\\1", zeros)
 write.table(zeros, paste0(work_dir, "/zeroReadSamples.txt"), sep = "\t", quote = FALSE)
 filtFs <- filtFs[out[,2] != 0]
 filtRs <- filtRs[out[,2] != 0]
-sample.names <- sample.names[out[,2] != 0]
+sample_ids <- sample_ids[out[,2] != 0]
 
 # Update Out table
 out <- out[(out[,2] != 0),]
 
 #Compute the error model
 print("starting error model learning for forward reads...")
-errF <- learnErrors(filtFs, multithread=FALSE, verbose=2, randomize=randomize, MAX_CONSIST=max_consist)
+errF <- learnErrors(filtFs, multithread=TRUE, verbose=2, randomize=randomize, MAX_CONSIST=max_consist)
 print("starting error model learning for reverse reads...")
-errR <- learnErrors(filtRs, multithread=FALSE, verbose=2, randomize=randomize, MAX_CONSIST=max_consist)
+errR <- learnErrors(filtRs, multithread=TRUE, verbose=2, randomize=randomize, MAX_CONSIST=max_consist)
 
+#TO DELETE? THESE PLOTS ARE CURRENTLY NOT BEING USED. DISCUSS WITH UCSF TEAM
 #Plot the Errors
-pdf(paste0(work_dir,"/errF.pdf"))
-try(print(plotErrors(errF, nominalQ=TRUE)), silent = TRUE)
-dev.off()
-pdf(paste0(work_dir,"/errR.pdf"))
-try(print(plotErrors(errR, nominalQ=TRUE)), silent = TRUE)
-dev.off()
+#pdf(paste0(work_dir,"/errF.pdf"))
+#try(print(plotErrors(errF, nominalQ=TRUE)), silent = TRUE)
+#dev.off()
+#pdf(paste0(work_dir,"/errR.pdf"))
+#try(print(plotErrors(errR, nominalQ=TRUE)), silent = TRUE)
+#dev.off()
 
 #DeReplicate the reads
 derepFs <- derepFastq(filtFs, verbose = TRUE)
 derepRs <- derepFastq(filtRs, verbose = TRUE)
 # Name the derep-class objects by the sample names
-names(derepFs) <- sample.names
-names(derepRs) <- sample.names
+names(derepFs) <- sample_ids
+names(derepRs) <- sample_ids
 
 #Run core DADA2 algorithm
 print("starting dada2 for forward reads...")
@@ -327,20 +306,18 @@ if(bimera) {
 }
 
 # Track reads through the pipeline
+print("tracking reads through the pipeline...")
 getN <- function(x) sum(getUniques(x))
 track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
 # If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
-
 colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
-rownames(track) <- sample.names
+rownames(track) <- sample_ids
 
 #Get reads from original files
 reads_report = data.frame()
 count_reads <- function(file_path) {
-  # Open the gzipped fastq file
-  gz_conn <- gzfile(file_path, "r")
-  
-  # Initialize a variable to count the reads
+
+  gz_conn <- gzfile(file_path, "r")  
   read_count <- 0
   
   # Iterate over the lines in the file
@@ -350,39 +327,24 @@ count_reads <- function(file_path) {
     }
   }
   
-  # Close the connection to the file
-  close(gz_conn)
-  
-  # Return the total number of reads
+  close(gz_conn)  
   return(read_count)
 }
 
+reads_report <- data.frame()
 for(sample.name in names(track[,1])) {
-  orig_f <- file.path(path_to_data_repo, paste0(sample.name, "_L001_R1_001.fastq.gz"))
-  orig_r <- file.path(path_to_data_repo, paste0(sample.name, "_L001_R2_001.fastq.gz"))
-  
+  orig_f <- unlist(strsplit(args$orig_f, " "))[grep(sample.name, unlist(strsplit(args$orig_f, " ")))]
+  orig_r <- unlist(strsplit(args$orig_r, " "))[grep(sample.name, unlist(strsplit(args$orig_r, " ")))]
   orig_f_reads = count_reads(orig_f)
   orig_r_reads = count_reads(orig_r)
-  
-  adap_f <- file.path(dirname(work_dir), "AdaptorRem", paste0(sample.name, "_val_1.fq.gz"))
-  adap_r <- file.path(dirname(work_dir), "AdaptorRem", paste0(sample.name, "_val_2.fq.gz"))
-  
+
+  adap_f <- unlist(strsplit(args$adap_f, " "))[grep(sample.name, unlist(strsplit(args$adap_f, " ")))]
+  adap_r <- unlist(strsplit(args$adap_r, " "))[grep(sample.name, unlist(strsplit(args$adap_r, " ")))]  
   adap_f_reads = count_reads(adap_f)
   adap_r_reads = count_reads(adap_r)
-  
-  if (endsWith(path_to_meta, "primrem_meta.tsv")) {
-    prim_f <- file.path(dirname(work_dir), "PrimerRem", paste0(sample.name, "_prim_1.fq.gz"))
-    prim_r <- file.path(dirname(work_dir), "PrimerRem", paste0(sample.name, "_prim_2.fq.gz"))
-  } else if (endsWith(path_to_meta, "mixed_nop_prim_meta.tsv")) {
-    prim_f <- file.path(dirname(work_dir), "PrimerRem", paste0(sample.name, "_mixed_nop_1.fq.gz"))
-    prim_r <- file.path(dirname(work_dir), "PrimerRem", paste0(sample.name, "_mixed_nop_2.fq.gz"))
-  } else if (endsWith(path_to_meta, "mixed_op_prim_meta.tsv")) {
-    prim_f <- file.path(dirname(work_dir), "PrimerRem", paste0(sample.name, "_mixed_op_1.fq.gz"))
-    prim_r <- file.path(dirname(work_dir), "PrimerRem", paste0(sample.name, "_mixed_op_2.fq.gz"))
-  } else {
-    print("String does not match any specified pattern")
-  }
-  
+
+  prim_f <- unlist(strsplit(args$fnFs, " "))[grep(sample.name, unlist(strsplit(args$fnFs, " ")))]
+  prim_r <- unlist(strsplit(args$fnRs, " "))[grep(sample.name, unlist(strsplit(args$fnRs, " ")))]  
   prim_f_reads = count_reads(prim_f)
   prim_r_reads = count_reads(prim_r)
   
@@ -396,8 +358,8 @@ for(sample.name in names(track[,1])) {
                                   prim_r_reads))
 }
 
-stopifnot(names(track[,1]) == reads_report$sample.name)
-rownames(reads_report) = reads_report$sample.name
+stopifnot(names(track[,1]) == reads_report$sample_ids)
+rownames(reads_report) = reads_report$sample_ids
 reads_report = data.matrix(reads_report)
 
 track = cbind(track, data.matrix(reads_report))
@@ -413,10 +375,10 @@ sink(paste0(work_dir,"/reads_summary.txt"))
 print(track)
 sink()
 
-track_plot = as.data.frame(track[, c("merged", "merged_discarded", "filtered_discarded", "primer_discarded", "adaptor_discarded", "original_discarded")])
-
+#TO DELETE? THESE PLOTS ARE CURRENTLY NOT BEING USED. DISCUSS WITH UCSF TEAM
 #Subset the table to the desired experiments
-samples_order = read.csv(path_to_flist, sep = ",", header = FALSE)$V1
+#samples_order = read.csv(path_to_flist, sep = ",", header = FALSE)$V1
+#track_plot = as.data.frame(track[, c("merged", "merged_discarded", "filtered_discarded", "primer_discarded", "adaptor_discarded", "original_discarded")])
 #track_plot = track_plot[row.names(track_plot) %in% samples_order,] 
 #
 #track_plot <- track_plot[order(-track_plot[,1], 

@@ -71,13 +71,13 @@ parser$add_argument("-s", "--seqtab", help="Path to input")
 parser$add_argument("-b","--bimera", help="ASV File with identifed bimeras")
 parser$add_argument("-snv", "--snv_filter", help="Path to file for filtering ASVs based on edit distance")
 parser$add_argument("--indel_filter", help="Specify proportion of ASV length (between 0 and 1) to target length for filtering based on indels")
-parser$add_argument("-o", "--output", help="Path to output file")
+parser$add_argument("-o", "--output", help="Path to output directory")
 parser$add_argument("--fasta", action='store_true', help="Write ASV sequences separately into fasta file")
 #Variable arguments
 parser$add_argument("-noref", "--no_reference", action='store_true', help="specify no reference provided")
 parser$add_argument("-ref", "--reference_amplicons", help="Path to reference fasta sequences")
 parser$add_argument("--strain", default="3D7", help="Name of Specific strain to map to. Defaults to 3D7")
-parser$add_argument("-ref2", "--reference2", help="Path to reference2 fasta sequences")
+parser$add_argument("-ref2", "--reference_amplicons_2", help="Path to reference2 fasta sequences")
 parser$add_argument("--strain2", help="Name of second strain if mapping to 2 different strains")
 
 args <- parser$parse_args()
@@ -87,31 +87,18 @@ args <- parser$parse_args()
 ########################################
 
 # PostProc Begin
-output <- args$output
-seqfile <- args$seqtab
-path_to_refseq <- args$reference_amplicons
-strains <- args$strain
+output = args$output
+seqtab = args$seqtab
+reference_amplicons = args$reference_amplicons
+strains = args$strain
 parallel = args$parallel  #Add parallel option later
-path_to_refseq2 = args$reference2
+reference_amplicons_2 = args$reference_amplicons_2
 strain2 = args$strain2
 no_reference = args$no_reference
-filter_file = args$snv_filter
+snv_filter = args$snv_filter
 indel_filter = args$indel_filter
 bimera = args$bimera
 fasta = args$fasta
-output = args$output
-
-# seqfile = '/Users/jorgeamaya/Desktop/Terra_Development/amplicon_decontamination_pipeline/Results/seqtab.tsv'
-# bimera = '/Users/jorgeamaya/Desktop/Terra_Development/amplicon_decontamination_pipeline/Results/ASVBimeras.txt'
-# filter_file = "/Users/jorgeamaya/Desktop/Terra_Development/amplicon_decontamination_pipeline/Data/snv_filters.txt"
-# output = '/Users/jorgeamaya/Desktop/Terra_Development/amplicon_decontamination_pipeline/Results/PostProc_DADA2/ASVTable.txt'
-# path_to_refseq = '/Users/jorgeamaya/Desktop/Terra_Development/amplicon_decontamination_pipeline/Data/pf3d7_ref_updated_v4.fasta'
-# path_to_refseq2 = '/Users/jorgeamaya/Desktop/Terra_Development/amplicon_decontamination_pipeline/Data/pfdd2_ref_updated_v3.fasta'
-# strains = '3D7'
-# strain2 = 'DD2'
-# no_reference = FALSE
-# indel_filter = '0.895'
-# fasta = TRUE
 
 #LOAD THE REFERENCES AND THE STRAINS
 if (!no_reference) {
@@ -125,15 +112,15 @@ if (!no_reference) {
     if (is.null(args$reference2) && is.null(args$strain2)) {
       stop("Reference genome (--reference2) and name of target strain (--strain) missing.")
     } else {
-      path_to_refseq <- c(path_to_refseq, path_to_refseq2)
+      reference_amplicons <- c(reference_amplicons, reference_amplicons_2)
       strains <- c(strains, strain2)
     }
   }
 }
 
 #Produce the asvdf and seqs_df
-if (file.exists(seqfile)) {
-	seqtab <- as.matrix(fread(seqfile), rownames=1)
+if (file.exists(seqtab)) {
+	seqtab <- as.matrix(fread(seqtab), rownames=1)
 	seqs <- colnames(seqtab)
 	nsample=nrow(seqtab)
 	hapid <- paste0("ASV",1:length(seqs))
@@ -160,9 +147,9 @@ if (file.exists(seqfile)) {
 }
 
 if (!no_reference) {
-	for (p in 1:length(path_to_refseq)) {
+	for (p in 1:length(reference_amplicons)) {
 		# Alignment with RefSet
-		align_df <- seq_align(seqs_df = seqs_df, path_to_ref = path_to_refseq[p]) #This overlap will have to be modified to accomodate mixed_reads
+		align_df <- seq_align(seqs_df = seqs_df, path_to_ref = reference_amplicons[p]) #This overlap will have to be modified to accomodate mixed_reads
 		# Map True Set onto ASV summary table based on exact and inexact matches to true set
   		df <- align_df[,c(1,4,6,7)]
 		colnames(df) <- c("hapid", paste0("refid_", strains[p]), paste0("snv_dist_from_", strains[p]), paste0("indel_dist_from_", strains[p]))
@@ -173,8 +160,8 @@ if (!no_reference) {
 		asvdf$strain[snv_dist_l & indel_dist_l] <- as.character(strains[p]) #If a strain[p] has alredy being declared, this step will overwrite it.
 	}
   	#Filter against SNV filter
-	if (file.exists(filter_file)) {
-    	VariantCounts <- fread(filter_file)
+	if (file.exists(snv_filter)) {
+    	VariantCounts <- fread(snv_filter)
   		asvdf$snv_filter <- NA
 		# For Sliding edit distance and length based filter
   		for (i in 1:nrow(asvdf)) {
@@ -191,7 +178,7 @@ if (!no_reference) {
   			asvdf$snv_filter[i] <- sfil #The haplotype is way too distant from the target ASV, even after allowing the SNV filter changes.
     		}
   	} else {
-  		warning(paste("File",filter_file,"not found!. Skipping SNV based filtering.."))
+  		warning(paste("File",snv_filter,"not found!. Skipping SNV based filtering.."))
   	}
 
 	#Filter against indel criteria
@@ -207,7 +194,7 @@ if (!no_reference) {
   	}
     
 	asvdf$indel_filter <- NA
-	refseq <- toupper(sapply(read.fasta(path_to_refseq[1]), c2s))
+	refseq <- toupper(sapply(read.fasta(reference_amplicons[1]), c2s))
   	for (i in 1:nrow(asvdf)) {
   		haplen <- nchar(as.character(seqs_df$sequence[i]))
   		refid <- asvdf[i, paste0("refid_", strains[1])]
@@ -253,11 +240,11 @@ if (file.exists(bimera)) {
 #A table with the columns
 #"hapid", "haplength", "total_reads", "total_samples", "strain", "refid_3D7", "snv_dist_from_3D7", 
 #"indel_dist_from_3D7", "refid_DD2", "snv_dist_from_DD2", "indel_dist_from_DD2", "snv_filter", "indel_filter" 
-write.table(asvdf, file = output, sep = "\t", quote = FALSE, row.names = FALSE)
+write.table(asvdf, file = paste0(output, "/ASVTable.txt"), sep = "\t", quote = FALSE, row.names = FALSE)
 
 #A fasta file with the ASV with identifiers as ASV1, ASV2, ASV3, ...
 if (fasta) {
-	write.fasta(sapply(seqs, s2c), names = hapid, file.out = paste0(dirname(output),"/ASVSeqs.fasta"), nbchar = 600)
+	write.fasta(sapply(seqs, s2c), names = hapid, file.out = paste0(output, "/ASVSeqs.fasta"), nbchar = 600)
 }
 
 print("Leaving PostProc")

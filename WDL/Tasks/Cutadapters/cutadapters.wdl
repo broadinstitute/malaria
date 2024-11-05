@@ -4,33 +4,41 @@ task cutadapters {
     input {
         File fastq1
         File fastq2
-        Int trim_galore_qvalue
-        Int trim_galore_length
+        Int trim_galore_qvalue = 5
+        Int trim_galore_length = 20
     }
 
     # Get the basename of the fastq files without any fastq extensions:
-    String basename = basename(basename(basename(fastq1, ".fq.gz"), ".fastq"), ".fq")
+    # CORRECT THIS: ALL BASENAMES GET THE R1 VALUE, EVEN THE REVERSE READS FILES
+    String basename = basename(basename(basename(basename(fastq1, ".fq.gz"), ".fastq"), ".fq"), ".fastq.gz")
 
     command <<<
         export TMPDIR=tmp
         set -euxo pipefail
         
-        echo "Removing adapters"
         mkdir Results
+
+        ################################################################### 
+        # Trim adapters from the fastq files using TrimGalore             #
+        ################################################################### 
+        echo "Removing adapters"
         
         trim_galore --paired --gzip \
             --quality ~{trim_galore_qvalue} \
             --length ~{trim_galore_length} \
             --output_dir Results \
             --basename ~{basename} \
-            -j 4 \ 
-            ~{fastq1} ~{fastq2}
+            -j 4 \
+            "~{fastq1}" "~{fastq2}"
+
+        echo "Done removing adapters"
+
     >>>
 
     output {
         # Generate a list of trimmed forward and reverse files
-        File fastq1_noadapters = "Results/~{basename}_val_1.fq.gz"
-        File fastq2_noadapters = "Results/~{basename}_val_2.fq.gz"
+        File fastq1_noadapters_o = "Results/~{basename}_val_1.fq.gz"
+        File fastq2_noadapters_o = "Results/~{basename}_val_2.fq.gz"
     }
 
     runtime {

@@ -2,43 +2,78 @@ version 1.0
 
 task amplicon_denoising {
     input {
-        String Class                # Name of the column in the metadata file for sample class
-        Float maxEE                 # Maximum expected error rate
-        Int trimRight               # Number of bases to trim from the 3' end
-        Int minLen                  # Minimum length of reads to retain
-        Int truncQ                  # Quality threshold for truncating reads
-        Boolean matchIDs            # Whether to match IDs on fastqs
-        Int max_consist             # Maximum number of mismatches in overlap region
-        Float omegaA                # Alpha parameter for consensus quality score
-        Int justConcatenate         # Whether to just concatenate reads without merging
-        Int maxMismatch             # Maximum number of mismatches allowed during merging
-        String saveRdata            # Whether to save the intermediate R data files
-
+        Array[String] sample_ids
         Array[File] fastq1s
         Array[File] fastq2s
-        File path_to_flist
+        Array[File] adaptor_rem1s
+        Array[File] adaptor_rem2s
+        Array[File] primer_rem1s
+        Array[File] primer_rem2s
         File forward_primers_file
         File reverse_primers_file
-        File reference
-        File? reference2
-        File? path_to_snv
-        Array[File]? primer_rem
-        Array[File]? adaptor_rem
+        File reference_amplicons
+        File? reference_amplicons_2
         Array[String] run_id
+
+        #Variables for DADA2
+        String Class = "parasite" # Name of the column in the metadata file for sample class
+        String maxEE = "5,5" # Maximum expected error rate
+        String trimRight = "0,0" # Number of bases to trim from the 3' end
+        Int minLen = 30 # Minimum length of reads to retain
+        String truncQ = "5,5" # Quality threshold for truncating reads
+        String matchIDs = "0" # Whether to match IDs on fastqs
+        Int max_consist = 10 # Maximum number of mismatches in overlap region
+        Float omegaA = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 # Alpha parameter for consensus quality score
+        Int justConcatenate = 0 # Whether to just concatenate reads without merging
+        Int maxMismatch = 0 # Maximum number of mismatches allowed during merging
+        String saveRdata = "" # Whether to save the intermediate R data files
+
+        #Variables for post-processing
+        File? path_to_snv
+        String strain = "3D7"
+        String strain2 = "DD2"
+
+        #Variables for ASV to CIGAR table conversion
+        String min_reads = "0"
+        String min_samples = "0"
+        String max_snv_dist = "-1"
+        String max_indel_dist = "-1"
+        Boolean include_failed = false
+        Boolean exclude_bimeras = false
+        String polyN = "5"
     }
 
     command <<<
+        # FUTURE DEVELOPMENT: 
+        # 1 SOME FUNCTIONALITIES INSIDE RUNDADA2.R AND ASV_TO_CIGARTABLE.PY ARE NOT USED IN PIPELINE VERSION. CHECK IF THEY ARE NEEDED IN THE FUTURE.
         export TMPDIR=tmp
         set -euxo pipefail
 
-        # Many of these parameters are not defined in the current version of this branch.
-        # It seems like this was checked in and not validate.
-        Rscript ${path_to_program} \
-                    -p "~{path_to_meta}" \
-                    -r "~{path_to_fq}" \
-                    -b "~{path_to_flist}" \
-                    -d "~{res_dir}/~{subdir}" \
-                    -o "~{res_dir}/~{subdir}/seqtab.tsv" \
+        sample_ids_string=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+        fastq1s_string=$(IFS=" "; echo "~{sep=' ' fastq1s}")
+        fastq2s_string=$(IFS=" "; echo "~{sep=' ' fastq2s}")
+        adaptor_rem1s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem1s}")
+        adaptor_rem2s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem2s}")
+        primer_rem1s_string=$(IFS=" "; echo "~{sep=' ' primer_rem1s}")
+        primer_rem2s_string=$(IFS=" "; echo "~{sep=' ' primer_rem2s}")
+
+        mkdir -p Results
+
+        ################################################################### 
+        # Run DADA2 denoising                                             #
+        ################################################################### 
+        echo "Running DADA2 denoising..."
+
+        Rscript /Code/runDADA2.R \
+                    -b "${sample_ids_string}" \
+                    -f1 "${fastq1s_string}" \
+                    -f2 "${fastq2s_string}" \
+                    -p1 "${primer_rem1s_string}" \
+                    -p2 "${primer_rem2s_string}" \
+                    -a1 "${adaptor_rem1s_string}" \
+                    -a2 "${adaptor_rem2s_string}" \
+                    -d "Results" \
+                    -o "seqtab.tsv" \
                     -c "~{Class}" \
                     -ee "~{maxEE}" \
                     -tR "~{trimRight}" \
@@ -50,89 +85,68 @@ task amplicon_denoising {
                     -jC "~{justConcatenate}" \
                     -mM "~{maxMismatch}" \
                     -s "~{saveRdata}" \
-                    ${bimera}
+                    --bimera 
+
+        echo "DADA2 denoising complete."
 
         ###################################################################
-        # Copy files to the working directory and run the AmpSeq pipeline #
+        # Run post-processing                                             #
         ###################################################################
-        mkdir -p Results/
-        mkdir -p Results/PrimerRem
-        mkdir -p Results/AdaptorRem
-        mkdir -p Results/PostProc_DADA2
-        mkdir -p Results/ASV_to_CIGAR
-        mkdir -p Results/alignments
+        echo "Running post-processing..."
 
-        mkdir fq_dir
-        mkdir references
-        gsutil -m cp -r ~{sep = ' ' fastq1s} fq_dir/
+        Rscript /Code/postProc_dada2.R \
+                    -s "Results/seqtab.tsv" \
+                    -b "Results/ASVBimeras.txt" \
+                    $(if [[ -f "~{path_to_snv}" ]]; then echo "-snv ~{path_to_snv}"; else echo "-snv No_File"; fi) \
+                    --indel_filter "0.01" \
+                    -o "Results" \
+                    --fasta \
+                    $(if [[ -f "~{reference_amplicons}" ]]; then echo "--reference_amplicons ~{reference_amplicons} --strain ~{strain}"; else echo "-no_ref"; fi) \
+                    $(if [[ -f "~{reference_amplicons_2}" ]]; then echo "--reference_amplicons_2 ~{reference_amplicons_2} --strain2 ~{strain2}"; fi)
 
-        # Match suggested pattern_fw baked into run_DADA2
-        # [TODO: Fix reliance on specific suffixes]
-        for file in fq_dir/*~{pattern_fw}; do
-            mv -- "$file" "${file%~{pattern_fw}}_L001_R1_001.fastq.gz"
-        done
+        echo "Post-processing complete."
 
-        # Match suggested pattern_rv baked into run_DADA2
-        # [TODO: Fix reliance on specific suffixes]
-        gsutil -m cp -r ~{sep = ' ' fastq2s} fq_dir/
-        for file in fq_dir/*~{pattern_rv}; do
-            mv -- "$file" "${file%~{pattern_rv}}_L001_R2_001.fastq.gz"
-        done
-        
-        # TODO: Don't do this - just use the copies of the files that have been 
-        #       copied to this VM 
-        #       OR
-        #       create a `parameter_meta` section in this task and set these inputs 
-        #       as localization optional, and then use `gsutil storage cp to copy all
-        #       of these files. 
-        gsutil cp ~{path_to_flist} references/samples.txt
-        gsutil -m cp -r ~{forward_primers_file} references/
-        gsutil -m cp -r ~{reverse_primers_file} references/
-        gsutil -m cp -r ~{sep = ' ' primer_rem} Results/PrimerRem/
-        gsutil -m cp -r ~{sep = ' ' adaptor_rem} Results/AdaptorRem/
-        gsutil cp ~{reference} references/
-        gsutil cp ~{path_to_flist} references/samples.txt
-
-        ~{"gsutil cp " + reference2 + " references/reference2.fasta"}
-        ~{"gsutil cp " + path_to_snv + " references/snv_filter.tsv"}
-
-        if [ -e "Results/PrimerRem/mixed_nop_prim_meta.tsv" ]; then
-            echo "Demultiplex performed in the data. Some read pairs assumed to be too short to overlap and be merged."
-            python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2 --demultiplexed
-        else
-            echo "Demultiplex not performed in the data. Read pairs assumed to be long enough to overlap and be merged."
-            python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --dada2 
-        fi
-
-        # Run postproc_DADA2
-        echo "Running post processing of DADA2 results..."
-        python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --postproc_dada2
-
-        # Run ASV_to_CIGAR
+        ###################################################################
+        # Convert ASV to CIGAR tables                                     #
+        ###################################################################
         echo "Converting ASV to CIGAR tables..."
-        find . -type f
-        python /Code/Amplicon_TerraPipeline.py --config ~{config_json} --terra --asv_to_cigar
-        find . -type f
+
+        mkdir Results/Alignments
+        python /Code/ASV_to_CIGARtable.py \
+                    --reference_amplicons "~{reference_amplicons}" \
+                    --seqtab "Results/seqtab.tsv" \
+                    --ASVSeqs "Results/ASVSeqs.fasta" \
+                    --ASVTable "Results/ASVTable.txt" \
+                    --min_reads ~{min_reads} \
+                    --min_samples ~{min_samples} \
+                    --max_snv_dist ~{max_snv_dist} \
+                    --max_indel_dist ~{max_indel_dist} \
+                    --polyN ~{polyN} \
+                    $(if ~{include_failed}; then echo "--include_failed"; fi) \
+                    $(if ~{exclude_bimeras}; then echo "--exclude_bimeras"; fi) 
+
+        echo "Conversion ASV to CIGAR tables complete."
+
     >>>
 
     output {
-        File ASVBimeras = "Results/ASVBimeras.txt"
-        File CIGARVariants_Bfilter = "Results/CIGARVariants_Bfilter.out.tsv"
-        File ASV_to_CIGAR = "Results/ASV_to_CIGAR/ASV_to_CIGAR.out.txt"
-        File ZeroReadsSampleList = "Results/ASV_to_CIGAR/ZeroReadsSampleList.txt"
+        #File seqtab_o = "Results/seqtab.tsv"
+        File ASVBimeras_o = "Results/ASVBimeras.txt"
+        File ASVTable_o = "Results/ASVTable.txt"
+        File ASVSeqs_o = "Results/ASVSeqs.fasta"
+        File CIGARVariants_Bfilter_o = "Results/CIGARVariants_Bfilter.out.tsv"
+        File ASV_to_CIGAR_o = "Results/ASV_to_CIGAR.out.txt"
+        File ZeroReadsSampleList_o = "Results/ZeroReadsSampleList.txt"
 
-        File seqtab = "Results/seqtab.tsv"
-        File ASVTable = "Results/PostProc_DADA2/ASVTable.txt"
-        File ASVSeqs = "Results/PostProc_DADA2/ASVSeqs.fasta"
     }
 
     runtime {
-        cpu: 1
+        cpu: 4
         memory: "15 GiB"
         disks: "local-disk 10 HDD"
         bootDiskSizeGb: 10
-        preemptible: 0
-        maxRetries: 1
+        preemptible: 3
+        maxRetries: 0
         docker: 'jorgeamaya/ampseq:latest'
     }
 }

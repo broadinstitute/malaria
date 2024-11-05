@@ -3,9 +3,9 @@ version 1.0
 import "../Tasks/Prepare_Reference_Files/prepare_reference_files.wdl" as prepare_reference_files_t
 import "../Tasks/Contamination_Detection/contamination_detection.wdl" as contamination_detection_t
 import "../Tasks/Cutadapters/cutadapters.wdl" as cutadapters_t
-import "../Tasks/Trimprimers/trimprimers.wdl" as trimprimers_t
-import "../Tasks/Amplicon_Denoising/amplicon_denoising.wdl" as amplicon_denoising_t
-import "../Tasks/ASV_Filtering/asv_filtering.wdl" as asv_filtering_t
+#import "../Tasks/Trimprimers/trimprimers.wdl" as trimprimers_t
+#import "../Tasks/Amplicon_Denoising/amplicon_denoising.wdl" as amplicon_denoising_t
+#import "../Tasks/ASV_Filtering/asv_filtering.wdl" as asv_filtering_t
 
 #import "../Tasks/amplicon_demultiplexing.wdl" as amplicon_demultiplexing_t
 
@@ -31,8 +31,8 @@ workflow ampseq {
         File? barcodes_index
 
         # Parameters for ASV filtering
-        File sample_metadata
-        String out_prefix
+        #File sample_metadata
+        #String out_prefix
     }
     #FUTURE DEVELOPMENT
     # 1 CLEAN DOCKERFILES
@@ -56,13 +56,13 @@ workflow ampseq {
                 fastq2 = fastq2s[indx1]
         }
 
-        call trimprimers_t.trimprimers as t_003_trimprimers {
-            input:
-                trimmed_fastq1 = t_002_cutadapters.fastq1_noadapters_o,
-                trimmed_fastq2 = t_002_cutadapters.fastq2_noadapters_o,
-                forward_primers_file = select_first([forward_primers_file, t_001_prepare_reference_files.forward_primers_o]),
-                reverse_primers_file = select_first([reverse_primers_file, t_001_prepare_reference_files.reverse_primers_o])
-        }
+#        call trimprimers_t.trimprimers as t_003_trimprimers {
+#            input:
+#                trimmed_fastq1 = t_002_cutadapters.fastq1_noadapters_o,
+#                trimmed_fastq2 = t_002_cutadapters.fastq2_noadapters_o,
+#                forward_primers_file = select_first([forward_primers_file, t_001_prepare_reference_files.forward_primers_o]),
+#                reverse_primers_file = select_first([reverse_primers_file, t_001_prepare_reference_files.reverse_primers_o])
+#        }
     }
 
     if(defined(barcodes_index)) {
@@ -91,37 +91,37 @@ workflow ampseq {
 #        }
 #    }
 #
-    call amplicon_denoising_t.amplicon_denoising as t_004_amplicon_denoising {
-        input:
-            sample_ids = sample_ids,
-            fastq1s = fastq1s,
-            fastq2s = fastq2s,
-            adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
-            adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
-            primer_rem1s = t_003_trimprimers.fastq1_no_primers_o,
-            primer_rem2s = t_003_trimprimers.fastq2_no_primers_o,
-            forward_primers_file = select_first([forward_primers_file, t_001_prepare_reference_files.forward_primers_o]),
-            reverse_primers_file = select_first([reverse_primers_file, t_001_prepare_reference_files.reverse_primers_o]),
-            reference_amplicons = t_001_prepare_reference_files.reference_o,
-            reference_amplicons_2 = reference_amplicons_2,
-            run_id = run_id,
-            path_to_snv = path_to_snv
-    }
-
-    call asv_filtering_t.asv_filtering as t_005_asv_filtering {
-        input:
-            out_prefix = out_prefix,
-            sample_metadata = sample_metadata,
-            panel_bedfile = t_001_prepare_reference_files.panel_bedfile_o,
-            reference_amplicons = t_001_prepare_reference_files.reference_o,
-            markersTable = markersTable,        
-            reference_genome = reference_genome,
-            CIGARVariants = t_004_amplicon_denoising.CIGARVariants_Bfilter_o,
-            ASVTable = t_004_amplicon_denoising.ASVTable_o,
-            ASVSeqs = t_004_amplicon_denoising.ASVSeqs_o,
-            ASV_to_CIGAR = t_004_amplicon_denoising.ASV_to_CIGAR_o,
-            ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o
-    }
+#    call amplicon_denoising_t.amplicon_denoising as t_004_amplicon_denoising {
+#        input:
+#            sample_ids = sample_ids,
+#            fastq1s = fastq1s,
+#            fastq2s = fastq2s,
+#            adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
+#            adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
+#            primer_rem1s = t_003_trimprimers.fastq1_no_primers_o,
+#            primer_rem2s = t_003_trimprimers.fastq2_no_primers_o,
+#            forward_primers_file = select_first([forward_primers_file, t_001_prepare_reference_files.forward_primers_o]),
+#            reverse_primers_file = select_first([reverse_primers_file, t_001_prepare_reference_files.reverse_primers_o]),
+#            reference_amplicons = t_001_prepare_reference_files.reference_o,
+#            reference_amplicons_2 = reference_amplicons_2,
+#            run_id = run_id,
+#            path_to_snv = path_to_snv
+#    }
+#
+#    call asv_filtering_t.asv_filtering as t_005_asv_filtering {
+#        input:
+#            out_prefix = out_prefix,
+#            sample_metadata = sample_metadata,
+#            panel_bedfile = t_001_prepare_reference_files.panel_bedfile_o,
+#            reference_amplicons = t_001_prepare_reference_files.reference_o,
+#            markersTable = markersTable,        
+#            reference_genome = reference_genome,
+#            CIGARVariants = t_004_amplicon_denoising.CIGARVariants_Bfilter_o,
+#            ASVTable = t_004_amplicon_denoising.ASVTable_o,
+#            ASVSeqs = t_004_amplicon_denoising.ASVSeqs_o,
+#            ASV_to_CIGAR = t_004_amplicon_denoising.ASV_to_CIGAR_o,
+#            ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o
+#    }
 
     output {
         # PREPARE REFERENCE FILES
@@ -156,7 +156,7 @@ workflow ampseq {
         #File ZeroReadsSampleList_f = t_004_amplicon_denoising.ZeroReadsSampleList_o
 
         # ASV Filtering
-        File ampseq_object_f = t_005_asv_filtering.ampseq_object_o
+        #File ampseq_object_f = t_005_asv_filtering.ampseq_object_o
         #File markersTable_f = t_005_asv_filtering.markersTable_o
         
 

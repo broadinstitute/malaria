@@ -1,6 +1,6 @@
 # MALARIA FILEPREP
 
-Aggregates diverse utilities for preparing malaria data from different panels for analysis with AmpSeq.
+Prepares reference files for the malaria pipeline.
 
 ## Contact
 
