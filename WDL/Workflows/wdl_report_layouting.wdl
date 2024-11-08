@@ -10,9 +10,6 @@ workflow report_layouting {
 		Boolean Drug_Surveillance_Report = true
 		Boolean Variants_of_Interest_Report = false
 
-		Float sample_ampl_rate = 0.2
-		Float locus_ampl_rate = 0.2
-
 		File ref_gff
 		File ref_fasta
 		File reference_alleles
@@ -45,8 +42,6 @@ workflow report_layouting {
 		input:
 			ampseq_excelfile = ampseq_excelfile,
 			PerformanceReport = PerformanceReport,
-			sample_ampl_rate = sample_ampl_rate,
-			locus_ampl_rate = locus_ampl_rate,
 			Drug_Surveillance_Report = Drug_Surveillance_Report,
 			Variants_of_Interest_Report = Variants_of_Interest_Report,
 			ref_gff = ref_gff,

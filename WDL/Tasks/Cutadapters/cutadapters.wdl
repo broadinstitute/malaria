@@ -48,6 +48,6 @@ task cutadapters {
         bootDiskSizeGb: 10
         preemptible: 3
         maxRetries: 1
-        docker: 'jorgeamaya/cutadapters:latest'
+        docker: 'jorgeamaya/cutadapters:v_1_0_0'
     }
 }

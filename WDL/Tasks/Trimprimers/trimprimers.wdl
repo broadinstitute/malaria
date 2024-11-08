@@ -49,6 +49,6 @@ task trimprimers {
         bootDiskSizeGb: 10
         preemptible: 3
         maxRetries: 1
-        docker: 'jorgeamaya/trimprimers:latest'
+        docker: 'jorgeamaya/trimprimers:v_1_0_0'
     }
 }

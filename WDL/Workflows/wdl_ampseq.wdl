@@ -38,6 +38,7 @@ workflow ampseq {
     # 1 CLEAN DOCKERFILES
     # 2 REMOVE File sample_metadata. USERS WILL ALWAYS GET THIS WRONG.
     # 3 ADD FEATURE TO DOWN SAMPLE FILES
+    # 4 DISCONTINUE THE MARKERS TABLE?
 
     call prepare_reference_files_t.prepare_reference_files as t_001_prepare_reference_files {
         input:

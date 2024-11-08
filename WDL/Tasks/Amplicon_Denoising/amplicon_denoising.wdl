@@ -147,6 +147,6 @@ task amplicon_denoising {
         bootDiskSizeGb: 10
         preemptible: 3
         maxRetries: 1
-        docker: 'jorgeamaya/ampseq:latest'
+        docker: 'jorgeamaya/ampseq:v_1_0_0'
     }
 }
