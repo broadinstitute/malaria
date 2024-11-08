@@ -60,7 +60,7 @@ def main():
 
     elif args.input.lower().endswith(".bed"):
         amplicon_bed = pd.read_csv(filepath_or_buffer=args.input, sep=None, engine="python", header=None, names=["chromosome", "start", "end"])
-        amplicon_bed['amplicon'] = amplicon_bed['chromosome'] + ":" + amplicon_bed["start"].astype(str) + "-" + amplicon_bed["end"].astype(str)
+        amplicon_bed['amplicon'] = amplicon_bed['chromosome'] + "_" + amplicon_bed["start"].astype(str) + "_" + amplicon_bed["end"].astype(str)
         amplicon_bed['pos'] = (amplicon_bed['start'] + amplicon_bed['end'] ) // 2
         amplicon_bed['length'] = amplicon_bed['end'] - amplicon_bed['start'] + 1
 

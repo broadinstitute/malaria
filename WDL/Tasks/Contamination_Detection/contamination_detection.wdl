@@ -56,8 +56,8 @@ task contamination_detection {
 		memory: "15 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
-		preemptible: 0
-		maxRetries: 0
-		docker: 'jorgeamaya/ci_processing:testing'
+		preemptible: 3
+		maxRetries: 1
+		docker: 'jorgeamaya/ci_processing:latest'
 	}
 }

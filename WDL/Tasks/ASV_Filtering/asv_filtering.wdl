@@ -57,6 +57,8 @@ task asv_filtering {
 
 	###########################################
 	command <<<
+		# FUTURE DEVELOPMENT
+		# 1 REMOVE DEPENDENCE ON GSUTIL
 		export TMPDIR=tmp
 		set -euxo pipefail
 
@@ -138,7 +140,7 @@ task asv_filtering {
 	>>>
 	
 	output {
-		File markersTable_o = "references/markersTable.csv"
+		#File markersTable_o = "references/markersTable.csv"
 		File ampseq_object_o = "Results/~{out_prefix}.xlsx"
 	}
 	runtime {
@@ -147,7 +149,7 @@ task asv_filtering {
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3 
-		maxRetries: 0
+		maxRetries: 1
 		docker: 'jorgeamaya/asvfilters:latest'
 	}
 }

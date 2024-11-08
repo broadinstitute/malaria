@@ -2,25 +2,12 @@ version 1.0
 
 task report_layouting_process {
 	input {
-	#	Array[File] cigar_files
-	#	File metadata_files
-
-		#String nTasks
-
-		#String cigar_paths
-		#String cigar_dir
-		#String ampseq_jsonfile
 		File ampseq_excelfile
-
-		#String sample_id_pattern
-		#File markers 
-		#Int min_abd
-		#Float min_ratio
 
 		Boolean PerformanceReport
 
-		Float sample_ampl_rate
-		Float locus_ampl_rate
+		Float sample_ampl_rate = 0.2
+		Float locus_ampl_rate = 0.2
 
 		Boolean Drug_Surveillance_Report
 		Boolean Variants_of_Interest_Report
@@ -46,15 +33,17 @@ task report_layouting_process {
 		String metadata_longitude_name = 'Longitude'
 
 		Int nchunks
-		#String off_target_formula
-		#String flanking_INDEL_formula
-		#String PCR_errors_formula
 		String hap_color_palette
 		String poly_quantile
 		String poly_formula
 	}
 	
 	command <<<
+		#FUTURE DEVELOPMENT
+		# 1 REMOVE SAMPLE_METADATA DEPENDENCE. USER ALWAYS GET THAT FILE WRONG
+		# 2 UPDATE THE SHINYAPP ACCORDINGLY
+		# 3 DO NOT COPY THE FILES TO REFERENCE. USE NATIVE FILES.
+
 		set -euxo pipefail
 		mkdir Reference
 		mkdir Results
@@ -97,18 +86,16 @@ task report_layouting_process {
 		-pairwise_relatedness_table 'null' \
 		-poly_formula "~{poly_formula}"
 	
-		ls 
-		ls Results/
 	>>>
 
 	output {
-	#	File? intermediate_report = "Results/metadata_intermediate.csv"
-	#	File? drs_report = "Results/MHap_Profile_DRS_Report.html"
+		#File? intermediate_report = "Results/metadata_intermediate.csv"
+		#File? drs_report = "Results/MHap_Profile_DRS_Report.html"
 		File? drs_minimal_report = "Results/MHap_Profile_DRS_Minimal_Report.html"
-#		File? coi_report = "Results/MHap_Profile_COI_Report.html"
-#		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
-#		File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
-	#	File? performance_report = "Results/MHap_Profile_Performance_Report.html"
+		#File? coi_report = "Results/MHap_Profile_COI_Report.html"
+		#File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
+		#File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
+		#File? performance_report = "Results/MHap_Profile_Performance_Report.html"
 	}
 
 	runtime { 
@@ -116,8 +103,8 @@ task report_layouting_process {
 		memory: "40 GiB" 
 		disks: "local-disk 10 HDD" 
 		bootDiskSizeGb: 10 
-		preemptible: 1 
-		maxRetries: 0 
-		docker: 'jorgeamaya/mhap:latest' 
+		preemptible: 3 
+		maxRetries: 1
+		docker: 'jorgeamaya/mhap:latest'
 	} 
 }

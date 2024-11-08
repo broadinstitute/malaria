@@ -550,14 +550,16 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
     
   }else if(is.null(markers) & is.null(markers_pattern)){
     ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
-    markers = data.frame(amplicon = ampseq_loci_vector)
   }
 
   # Check - If cigar_table and ampseq_loci_vector are not equal, recorrect ampseq_loci_vector to prevent errors propagated by different markersTable information
   if(!setequal(unique(colnames(cigar_table)), unique(ampseq_loci_vector))){
     ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
   }
+  print("WATERMARK2")
+  print(ampseq_loci_vector)
 
+  markers = data.frame(amplicon = ampseq_loci_vector)
   ampseq_loci_abd_table = matrix(NA, nrow = nrow(cigar_table), ncol = length(ampseq_loci_vector), dimnames = list(rownames(cigar_table), ampseq_loci_vector))
   for(sample in rownames(ampseq_loci_abd_table)){
     for(locus in colnames(ampseq_loci_abd_table)){
@@ -1717,6 +1719,7 @@ filter_loci = function(ampseq_object, v){
   
   return(obj)
 }
+
 # Mask alternative alleles----
 setGeneric("mask_alt_alleles", function(obj = NULL, ref_fasta = NULL, mask_formula = "dVSITES_ij > 0.3", homopolymer_length = 5) standardGeneric("mask_alt_alleles"))
 
@@ -1731,7 +1734,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
             mhaps$homopolymer_regions = NA
             
             ref_sequences = readDNAStringSet(ref_fasta)
-            
+
             if(sum(grepl('(/|-|:)', names(ref_sequences))) > 0){
               
               names(ref_sequences) = gsub('(/|-|:)', '_', names(ref_sequences))
@@ -1746,22 +1749,22 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
             for(mhap in mhaps$amplicon){
               
               homopolymers = unlist(str_extract_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern))
-              
+
               if(length(homopolymers) > 0 ){
                 
                 homopolymers_location = str_locate_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern)
-                
+
                 mhaps[mhaps$amplicon == mhap, ][['homopolymer_regions']] = paste(paste(homopolymers,
                                                                                        paste(homopolymers_location[[1]][,'start'],
                                                                                              homopolymers_location[[1]][,'end'], sep = '-'), sep = ':'),
                                                                                  collapse = ',')
-                
+
               }
-              
-              
-            }
-            
-            alt = sapply(colnames(gt), function(mhap){
+
+
+            }         
+
+             alt = sapply(colnames(gt), function(mhap){
               alt = unique(gsub(':\\d+', '',unlist(strsplit(gt[,mhap], '_'))))
               
               alt = paste(alt[!is.na(alt) & alt != '.'], collapse = ',')
@@ -2167,29 +2170,11 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                   flanking_INDEL = as.integer(grepl(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+') ,allele))
                                   
                                   if(flanking_INDEL == 1){
-                                    temp_flanking_INDEL_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']] + 1), sep = '|'),')(I|D)(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    flanking_INDEL_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']] + 1), sep = '|'),')(I|D)(=|\\.)[ATGC]+\\d?'))[[1]]
                                     
-                                    temp_flanking_INDEL_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+'), '', temp_flanking_INDEL_pattern)
+                                    flanking_INDEL_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+'), '', flanking_INDEL_pattern)
                                     
-                                    
-                                    
-                                    if('' %in% temp_flanking_INDEL_replacement){
-                                      
-                                      flanking_INDEL_replacement = '.'
-                                      
-                                    }else{
-                                      
-                                      flanking_INDEL_replacement = allele
-                                      
-                                      for(replacement in 1:length(temp_flanking_INDEL_pattern)){
-                                        
-                                        flanking_INDEL_replacement = gsub(temp_flanking_INDEL_pattern[replacement], temp_flanking_INDEL_replacement[replacement], flanking_INDEL_replacement)
-                                      }
-                                      
-                                    }
-                                    
-                                    flanking_INDEL_pattern = allele
-                                    
+                                    flanking_INDEL_replacement = ifelse(flanking_INDEL_replacement == '', '.', flanking_INDEL_replacement)
                                   }else{
                                     
                                     flanking_INDEL_pattern = NA
@@ -2333,18 +2318,15 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
-                    # mask_formula2 = str_extract(mask_formula,
-                    #                             "ASVs_attributes_table_temp\\[\\['SNV_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
-                    # 
-                    # replaced_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_pattern']]
-                    # 
-                    # 
-                    # replacement_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_replacement']]
+                    mask_formula2 = str_extract(mask_formula,
+                                                "ASVs_attributes_table_temp\\[\\['SNV_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
+                    
+                    replaced_alleles = ASVs_attributes_table_temp[
+                      eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_pattern']]
+                    
                     
                     replacement_alleles = ASVs_attributes_table_temp[
-                      eval(parse(text = mask_formula)),][['SNV_in_homopolymer_replacement']]
+                      eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_replacement']]
                     
                     
                     for(replaced_allele in 1:length(replaced_alleles)){
@@ -2403,18 +2385,15 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
-                    # mask_formula2 = str_extract(mask_formula,
-                    #                             "ASVs_attributes_table_temp\\[\\['INDEL_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
-                    # 
-                    # replaced_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_pattern']]
-                    # 
-                    # 
-                    # replacement_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_replacement']]
+                    mask_formula2 = str_extract(mask_formula,
+                                                "ASVs_attributes_table_temp\\[\\['INDEL_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
+                    
+                    replaced_alleles = ASVs_attributes_table_temp[
+                      eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_pattern']]
+                    
                     
                     replacement_alleles = ASVs_attributes_table_temp[
-                      eval(parse(text = mask_formula)),][['INDEL_in_homopolymer_replacement']]
+                      eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_replacement']]
                     
                     
                     for(replaced_allele in 1:length(replaced_alleles)){
@@ -2473,18 +2452,16 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
-                    # mask_formula2 = str_extract(mask_formula,
-                    #                             "ASVs_attributes_table_temp\\[\\['flanking_INDEL'\\]\\] (=|!)+ (TRUE|FALSE)")
-                    # 
-                    # replaced_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['flanking_INDEL_pattern']]
-                    # 
-                    # 
-                    # replacement_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['flanking_INDEL_replacement']]
+                    mask_formula2 = str_extract(mask_formula,
+                                                "ASVs_attributes_table_temp\\[\\['flanking_INDEL'\\]\\] (=|!)+ (TRUE|FALSE)")
+                    
+                    replaced_alleles = ASVs_attributes_table_temp[
+                      eval(parse(text = mask_formula2)),][['flanking_INDEL_pattern']]
+                    
                     
                     replacement_alleles = ASVs_attributes_table_temp[
-                      eval(parse(text = mask_formula)),][['flanking_INDEL_replacement']]
+                      eval(parse(text = mask_formula2)),][['flanking_INDEL_replacement']]
+                    
                     
                     replacement_alleles = replacement_alleles[!duplicated(replaced_alleles)]
                     replaced_alleles = replaced_alleles[!duplicated(replaced_alleles)]
@@ -2494,33 +2471,35 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                       temp_replaced_allele = unlist(strsplit(replaced_alleles[replaced_allele], '\\|\\|'))
                       temp_replacement_allele = unlist(strsplit(replacement_alleles[replaced_allele], '\\|\\|'))
                       
+                      asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
+                                  !is.na(asv_table[['Amplicon']]) &
+                                  grepl(temp_replaced_allele, asv_table[['CIGAR_masked']])
+                                ,][['CIGAR_masked']] = gsub(temp_replaced_allele,
+                                                            temp_replacement_allele, 
+                                                            asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
+                                                                        !is.na(asv_table[['Amplicon']]) &
+                                                                        grepl(temp_replaced_allele, asv_table[['CIGAR_masked']])
+                                                                      ,][['CIGAR_masked']])
                       
                       for(i in 1:length(temp_replaced_allele)){
                         
-                        replaced_pattern = temp_replaced_allele[i]
-                        
-                        asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
-                                    !is.na(asv_table[['Amplicon']]) &
-                                    grepl(paste0('^',replaced_pattern, '$'), asv_table[['CIGAR_masked']])
-                                  ,][['CIGAR_masked']] = gsub(paste0('^',replaced_pattern, '$'),
-                                                              temp_replacement_allele, 
-                                                              asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
-                                                                          !is.na(asv_table[['Amplicon']]) &
-                                                                          grepl(paste0('^',replaced_pattern, '$'), asv_table[['CIGAR_masked']])
-                                                                        ,][['CIGAR_masked']])
-                        
                         for(sample in 1:nrow(gt_masked)){
                           
+                          replaced_pattern = temp_replaced_allele[i]
                           
-                          if(grepl(paste0('(^|_)',replaced_pattern, ':'), gt_masked[sample,mhap])){
+                          if(grepl('[ATGC]', substr(replaced_pattern, nchar(replaced_pattern),nchar(replaced_pattern)))){
                             
-                            sample_replaced_pattern = str_extract(gt_masked[sample,mhap], paste0('(^|_)',replaced_pattern, ':'))
-                            sample_replacement_pattern = gsub(replaced_pattern, temp_replacement_allele[i], sample_replaced_pattern)
+                            replaced_pattern = paste0(replaced_pattern, ':')
+                            replacement_pattern = paste0(temp_replacement_allele[i], ':')
                             
-                            gt_masked[sample,mhap] = gsub(sample_replaced_pattern, sample_replacement_pattern, gt_masked[sample,mhap])
+                          }else{
+                            
+                            replacement_pattern = temp_replacement_allele[i]
                             
                           }
                           
+                          # Mask alleles below threshold
+                          gt_masked[sample,mhap] = gsub(replaced_pattern, replacement_pattern, gt_masked[sample,mhap])
                           
                         }
                         
@@ -2568,7 +2547,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                     gt_masked[,mhap] = ifelse(grepl('^//|//$', gt_masked[,mhap]), gsub('//', '', gt_masked[,mhap]), gt_masked[,mhap])
                     
                     gt_masked[,mhap] = gsub('//', '_', gt_masked[,mhap])
-                    
+
                     
                     if(length(gt_masked[gt_masked[,mhap] == '' &
                                         !is.na(gt_masked[,mhap])
@@ -3002,19 +2981,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
   
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## sample_amplification_rate----
 
 sample_amplification_rate = function(ampseq_object, threshold = .8, update_samples = TRUE, strata = NULL){
@@ -3146,7 +3112,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             mhaps$homopolymer_regions = NA
             
             ref_sequences = readDNAStringSet(ref_fasta)
-            
+
             if(sum(grepl('(/|-|:)', names(ref_sequences))) > 0){
               
               names(ref_sequences) = gsub('(/|-|:)', '_', names(ref_sequences))
@@ -3159,7 +3125,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             homopolymer_pattern = gsub('length', homopolymer_length, homopolymer_pattern)
             
             for(mhap in mhaps$amplicon){
-              
+
               homopolymers = unlist(str_extract_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern))
               
               if(length(homopolymers) > 0 ){
@@ -3171,20 +3137,18 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                                                              homopolymers_location[[1]][,'end'], sep = '-'), sep = ':'),
                                                                                  collapse = ',')
                 
-              }
-              
-              
+              }                             
             }
-            
             alt = sapply(colnames(gt), function(mhap){
               alt = unique(unlist(strsplit(gsub(':\\d+', '',gt[,mhap]), '_')))
               
               alt = paste(alt[!is.na(alt) & alt != '.'], collapse = ',')
             })
-            
-            
+            print("Before gsub")
+            print(gt)
             gt = gsub(':\\d+', '',gt)
-            
+            print("After gsub")
+            print(gt)
             # Heterozygous positions
             HetPos = matrix(grepl('_', gt), ncol = ncol(gt), nrow = nrow(gt))
             
@@ -3359,29 +3323,11 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   flanking_INDEL = as.integer(grepl(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+') ,allele))
                                   
                                   if(flanking_INDEL == 1){
-                                    temp_flanking_INDEL_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']] + 1), sep = '|'),')(I|D)(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    flanking_INDEL_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']] + 1), sep = '|'),')(I|D)(=|\\.)[ATGC]+\\d?'))[[1]]
                                     
-                                    temp_flanking_INDEL_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+'), '', temp_flanking_INDEL_pattern)
+                                    flanking_INDEL_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+'), '', flanking_INDEL_pattern)
                                     
-                                    
-                                    
-                                    if('' %in% temp_flanking_INDEL_replacement){
-                                      
-                                      flanking_INDEL_replacement = '.'
-                                      
-                                    }else{
-                                      
-                                      flanking_INDEL_replacement = allele
-                                      
-                                      for(replacement in 1:length(temp_flanking_INDEL_pattern)){
-                                        
-                                        flanking_INDEL_replacement = gsub(temp_flanking_INDEL_pattern[replacement], temp_flanking_INDEL_replacement[replacement], flanking_INDEL_replacement)
-                                      }
-                                      
-                                    }
-                                    
-                                    flanking_INDEL_pattern = allele
-                                    
+                                    flanking_INDEL_replacement = ifelse(flanking_INDEL_replacement == '', '.', flanking_INDEL_replacement)
                                   }else{
                                     
                                     flanking_INDEL_pattern = NA
@@ -3403,7 +3349,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   }
                                   
                                   
-				    c(sum(P_ij, na.rm = T),
+                                  c(sum(P_ij, na.rm = T), 
                                     sum(H_ij, na.rm = T), 
                                     sum(H_ijminor, na.rm = T),
                                     sum(H_ij, na.rm = T)/sum(P_ij, na.rm = T),
@@ -3444,7 +3390,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                 
                 
                 ASVs_attributes_table_temp = as.data.frame(cbind(alleles, h_ij))
-                names(ASVs_attributes_table_temp)  = c('Allele',
+                
+                names(ASVs_attributes_table_temp) = c('Allele',
                                                       'P_ij',
                                                       'H_ij',
                                                       'H_ijminor',
@@ -3468,6 +3415,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                       'flanking_INDEL_pattern',
                                                       'flanking_INDEL_replacement',
                                                       'bimera')
+                
                 ASVs_attributes_table_temp[['P_ij']] = as.integer(ASVs_attributes_table_temp[['P_ij']])
                 ASVs_attributes_table_temp[['H_ij']] = as.integer(ASVs_attributes_table_temp[['H_ij']])
                 ASVs_attributes_table_temp[['H_ijminor']] = as.integer(ASVs_attributes_table_temp[['H_ijminor']])
@@ -3561,7 +3509,6 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             
           }
 )
-
 
 
 

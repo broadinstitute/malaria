@@ -2,7 +2,6 @@ version 1.0
 
 task prepare_reference_files {
 	input {
-		#Array[String] sample_ids
 		File panel_info
 		File reference_genome
 		File? reference_amplicons
@@ -11,19 +10,12 @@ task prepare_reference_files {
 		File? reverse_primers_file
 		File? path_to_snv
 	}
-	#File path_to_flist = write_lines(sample_ids)
 
 	command <<<
 	# FUTURE DEVELOPMENT: 
 	# 1 MAKE REFERENCE_OUT OPTIONAL. SKIP THE GENERATION OF THE REFERENCE FILE IF PROVIDED BY USER.
-	# 2 CHECK if sample_ids can be removed
-	# 3 DELETE MKDIR REFERENCES
-
 	export TMPDIR=tmp
 	set -euxo pipefail
-
-	mkdir references
-	#mv #{path_to_flist} samples.txt
 
 	###################################################################
 	# Need to check for byte-order mark for interoperability purposes #
@@ -79,7 +71,7 @@ task prepare_reference_files {
 	echo "Checking for primer files."
 	if [[ "~{forward_primers_file}" != '' ]]; then
 		echo "Forward primers file provided."
-		#cp ~{forward_primers_file} primers_fw.fasta
+		cp ~{forward_primers_file} primers_fw.fasta
 	elif [[ "~{forward_primers_file}" == '' && "~{reference_genome}" != '' ]]; then
 		if has_primers ~{panel_info}; then
 			echo "Forward primers file not provided. Reference genome and amplicon panel info file provided."
@@ -101,7 +93,7 @@ task prepare_reference_files {
 
 	if [[ "~{reverse_primers_file}" != '' ]]; then
 		echo "Reverse primers file provided."
-		#cp ~{reverse_primers_file} primers_rv.fasta
+		cp ~{reverse_primers_file} primers_rv.fasta
 	elif [[ "~{reverse_primers_file}" == '' && "~{reference_genome}" != '' ]]; then
 		if has_primers ~{panel_info}; then
 			echo "Reverse primers file not provided. Reference genome and amplicon panel info file provided."
@@ -127,7 +119,6 @@ task prepare_reference_files {
 	>>>
 
 	output {
-		#File path_to_flist_o = "samples.txt"
 		File reference_o = "reference.fasta"
 		File panel_bedfile_o = "amplicon_panel.bed"
 		File? forward_primers_o = "primers_fw.fasta"

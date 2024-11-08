@@ -47,8 +47,8 @@ task trimprimers {
         memory: "5 GiB"
         disks: "local-disk 10 HDD"
         bootDiskSizeGb: 10
-        preemptible: 0
+        preemptible: 3
         maxRetries: 1
-        docker: 'jorgeamaya/trimprimers:testing'
+        docker: 'jorgeamaya/trimprimers:latest'
     }
 }

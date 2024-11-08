@@ -146,7 +146,7 @@ task amplicon_denoising {
         disks: "local-disk 10 HDD"
         bootDiskSizeGb: 10
         preemptible: 3
-        maxRetries: 0
+        maxRetries: 1
         docker: 'jorgeamaya/ampseq:latest'
     }
 }
