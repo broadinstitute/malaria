@@ -546,9 +546,9 @@ print("All variables checked")
 
 # Check packages and functions----
 
-print("Loading libraies and functions")
+print("Loading libraries and functions")
 source(file.path(fd,'amplseq_required_libraries.R'))
-source(file.path(fd,'amplseq_functions.R'))
+source(file.path(fd,'amplseq_functions_v2.R'))
 
 # Defining a random color palette for all plots with multiple categorical variables----
 
