@@ -24,7 +24,7 @@ workflow ampseq {
         File? reverse_primers_file
         File? reference_amplicons
         File? reference_amplicons_2 
-        File? markersTable
+        File? markers_table
         File? path_to_snv
 
         # Optional file for contamination detection pipeline
@@ -116,7 +116,7 @@ workflow ampseq {
             sample_metadata = sample_metadata,
             panel_bedfile = t_001_prepare_reference_files.panel_bedfile_o,
             reference_amplicons = t_001_prepare_reference_files.reference_o,
-            markersTable = markersTable,        
+            markersTable = t_001_prepare_reference_files.markers_table_o,      
             reference_genome = reference_genome,
             CIGARVariants = t_004_amplicon_denoising.CIGARVariants_Bfilter_o,
             ASVTable = t_004_amplicon_denoising.ASVTable_o,

@@ -851,7 +851,7 @@ print("All variables checked")
 
 print("Loading libraries and functions")
 source(file.path(fd,'amplseq_required_libraries.R'))
-source(file.path(fd,'amplseq_functions.R'))
+source(file.path(fd,'amplseq_functions_v2.R'))
 
 # Defining a random color palette for all plots with multiple categorical variables----
 
@@ -865,12 +865,11 @@ print("starting to upload genotypic data")
 if(!is.null(cigar_paths)|!is.null(cigar_files)){
   if(!is.null(cigar_paths)){
     
-    print("Uploading genotipic data in cigar format from multiple paths")
+    print("Uploading genotypic data in cigar format from multiple paths")
     cigar_object = read_cigar_tables(paths = cigar_paths, sample_id_pattern = sample_id_pattern)
   }else if(!is.null(cigar_files)){
-    
-    if(as.logical(file.info(cigar_files)['isdir'])){
-      print("Uploading genotipic data in cigar format from multiple csv files from a single path")
+    if(dir.exists(cigar_files)) {
+      print("Uploading genotypic data in cigar format from multiple csv files from a single path")
       list_of_cigar_files = file.path(cigar_files,list.files(cigar_files))
       list_of_asv_tables = file.path(asv_table_files,list.files(asv_table_files))
       list_of_asv2cigars = file.path(asv2cigar_files,list.files(asv2cigar_files))
@@ -885,12 +884,16 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
                                        sample_id_pattern = sample_id_pattern)
       
     }else{
-      print("Uploading genotipic data in cigar format from a single file")
+      print("Uploading genotypic data in cigar format from a single file")
       cigar_object = read_cigar_tables(files = cigar_files, sample_id_pattern = sample_id_pattern)
     }
   }
   print(cigar_object@cigar_table[,1:10])
-  markers = read.csv(markers)
+
+# Check if markers is not null
+  if(!is.null(markers)){
+      markers = read.csv(markers)
+  }
   
   if(PerformanceReport){
     ampseq_object_abd1 = cigar2ampseq(cigar_object, markers = markers, min_abd = 1, min_ratio = min_ratio, remove_controls = F)
@@ -903,11 +906,11 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
   }
   
   }else if(!is.null(ampseq_jsonfile)){
-    print("Uploading genotipic data in ampseq format from json file")
+    print("Uploading genotypic data in ampseq format from json file")
   # In development
   
   }else if(!is.null(ampseq_excelfile)){
-    print("Uploading genotipic data in ampseq format from excel file")
+    print("Uploading genotypic data in ampseq format from excel file")
   ampseq_object = read_ampseq(file = ampseq_excelfile, format = 'excel')
   
   

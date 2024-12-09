@@ -3,10 +3,10 @@ version 1.0
 task asv_filtering {
 	input {
 		String out_prefix 
+		File markersTable
+		File reference_genome
 		File? panel_bedfile
 		File? reference_amplicons
-		File? markersTable
-		File reference_genome
 		String? ampseq_export_format = 'excel'
 
 		# Metadata columns	
@@ -32,7 +32,7 @@ task asv_filtering {
 		Int? homopolymer_length = 5															     # Minimum number of single nucleotide tandem repeats to define homopolymeric regions in an ASV
 		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE\&h_ij>=0.66"              # Formula to mask SNVs in the homopolymeric regions of ASVs
 		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"          # Formula to mask INDELs in the homopolymeric regions of ASVs   
-		String? bimera_formula = "bimera==TRUE&h_ij>=0.66"                                       # Formula to detect bimeras
+		String? bimera_formula = "bimera==TRUE\&h_ij>=0.66"                                       # Formula to detect bimeras
 		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"                   # Formula to detect other kinds of PCR errors
 		
 
@@ -83,16 +83,7 @@ task asv_filtering {
 		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
 		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
-		~{"gsutil cp " + markersTable + " references/markersTable.csv"}
-
-		# Create marker table if it is not provided by the user.
-		if [ -f "references/markersTable.csv" ]; then
-			echo "Markers table provided! Skipping creation of marker table from reference..."
-		else
-			echo "Markers table not provided. Creating marker table from reference..."
-			python /Code/createMarkersTable.py -i ~{ref_for_markers} -o references/markersTable.csv
-			echo "Finished creating markers table from reference."
-		fi
+		gsutil cp ~{markersTable} references/markersTable.csv
 
 		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
@@ -140,7 +131,6 @@ task asv_filtering {
 	>>>
 	
 	output {
-		#File markersTable_o = "references/markersTable.csv"
 		File ampseq_object_o = "Results/~{out_prefix}.xlsx"
 	}
 	runtime {

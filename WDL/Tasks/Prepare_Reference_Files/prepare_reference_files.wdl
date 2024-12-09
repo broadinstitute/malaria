@@ -10,7 +10,6 @@ task prepare_reference_files {
 		File? reverse_primers_file
 		File? path_to_snv
 	}
-
 	command <<<
 	# FUTURE DEVELOPMENT: 
 	# 1 MAKE REFERENCE_OUT OPTIONAL. SKIP THE GENERATION OF THE REFERENCE FILE IF PROVIDED BY USER.
@@ -38,10 +37,15 @@ task prepare_reference_files {
 	has_primers() { awk 'NR==1 {exit !(NF > 3)}' "$1"; }
 	if has_primers ~{panel_info}; then
 		echo "Panel info file contains primer information"
-		cut -f1,4,5 ~{panel_info} | tail -n +2 > amplicon_panel.bed
+		cut -f1,4,5 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed
 	else
-		echo "Panel info file does not contain primer information"
-		tail -n +2 ~{panel_info} > amplicon_panel.bed	
+		echo "Panel info file does not contain primer information."
+		if [[ "~{forward_primers_file}" == ''  || "~{reverse_primers_file}" == '' ]]; then
+			echo "No primer files were provided. Please either provide primer information in panel_info or the forward_primers_file and reverse_primers_file."
+			exit 1
+		else
+			tail -n +2 ~{panel_info} | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
+		fi
 	fi
 
 	echo "Created amplicon panel bed file."
@@ -116,13 +120,21 @@ task prepare_reference_files {
 
 	echo "Finished checking for primer files."
 
+	#####################################################################
+	# Enforce the same amplicon name across all files                   #
+	#####################################################################
+	echo "Checking for consistency across all panel reference files."
+	python /Code/check_input_headers.py -i ~{panel_info} \
+		--ref_genome ~{reference_genome} \
+		~{if defined(reference_amplicons) then "--ref_amplicons_provided" else ""}
 	>>>
 
 	output {
 		File reference_o = "reference.fasta"
 		File panel_bedfile_o = "amplicon_panel.bed"
-		File? forward_primers_o = "primers_fw.fasta"
-		File? reverse_primers_o = "primers_rv.fasta"
+		File forward_primers_o = "primers_fw.fasta"
+		File reverse_primers_o = "primers_rv.fasta"
+		File markers_table_o = "markers_table.csv"
 	}
 
 	runtime {
@@ -135,3 +147,4 @@ task prepare_reference_files {
 		docker: "jorgeamaya/fileprep_ampseq:v_1_0_0"
 	}
 }
+
