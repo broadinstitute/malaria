@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     git \
     ca-certificates \
     gzip \
+    pigz \
     bzip2 \
     && rm -rf /var/lib/apt/lists/*
 

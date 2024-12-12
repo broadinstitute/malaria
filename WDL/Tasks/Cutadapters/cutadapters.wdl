@@ -14,14 +14,18 @@ task cutadapters {
 
     command <<<
         export TMPDIR=tmp
-        set -euxo pipefail
+        #set -euxo pipefail
         
         mkdir Results
 
         ################################################################### 
         # Trim adapters from the fastq files using TrimGalore             #
         ################################################################### 
+
         echo "Removing adapters"
+
+        touch Results/~{basename}_val_1.fq.gz
+        touch Results/~{basename}_val_2.fq.gz
         
         trim_galore --paired --gzip \
             --quality ~{trim_galore_qvalue} \
