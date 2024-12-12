@@ -43,6 +43,8 @@ task amplicon_denoising {
         String polyN = "5"
     }
 
+    Float total_size = ceil((size(fastq1s) + size(fastq2s)) * 1.5)
+
     command <<<
         # FUTURE DEVELOPMENT: 
         # 1 SOME FUNCTIONALITIES INSIDE RUNDADA2.R AND ASV_TO_CIGARTABLE.PY ARE NOT USED IN PIPELINE VERSION. CHECK IF THEY ARE NEEDED IN THE FUTURE.
@@ -143,7 +145,7 @@ task amplicon_denoising {
     runtime {
         cpu: 4
         memory: "15 GiB"
-        disks: "local-disk 10 HDD"
+        disks: "local-disk " + total_size + " HDD"
         bootDiskSizeGb: 10
         preemptible: 3
         maxRetries: 1
