@@ -6,12 +6,11 @@ task cutadapters {
         File fastq2
         Int trim_galore_qvalue = 5
         Int trim_galore_length = 20
+        Int downsample_fraction = 0
     }
-
     # Get the basename of the fastq files without any fastq extensions:
     # CORRECT THIS: ALL BASENAMES GET THE R1 VALUE, EVEN THE REVERSE READS FILES
     String basename = basename(basename(basename(basename(fastq1, ".fq.gz"), ".fastq"), ".fq"), ".fastq.gz")
-
     command <<<
         export TMPDIR=tmp
         #set -euxo pipefail
@@ -27,16 +26,27 @@ task cutadapters {
         touch Results/~{basename}_val_1.fq.gz
         touch Results/~{basename}_val_2.fq.gz
         
+        if [ "~{downsample_fraction}" -ne 0 ]; then
+            echo "Downsampling to ~{downsample_fraction} 40000."
+            seqtk sample -s100 ~{fastq1} ~{downsample_fraction} > ~{basename}_R1_downsampled.fastq
+            seqtk sample -s100 ~{fastq2} ~{downsample_fraction} > ~{basename}_R2_downsampled.fastq
+            FASTQ1="~{basename}_R1_downsampled.fastq"
+            FASTQ2="~{basename}_R2_downsampled.fastq"
+        else
+            echo "No downsampling requested."
+            FASTQ1="~{fastq1}"
+            FASTQ2="~{fastq2}"
+        fi
+
         trim_galore --paired --gzip \
-            --quality ~{trim_galore_qvalue} \
-            --length ~{trim_galore_length} \
-            --output_dir Results \
-            --basename ~{basename} \
-            -j 4 \
-            "~{fastq1}" "~{fastq2}"
+        --quality ~{trim_galore_qvalue} \
+        --length ~{trim_galore_length} \
+        --output_dir Results \
+        --basename ~{basename} \
+        -j 4 \
+        "$FASTQ1" "$FASTQ2"
 
         echo "Done removing adapters"
-
     >>>
 
     output {

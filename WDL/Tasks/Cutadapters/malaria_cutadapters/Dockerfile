@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     gzip \
     pigz \
     bzip2 \
+    seqtk \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Cutadapt (required by Trim Galore)
