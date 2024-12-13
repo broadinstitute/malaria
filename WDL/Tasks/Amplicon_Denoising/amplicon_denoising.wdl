@@ -52,6 +52,7 @@ task amplicon_denoising {
         export TMPDIR=tmp
         set -euxo pipefail
 
+        # INPUT STRINGS
         sample_ids_string=$(IFS=" "; echo "~{sep=' ' sample_ids}")
         fastq1s_string=$(IFS=" "; echo "~{sep=' ' fastq1s}")
         fastq2s_string=$(IFS=" "; echo "~{sep=' ' fastq2s}")
@@ -59,6 +60,21 @@ task amplicon_denoising {
         adaptor_rem2s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem2s}")
         primer_rem1s_string=$(IFS=" "; echo "~{sep=' ' primer_rem1s}")
         primer_rem2s_string=$(IFS=" "; echo "~{sep=' ' primer_rem2s}")
+
+        # Create a CSV file with the input data
+        sample_ids_a=(${sample_ids_string})
+        fastq1s_a=(${fastq1s_string})
+        fastq2s_a=(${fastq2s_string})
+        adaptor_rem1s_a=(${adaptor_rem1s_string})
+        adaptor_rem2s_a=(${adaptor_rem2s_string})
+        primer_rem1s_a=(${primer_rem1s_string})
+        primer_rem2s_a=(${primer_rem2s_string})
+
+        # Write data to the CSV
+        echo "sample_ids,fastq1s,fastq2s,adaptor_rem1s,adaptor_rem2s,primer_rem1s,primer_rem2s" > samples_tmp.csv
+        for i in "${!sample_ids_a[@]}"; do
+            echo "${sample_ids_a[i]},${fastq1s_a[i]},${fastq2s_a[i]},${adaptor_rem1s_a[i]},${adaptor_rem2s_a[i]},${primer_rem1s_a[i]},${primer_rem2s_a[i]}" >> samples_tmp.csv
+        done
 
         mkdir -p Results
 
@@ -68,13 +84,7 @@ task amplicon_denoising {
         echo "Running DADA2 denoising..."
 
         Rscript /Code/runDADA2.R \
-                    -b "${sample_ids_string}" \
-                    -f1 "${fastq1s_string}" \
-                    -f2 "${fastq2s_string}" \
-                    -p1 "${primer_rem1s_string}" \
-                    -p2 "${primer_rem2s_string}" \
-                    -a1 "${adaptor_rem1s_string}" \
-                    -a2 "${adaptor_rem2s_string}" \
+                    -csv "samples_tmp.csv" \
                     -d "Results" \
                     -o "seqtab.tsv" \
                     -c "~{Class}" \
@@ -91,6 +101,13 @@ task amplicon_denoising {
                     --bimera 
 
         echo "DADA2 denoising complete."
+                    #-b "${sample_ids_string}" \
+                    #-f1 "${fastq1s_string}" \
+                    #-f2 "${fastq2s_string}" \
+                    #-p1 "${primer_rem1s_string}" \
+                    #-p2 "${primer_rem2s_string}" \
+                    #-a1 "${adaptor_rem1s_string}" \
+                    #-a2 "${adaptor_rem2s_string}" \
 
         ###################################################################
         # Run post-processing                                             #
@@ -133,14 +150,13 @@ task amplicon_denoising {
     >>>
 
     output {
-        #File seqtab_o = "Results/seqtab.tsv"
         File ASVBimeras_o = "Results/ASVBimeras.txt"
         File ASVTable_o = "Results/ASVTable.txt"
         File ASVSeqs_o = "Results/ASVSeqs.fasta"
         File CIGARVariants_Bfilter_o = "Results/CIGARVariants_Bfilter.out.tsv"
         File ASV_to_CIGAR_o = "Results/ASV_to_CIGAR.out.txt"
         File ZeroReadsSampleList_o = "Results/ZeroReadsSampleList.txt"
-
+        File ReadAttrition_o = "Results/reads_summary.txt"
     }
 
     runtime {

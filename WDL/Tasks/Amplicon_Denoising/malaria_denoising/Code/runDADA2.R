@@ -41,13 +41,14 @@ if (!require("viridisLite")) {
 
 # Custom filtering, denoising parameters (if not default) can be provided as a separate config file?
 parser <- ArgumentParser()
-parser$add_argument("-b", "--sample_ids", nargs="+", help="Samples names")
-parser$add_argument("-f1", "--orig_f", nargs="+", help="Forward fastq files before any processing (required)")
-parser$add_argument("-f2", "--orig_r", nargs="+", help="Reverse fastq files before any processing (required)")
-parser$add_argument("-p1", "--fnFs", nargs="+", help="Forward fastq files after primer removal (required)")
-parser$add_argument("-p2", "--fnRs", nargs="+", help="Reverse fastq files after primer removal (required)")
-parser$add_argument("-a1", "--adap_f", nargs="+", help="Forward fastq files after adaptor removal (required)")
-parser$add_argument("-a2", "--adap_r", nargs="+", help="Reverse fastq files after adaptor removal (required)")
+parser$add_argument("-csv", "--input_csv", help="Input csv file with all parameters")
+#parser$add_argument("-b", "--sample_ids", nargs="+", help="Samples names")
+#parser$add_argument("-f1", "--orig_f", nargs="+", help="Forward fastq files before any processing (required)")
+#parser$add_argument("-f2", "--orig_r", nargs="+", help="Reverse fastq files before any processing (required)")
+#parser$add_argument("-p1", "--fnFs", nargs="+", help="Forward fastq files after primer removal (required)")
+#parser$add_argument("-p2", "--fnRs", nargs="+", help="Reverse fastq files after primer removal (required)")
+#parser$add_argument("-a1", "--adap_f", nargs="+", help="Forward fastq files after adaptor removal (required)")
+#parser$add_argument("-a2", "--adap_r", nargs="+", help="Reverse fastq files after adaptor removal (required)")
 parser$add_argument("-c", "--class", help="Class specifying 'parasite' or 'vector' (required if '--default' is specified)")
 parser$add_argument("-d", "--work_dir", help="Working directory path for writing all dada2 output files")
 parser$add_argument("-o", "--output_filename", help="output tab-separated filename (required)")
@@ -67,6 +68,17 @@ args <- parser$parse_args()
 ########################################
 # 	PARSE PARAMETERS               #
 ########################################
+
+# Read the input csv file
+input_csv = args$input_csv
+input_data = read.csv(input_csv, header = TRUE, sep = ",", stringsAsFactors = FALSE)
+args$sample_ids = paste(input_data$sample_ids, sep = " ")
+args$orig_f = paste(input_data$fastq1s, sep = " ")
+args$orig_r = paste(input_data$fastq2s, sep = " ")
+args$fnFs = paste(input_data$primer_rem1s, sep = " ")
+args$fnRs = paste(input_data$primer_rem2s, sep = " ")
+args$adap_f = paste(input_data$adaptor_rem1s, sep = " ")
+args$adap_r = paste(input_data$adaptor_rem2s, sep = " ")
 
 # Universal parameters
 sample_ids = unlist(strsplit(args$sample_ids, " ")) 

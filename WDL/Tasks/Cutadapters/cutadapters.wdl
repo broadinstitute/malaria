@@ -27,7 +27,7 @@ task cutadapters {
         touch Results/~{basename}_val_2.fq.gz
         
         if [ "~{downsample_fraction}" -ne 0 ]; then
-            echo "Downsampling to ~{downsample_fraction} 40000."
+            echo "Downsampling to ~{downsample_fraction} reads."
             seqtk sample -s100 ~{fastq1} ~{downsample_fraction} > ~{basename}_R1_downsampled.fastq
             seqtk sample -s100 ~{fastq2} ~{downsample_fraction} > ~{basename}_R2_downsampled.fastq
             FASTQ1="~{basename}_R1_downsampled.fastq"

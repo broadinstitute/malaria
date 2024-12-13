@@ -122,7 +122,8 @@ workflow ampseq {
             ASVTable = t_004_amplicon_denoising.ASVTable_o,
             ASVSeqs = t_004_amplicon_denoising.ASVSeqs_o,
             ASV_to_CIGAR = t_004_amplicon_denoising.ASV_to_CIGAR_o,
-            ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o
+            ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o,
+            ReadAttrition = t_004_amplicon_denoising.ReadAttrition_o
     }
 
     output {

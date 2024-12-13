@@ -9,7 +9,7 @@ task asv_filtering {
 		File? reference_amplicons
 		String? ampseq_export_format = 'excel'
 
-		# Metadata columns	
+		# Metadata columns
 		File sample_metadata
 		String? metadata_variable1_name = 'Country'
 		String? metadata_variable2_name
@@ -22,6 +22,7 @@ task asv_filtering {
 		File ASVSeqs
 		File ASV_to_CIGAR
 		File ZeroReadsSampleList
+		File ReadAttrition
 
 		# MHap ASV filtering thresholds 
 		String sample_id_pat = '.'
@@ -54,6 +55,7 @@ task asv_filtering {
 	String asv2cigar_dir = "asv2cigar/"
 	String asv_seq_dir = "asv_seq/"
 	String zero_read_sample_list_dir = "zeroReadSampleList/"
+        String read_attrition_dir = "read_attrition/"
 
 	###########################################
 	command <<<
@@ -69,6 +71,7 @@ task asv_filtering {
 		mkdir -p Results/~{asv2cigar_dir}
 		mkdir -p Results/~{asv_seq_dir}
 		mkdir -p Results/~{zero_read_sample_list_dir}
+		mkdir -p Results/~{read_attrition_dir}
 		mkdir -p references/
 
 		# Copy correct files to proper directories - required for MHap script
@@ -77,13 +80,13 @@ task asv_filtering {
 		~{"gsutil cp " + panel_bedfile + " references/"}
 		gsutil cp ~{sample_metadata} Results/metadata.csv
 		
-
 		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
 		gsutil cp ~{ASVTable} Results/~{asv_table_dir}
 		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
 		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
 		gsutil cp ~{ZeroReadsSampleList} Results/~{zero_read_sample_list_dir}
 		gsutil cp ~{markersTable} references/markersTable.csv
+		gsutil cp ~{ReadAttrition} Results/~{read_attrition_dir}/ #READATTRITION LOG HERE -> NEEDS INTEGRATION WITH XLSX FILE
 
 		# Call MHap_Analysis_pipeline from Amplicon_TerraPipeline
 		find . -type f
