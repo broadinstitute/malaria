@@ -2,9 +2,7 @@
 # Functions to create, upload, joint, write or convert formats that store genetic data ----
 
 ## cigar S4class and create_cigar----
-
 ## cigar S4 class
-
 setClass('cigar', slots = c(
   cigar_table = "ANY",
   metadata = "ANY",
@@ -27,9 +25,7 @@ create_cigar = function(cigar_table = NULL,
   return(obj)
 }
 
-
 ## read_cigar_tables----
-
 read_cigar_tables = function(paths = NULL,
                              cigar_files = NULL,
                              asv_table_files = NULL,
@@ -70,7 +66,6 @@ read_cigar_tables = function(paths = NULL,
           print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the cigar table.')
           
         }
-        
       }else{
         print(paste0('Cigar file ', file.path(paths, Run, "dada2/run_dada2/CIGARVariants_Bfilter.out.tsv"), ' not found'))
       }
@@ -79,7 +74,6 @@ read_cigar_tables = function(paths = NULL,
         asv2cigar_run = read.table(file.path(paths, Run, "dada2/run_dada2/ASV_to_CIGAR.out.txt"),
                                    header = T,
                                    check.names = FALSE)
-        
       }else{
         print(paste0('asv2cigar file ', file.path(paths, Run, "dada2/run_dada2/ASVTable.txt"), ' not found'))
       }
@@ -90,12 +84,10 @@ read_cigar_tables = function(paths = NULL,
                                    check.names = FALSE)
         asv_table_run = left_join(asv_table_run, asv2cigar_run, by = join_by(hapid == ASV))
         
-        
         if(sum(grepl('(/|-|:)', asv_table_run[['Amplicon']])) > 0){
           
           asv_table_run[['Amplicon']] = gsub('(/|-|:)', '_', asv_table_run[['Amplicon']])
           print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the column Amplicon of the ASV table.')
-          
         }
         
       }else{
@@ -1656,7 +1648,6 @@ ampseq2loci = function(ampseq_object){
 
 # filter_samples----
 
-
 filter_samples = function(ampseq_object, v){
   
   obj = ampseq_object
@@ -2651,9 +2642,7 @@ sample_ReadDepth = function(ampseq_object, stat = c('sum', 'mean', 'median', 'sd
     
     
   }
-  
   return(output)
-  
 }
 
 ## get_ReadDepth_coverage----
@@ -6170,6 +6159,8 @@ get_Fws = function(ampseq_object = NULL){
 
 
 
+
+########## UNUSED FUNCTIONS?
 ## Functions for Complexity of infection----
 
 ### get_polygenomic----
