@@ -2874,38 +2874,37 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                               1,
                                               function(x){
                                                 sum(x >= threshold) == 0
-                                              }),][["loci"]]
+                                              }), , drop=FALSE][["loci"]]
       keeped_loci = loci_performance[apply(loci_performance[, grepl('loci_ampl_rate', colnames(loci_performance))], 
                                            1,
                                            function(x){
                                              sum(x >= threshold) > 0
-                                           }),][["loci"]]
+                                           }), , drop=FALSE][["loci"]]
       
       ampseq_loci_abd_table_discarded_loci =
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci, drop=FALSE]
       
       ampseq_loci_abd_table = 
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci, drop=FALSE]
       
       markers = ampseq_object@markers
       
-      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci,]
-      markers = markers[markers[['amplicon']] %in% keeped_loci,]
+      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
+      markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
       
       markers[["distance"]] = Inf
       
       for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-        for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome,])-1)){
+        for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome, ,drop=FALSE])-1)){
           markers[
-            markers[["chromosome"]] == chromosome,
-          ][amplicon, "distance"] = 
-            markers[markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
-            markers[markers[["chromosome"]] == chromosome,][amplicon, "pos"]
+            markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon, "distance"] = 
+            markers[markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon + 1, "pos"] - 
+            markers[markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon, "pos"]
         }
       }
       
       loci_performance_complete = loci_performance
-      loci_performance = loci_performance[keeped_loci,]
+      loci_performance = loci_performance[keeped_loci, , drop=FALSE]
       
       ampseq_object@gt = ampseq_loci_abd_table
       ampseq_object@markers = markers
@@ -2921,32 +2920,32 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       
       print("Deciding which loci to keep/discard...")
 
-      discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold,][["loci"]]
-      keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold,][["loci"]]
+      discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold, , drop=FALSE][["loci"]]
+      keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold, , drop=FALSE][["loci"]]
       
       # Ensure that these stay as dataframes
 
       ampseq_loci_abd_table_discarded_loci =
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci, drop=FALSE]
       ampseq_loci_abd_table = 
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci, drop=FALSE]
       
       print("Finished deciding loci to keep/discard!")
 
       markers = ampseq_object@markers      
-      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci,]
-      markers = markers[markers[['amplicon']] %in% keeped_loci,]
+      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
+      markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
       
       print("Deciding which markers to keep/discard...")
       # markers[["distance"]] = Inf
         
+        #Per-chromosome calculation of distance
         for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-          for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome,])-1)){
-            markers[
-              markers[["chromosome"]] == chromosome,
-            ][amplicon, "distance"] = 
-              markers[markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
-              markers[markers[["chromosome"]] == chromosome,][amplicon, "pos"]
+          chr_markers = markers[markers[["chromosome"]] == chromosome, , drop=FALSE]
+          if (nrow(chr_markers) > 1) {
+            chr_markers[["distance"]] = c(diff(chr_markers[["pos"]], NA))
+          } else {
+            chr_markers[["distance"]] = NA
           }
         }
 
@@ -3041,7 +3040,7 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     name_of_discarded_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] <= threshold ,][["Sample_id"]]]
     number_of_discarded_samples = length(name_of_discarded_samples)
     
-    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold ,][["Sample_id"]]]
+    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold , ,][["Sample_id"]]]
     number_of_kept_samples = length(name_of_kept_samples)
     
     print("Table with discarded samples")
