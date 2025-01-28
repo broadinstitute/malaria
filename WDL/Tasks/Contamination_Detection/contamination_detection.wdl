@@ -10,7 +10,7 @@ task contamination_detection {
 
 		#Contamination detection parameters
 		Int minreads_threshold = 1000
-		Float contamination_threshold = 0.5
+		Float contamination_threshold = 1
 	}
 
 	command <<<
@@ -28,6 +28,10 @@ task contamination_detection {
 	# Detect missing files
 
 	cut -d, -f1 "~{barcodes_index}" | while read -r sample; do
+		if [ "$sample" == "sample_id" ]; then
+			continue
+		fi
+
 		if ! echo "$adaptor_rem1s_string" | grep -qi "$sample"; then
 			echo "$sample" >> missing_files.tsv
 		else

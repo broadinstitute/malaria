@@ -1,12 +1,11 @@
 version 1.0
 
 import "../Tasks/Prepare_Reference_Files/prepare_reference_files.wdl" as prepare_reference_files_t
-#import "../Tasks/Contamination_Detection/contamination_detection.wdl" as contamination_detection_t
+import "../Tasks/Contamination_Detection/contamination_detection.wdl" as contamination_detection_t
 import "../Tasks/Cutadapters/cutadapters.wdl" as cutadapters_t
 import "../Tasks/Trimprimers/trimprimers.wdl" as trimprimers_t
 import "../Tasks/Amplicon_Denoising/amplicon_denoising.wdl" as amplicon_denoising_t
 import "../Tasks/ASV_Filtering/asv_filtering.wdl" as asv_filtering_t
-
 #import "../Tasks/amplicon_demultiplexing.wdl" as amplicon_demultiplexing_t
 
 workflow ampseq {
@@ -28,7 +27,7 @@ workflow ampseq {
         File? path_to_snv
 
         # Optional file for contamination detection pipeline
-        #File? barcodes_index
+        File? barcodes_index
 
         # Parameters for ASV filtering
         File sample_metadata
@@ -67,16 +66,16 @@ workflow ampseq {
         }
     }
 
-#    if(defined(barcodes_index)) {
-#        call contamination_detection_t.contamination_detection as t_0001_contamination_detection {
-#            input: 
-#                adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
-#                adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
-#                forward_primers_file = forward_primers_file,
-#                reverse_primers_file = reverse_primers_file,
-#                barcodes_index = barcodes_index
-#        }
-#    }
+    if(defined(barcodes_index)) {
+        call contamination_detection_t.contamination_detection as t_0001_contamination_detection {
+            input: 
+                adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
+                adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
+                forward_primers_file = forward_primers_file,
+                reverse_primers_file = reverse_primers_file,
+                barcodes_index = barcodes_index
+        }
+    }
 
 #    if(run_demultiplexing) {
 #        call ampseq_pipeline_demult {
@@ -135,9 +134,9 @@ workflow ampseq {
         #File? reverse_primers_out = t_001_prepare_reference_files.reverse_primers_o
         
         # CONTAMINATION DETECTION
-        #File? contamination_detection_missing_files_f = t_0001_contamination_detection.missing_files
-        #File? contamination_detection_sample_cards_f = t_0001_contamination_detection.contamination_detection_sample_cards
-        #File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
+        File? contamination_detection_missing_files_f = t_0001_contamination_detection.missing_files
+        File? contamination_detection_sample_cards_f = t_0001_contamination_detection.contamination_detection_sample_cards
+        File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
 
         # CUTADAPTERS AND TRIMPRIMERS
         #Array[File] cutadaptersout_f_out = t_002_cutadapters.fastq1_noadapters
