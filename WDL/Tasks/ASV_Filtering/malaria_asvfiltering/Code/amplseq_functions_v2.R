@@ -2917,7 +2917,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       return(ampseq_object)
       
     }else if((is.null(strata) | !based_on_strata)){
-      
       print("Deciding which loci to keep/discard...")
 
       discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold, , drop=FALSE][["loci"]]
@@ -2936,30 +2935,31 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
       markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
       
-      print("Deciding which markers to keep/discard...")
+      print("Calculating marker distance...")
       # markers[["distance"]] = Inf
         
-        #Per-chromosome calculation of distance
-        for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-          chr_markers = markers[markers[["chromosome"]] == chromosome, , drop=FALSE]
-          if (nrow(chr_markers) > 1) {
-            chr_markers[["distance"]] = c(diff(chr_markers[["pos"]], NA))
-          } else {
-            chr_markers[["distance"]] = NA
-          }
+      #Per-chromosome calculation of distance
+      print(markers)
+      for(chromosome in levels(as.factor(markers[["chromosome"]]))){
+        chr_markers = markers[markers[["chromosome"]] == chromosome, , drop=FALSE]
+        if (nrow(chr_markers) > 1 && all(!is.na(chr_markers[["pos"]]))) {
+          chr_markers[["distance"]] = c(diff(chr_markers[["pos"]], lag=1), NA)
+        } else {
+          chr_markers[["distance"]] = NA
         }
+      }
 
-        print("Finished deciding which markers to keep/discard!")
+      print("Finished calculating marker distance!")
+ 
+      loci_performance_complete = loci_performance
+      loci_performance = loci_performance[keeped_loci,]
         
-        loci_performance_complete = loci_performance
-        loci_performance = loci_performance[keeped_loci,]
-        
-        ampseq_object@gt = ampseq_loci_abd_table
-        ampseq_object@markers = markers
-        ampseq_object@loci_performance = loci_performance
-        ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
-                                            loci_performance = loci_performance_complete,
-                                            markers = discarded_markers)
+      ampseq_object@gt = ampseq_loci_abd_table
+      ampseq_object@markers = markers
+      ampseq_object@loci_performance = loci_performance
+      ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
+                                          loci_performance = loci_performance_complete,
+                                          markers = discarded_markers)
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
       #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
       return(ampseq_object)
