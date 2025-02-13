@@ -1,5 +1,6 @@
 version 1.0
 
+import "../Tasks/File_Validation/validate_inputs.wdl" as validate_inputs_t
 import "../Tasks/Prepare_Reference_Files/prepare_reference_files.wdl" as prepare_reference_files_t
 import "../Tasks/Contamination_Detection/contamination_detection.wdl" as contamination_detection_t
 import "../Tasks/Cutadapters/cutadapters.wdl" as cutadapters_t
@@ -17,6 +18,9 @@ workflow ampseq {
         File reference_genome
         Array[String] run_id
         File panel_info
+
+        # Optional parameter for using original vs. paired files
+        Boolean? use_original_fastqs = true
 
         # Optional reference files
         File? forward_primers_file
@@ -38,6 +42,15 @@ workflow ampseq {
     # 2 REMOVE File sample_metadata. USERS WILL ALWAYS GET THIS WRONG.
     # 3 ADD FEATURE TO DOWN SAMPLE FILES
     # 4 DISCONTINUE THE MARKERS TABLE?
+
+    scatter (indx0 in range(length(fastq1s))) {
+        call validate_inputs_t.validate_fastqs as t_000_validate_fastqs {
+            input:
+                fastq1 = fastq1s[indx0],
+                fastq2 = fastq2s[indx0],
+                use_original_files = use_original_fastqs
+        }
+    }
 
     call prepare_reference_files_t.prepare_reference_files as t_001_prepare_reference_files {
         input:
