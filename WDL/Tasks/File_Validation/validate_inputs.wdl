@@ -24,11 +24,31 @@ task validate_fastqs {
         cp ~{fastq2} ~{fq2_prefix}.fastq.gz
     else
         echo "Pairing FASTQ files."
-        mkdir Paired
-        seqkit pair -1 ~{fastq1} -2 ~{fastq2} -O Paired
-        mv Paired/~{fq1_prefix}.fastq.gz ~{fq1_prefix}.fastq.gz
-        mv Paired/~{fq2_prefix}.fastq.gz ~{fq2_prefix}.fastq.gz
+        mkdir -p Paired
+        
+        # Run seqkit pair and capture any error
+        if seqkit pair -1 ~{fastq1} -2 ~{fastq2} -O Paired; then
+            mv Paired/~{fq1_prefix}.fastq.gz ~{fq1_prefix}.fastq.gz
+            mv Paired/~{fq2_prefix}.fastq.gz ~{fq2_prefix}.fastq.gz
+        else
+            echo "ERROR: seqkit pair failed, using original FASTQ files instead."
+            cp ~{fastq1} ~{fq1_prefix}.fastq.gz
+            cp ~{fastq2} ~{fq2_prefix}.fastq.gz
+        fi
     fi
+
+    # Properly pair FASTQs if indicated
+#    if [[ "~{use_original_files}" == "true" ]]; then
+#        echo "Using original FASTQ files."
+#        cp ~{fastq1} ~{fq1_prefix}.fastq.gz
+#        cp ~{fastq2} ~{fq2_prefix}.fastq.gz
+#    else
+#        echo "Pairing FASTQ files."
+#        mkdir Paired
+#        seqkit pair -1 ~{fastq1} -2 ~{fastq2} -O Paired
+#        mv Paired/~{fq1_prefix}.fastq.gz ~{fq1_prefix}.fastq.gz
+#        mv Paired/~{fq2_prefix}.fastq.gz ~{fq2_prefix}.fastq.gz
+#    fi
 
     >>>
     output {
