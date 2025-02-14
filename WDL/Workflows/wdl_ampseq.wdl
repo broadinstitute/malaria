@@ -152,8 +152,8 @@ workflow ampseq {
         # CUTADAPTERS AND TRIMPRIMERS
         #Array[File] cutadaptersout_f_out = t_002_cutadapters.fastq1_noadapters
         #Array[File] cutadaptersout_r_out = t_002_cutadapters.fastq2_noadapters
-        Array[File] trimprimersout_f_out = t_003_trimprimers.fastq1_no_primers_o
-        Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers_o
+        #Array[File] trimprimersout_f_out = t_003_trimprimers.fastq1_no_primers_o
+        #Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers_o
 
         # DADA2
         #File seqtab_out = t_004_amplicon_denoising.seqtab_o
