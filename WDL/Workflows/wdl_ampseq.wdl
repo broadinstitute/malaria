@@ -19,9 +19,6 @@ workflow ampseq {
         Array[String] run_id
         File panel_info
 
-        # Optional parameter for using original vs. paired files
-        Boolean? use_original_fastqs = true
-
         # Optional reference files
         File? forward_primers_file
         File? reverse_primers_file
@@ -58,8 +55,7 @@ workflow ampseq {
         call validate_inputs_t.validate_fastqs as t_000_validate_fastqs {
             input:
                 fastq1 = fastq1s[indx1],
-                fastq2 = fastq2s[indx1],
-                use_original_files = use_original_fastqs
+                fastq2 = fastq2s[indx1]
         }
 
         call cutadapters_t.cutadapters as t_002_cutadapters {
@@ -150,8 +146,8 @@ workflow ampseq {
         File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
 
         # CUTADAPTERS AND TRIMPRIMERS
-        #Array[File] cutadaptersout_f_out = t_002_cutadapters.fastq1_noadapters
-        #Array[File] cutadaptersout_r_out = t_002_cutadapters.fastq2_noadapters
+        #Array[File] cutadaptersout_f_out = t_002_cutadapters.fastq1_noadapters_o
+        #Array[File] cutadaptersout_r_out = t_002_cutadapters.fastq2_noadapters_o
         #Array[File] trimprimersout_f_out = t_003_trimprimers.fastq1_no_primers_o
         #Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers_o
 
