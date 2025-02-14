@@ -43,15 +43,6 @@ workflow ampseq {
     # 3 ADD FEATURE TO DOWN SAMPLE FILES
     # 4 DISCONTINUE THE MARKERS TABLE?
 
-    scatter (indx0 in range(length(fastq1s))) {
-        call validate_inputs_t.validate_fastqs as t_000_validate_fastqs {
-            input:
-                fastq1 = fastq1s[indx0],
-                fastq2 = fastq2s[indx0],
-                use_original_files = use_original_fastqs
-        }
-    }
-
     call prepare_reference_files_t.prepare_reference_files as t_001_prepare_reference_files {
         input:
             panel_info = panel_info,
@@ -64,10 +55,17 @@ workflow ampseq {
     }
 
     scatter (indx1 in range(length(fastq1s))) {
-        call cutadapters_t.cutadapters as t_002_cutadapters {
+        call validate_inputs_t.validate_fastqs as t_000_validate_fastqs {
             input:
                 fastq1 = fastq1s[indx1],
-                fastq2 = fastq2s[indx1]
+                fastq2 = fastq2s[indx1],
+                use_original_files = use_original_fastqs
+        }
+
+        call cutadapters_t.cutadapters as t_002_cutadapters {
+            input:
+                fastq1 = t_000_validate_fastqs.fastq1_o,
+                fastq2 = t_000_validate_fastqs.fastq2_o
         }
 
         call trimprimers_t.trimprimers as t_003_trimprimers {
@@ -154,8 +152,8 @@ workflow ampseq {
         # CUTADAPTERS AND TRIMPRIMERS
         #Array[File] cutadaptersout_f_out = t_002_cutadapters.fastq1_noadapters
         #Array[File] cutadaptersout_r_out = t_002_cutadapters.fastq2_noadapters
-        #Array[File] trimprimersout_f_out = t_003_trimprimers.fastq1_no_primers
-        #Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers
+        Array[File] trimprimersout_f_out = t_003_trimprimers.fastq1_no_primers_o
+        Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers_o
 
         # DADA2
         #File seqtab_out = t_004_amplicon_denoising.seqtab_o

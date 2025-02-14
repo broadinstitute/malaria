@@ -39,10 +39,10 @@ task validate_fastqs {
     runtime {
         cpu: 1
         memory: "1 GB"
-		disks: "local-disk 10 HDD"
-		bootDiskSizeGb: 10
-		preemptible: 3
-		maxRetries: 1
-		docker: "jorgeamaya/validate_inputs:v_1_0_0"
+	disks: "local-disk 10 HDD"
+	bootDiskSizeGb: 10
+	preemptible: 3
+	maxRetries: 1
+	docker: "jorgeamaya/validate_inputs:v_1_0_0"
     }
 }
