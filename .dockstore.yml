@@ -7,3 +7,6 @@ workflows:
   - name: MHap
     subclass: WDL
     primaryDescriptorPath: /WDL/Workflows/wdl_report_layouting.wdl
+  - name: PCA
+    subclass: WDL
+    primaryDescriptorPath: /WDL/Workflows/wdl_pca.wdl
