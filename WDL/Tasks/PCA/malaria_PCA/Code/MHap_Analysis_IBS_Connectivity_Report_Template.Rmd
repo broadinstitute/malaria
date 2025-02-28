@@ -1,0 +1,97 @@
+---
+title: "*MHap Analysis Report*: PCoA of Genetic Relatedness (IBS)"
+author: "Neafsey Lab"
+output:
+  html_document:
+    toc: yes
+    number_sections: no
+    toc_float: yes
+    code_folding: hide
+editor_options:
+  markdown:
+    wrap: 72
+  chunk_output_type: inline
+params:
+  RData_image: ""
+---
+
+The genetic relatedness between individual parasite haplotypes and among
+parasite populations has several practical uses in the study of malaria.
+For example, relatedness information can help determine the geographic
+origin of imported infections, define the extent to which parasites are
+dispersing or are contained within landscapes, and identify whether
+specific strains are being selected for over time. Relatedness
+information is also very helpful in understanding longitudinal
+(within-individual) infection dynamics. In the case of *P. vivax*, for
+example, it can distinguish whether infection represents newly acquired
+parasites, recrudescence after treatment, or relapse from longer-lasting
+hypnozoite reservoirs. Relatedness information can also help resolve
+polyclonality signals, i.e., clarify the number of different haplotypes
+co-infecting individual patients.
+
+Relatedness is defined as the probability that, at any locus in the
+genome, the alleles sampled from two different individuals are identical
+by descent ($IBD$). Genetic markers used for this purpose include SNPs,
+microsatellites, and (increasingly) amplicon micro-haplotypes (MHAP).
+Relatedness can be estimated using a Hidden Markov Model approach
+implemented in the [R package
+paneljudge](https://github.com/aimeertaylor/paneljudge/tree/master) (see
+mathematical framework in [AR Taylor et al.
+2019](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6707449/)). In this
+package, relatedness ($r$) is estimated as a function of the haplotype
+of the two sampled parasites ($Y^{(i)}$ and $Y^{(j)}$, where $i$ and $j$
+denote two different sampled genotypes from the population), the
+frequency of the alleles in the population ($f_t(g)$, where $t$ denotes
+locus), the physical distance ($d_t$, in base-pairs) between
+successively analyzed loci ($t-1$ and $t$), the recombination rate
+($\rho$), a switching rate of the Markov chain ($k$), and a constant
+genotyping error rate ($\varepsilon$).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, include = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(magrittr)
+
+
+setClass('ampseq', slots = c(
+  gt = "ANY",
+  metadata = "ANY",
+  markers = "ANY",
+  loci_performance = "ANY",
+  pop_summary = "ANY",
+  controls = "ANY",
+  discarded_loci = "ANY",
+  discarded_samples = "ANY",
+  plots = "ANY"
+))
+
+load(params$RData_image)
+
+```
+
+## PCA 
+
+PCA plot summarizing the genetic relatedness
+between samples are constructed.
+
+```{r, fig.width=6, fig.height=4.5, fig.cap="**Figure 1:** Principal coordinate analysis (PCoA) based on the inverse of genetic relatedness (1 - IBD). Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
+IBD_PCA
+```
+
+```{r, fig.cap = "**Table 1:** Pairwise ibs table"}
+pairwise_ibs %>%
+  DT::datatable(extensions = 'Buttons',
+                options = list(dom = 'Blfrtip',
+                               buttons = c('csv', 'excel')))
+```
+
+```{r, fig.cap = "**Table 1:** Coi by sample"}
+coi_by_Sample %>%
+  DT::datatable(extensions = 'Buttons',
+                options = list(dom = 'Blfrtip',
+                               buttons = c('csv', 'excel')))
+```
+
