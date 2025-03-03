@@ -22,10 +22,10 @@ workflow plot_pca {
 	}
 
 	output {
-		#File? coi_report_f = t_001_report_layouting_process.coi_report
+		File? ibs_connectivity_report_f = t_001_pca_process.ibs_connectivity_report
 		File? ibd_connectivity_report_f = t_001_pca_process.ibd_connectivity_report
-		File? ibd_transmssion_report_f = t_001_pca_process.ibd_transmssion_report
-		File? ibs_transmssion_report_f = t_001_pca_process.ibs_transmssion_report
+		#File? ibd_transmission_report_f = t_001_pca_process.ibd_transmission_report
+		#File? coi_report_f = t_001_report_layouting_process.coi_report
 	}
 }
 
