@@ -1,6 +1,6 @@
 #!/bin/r env
 Sys.setenv(PROJ_LIB = "/opt/conda/envs/layout_env/share/proj")
-#03_Plasmodium_Genotyping_PCA
+
 library(argparse)
 library(stringr)
 library(rmarkdown)
@@ -605,352 +605,379 @@ IBD_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))
        #y = paste0('2nd PCo (', round(evectors_IBS$contrib[2],1), '%)'),
        color = 'Countries')
 
+
+print("WATERMARK get_polygenomic")
+
 test2 = get_polygenomic(ampseq_object, strata = NULL, update_popsummary = F)
 
 pairwise_ibs
 
 coi_by_Sample = test2$coi_bySample
 
+IBS_Connectivity_Report_expected_outputs = c('IBS_PCA',
+ 'pairwise_ibs',
+  'coi_by_Sample',
+  'ampseq_object',
+  'Variable1',
+  'Variable2')
+
+IBS_Connectivity_Report_outputs = IBS_Connectivity_Report_expected_outputs[IBS_Connectivity_Report_expected_outputs %in% ls()]
+
 if(tolower(code_environment) == 'local'){
-  imagename = file.path(wd, paste0(output, '_IBS_Connectivity_Report.RData'))
+   imagename = file.path(wd, paste0(output, '_IBS_Connectivity_Report.RData'))
 
-  IBS_Connectivity_Report_expected_outputs = c('IBS_PCA',
-   'pairwise_ibs',
-    'coi_by_Sample',
-    'ampseq_object',
-    'Variable1',
-    'Variable2')
+   save(file = imagename, list = IBS_Connectivity_Report_outputs)
 
-  IBS_Connectivity_Report_outputs = IBS_Connectivity_Report_expected_outputs[IBS_Connectivity_Report_expected_outputs %in% ls()]
+   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd'))))
 
-  save(file = imagename, list = IBS_Connectivity_Report_outputs)
+   # Assign variables based on command-line arguments
+   render(file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd')), params = list(
+     RData_image = imagename),
+     output_dir = wd)
+ }else{
 
-  system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd'))))
+   imagename = paste0(output, '_IBS_Connectivity_Report.RData')
 
-  # Assign variables based on command-line arguments
-  render(file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd')), params = list(
-    RData_image = imagename),
-    output_dir = wd)
-}
+   save(file = imagename, list = IBS_Connectivity_Report_outputs)
+
+   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBS_Connectivity_Report.Rmd')))
+
+   # Assign variables based on command-line arguments
+   render(paste0(output, '_IBS_Connectivity_Report.Rmd'), params = list(
+     RData_image = imagename),
+     output_dir = 'Results')
+ }
+
+#save(file = imagename, list = IBS_Connectivity_Report_outputs)
+
+#system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd'))))
+
+# Assign variables based on command-line arguments
+#render(file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd')), params = list(
+#  RData_image = imagename),
+#  output_dir = wd)
+
 
 #GENETIC RELATEDNESS - IBD
 if(!is.null(ibd_thres)){
-  print("WATERMARK5")
-  print(ampseq_object@gt)
-  print(ampseq_object@metadata)
-  # call hmmIBD and PCA functions from Rcpp
-  sourceCpp(file.path(fd,'hmmloglikelihood.cpp'))
-  
-  if(is.null(pairwise_relatedness_table)){
-    pairwise_relatedness = NULL
-    
-    if(nchunks > (nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2) {
-      nchunks = round(((nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2)/3)
-    } 
-    
-    for(w in 1:nchunks){
-      
-      start = Sys.time()
-      pairwise_relatedness = rbind(pairwise_relatedness,
-                                   pairwise_hmmIBD(obj = ampseq_object, parallel = parallel, w = w, n = nchunks))
-      time_diff = Sys.time() - start
-      
-      print(paste0('step ', w, ' done in ', time_diff, ' secs'))
-      
-    }
-    
-    if(tolower(code_environment) == 'local'){
-      write.csv(pairwise_relatedness,
-                file.path(wd, paste0(output, '_pairwise_ibd', '.csv')),
-                quote = FALSE,
-                row.names = FALSE)
-    }else{
+ print("WATERMARK5")
+ print(ampseq_object@gt)
+ print(ampseq_object@metadata)
+ # call hmmIBD and PCA functions from Rcpp
+ sourceCpp(file.path(fd,'hmmloglikelihood.cpp'))
 
-      write.csv(pairwise_relatedness,
-                paste0(output, '_pairwise_ibd', '.csv'),
-                quote = FALSE,
-                row.names = FALSE)
-    }
-    
-  }else{
-    
-    pairwise_relatedness = read.csv(pairwise_relatedness_table)
-    
-  }
-  print("WATERMARK6")
-  if(!is.null(Variable2)){
-    plot_frac_highly_related_overtime_between = plot_frac_highly_related_over_time(
-      pairwise_relatedness = pairwise_relatedness,
-      metadata = ampseq_object@metadata,
-      Population = c(Variable1, Variable2),
-      fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))*(length(unique(ampseq_object@metadata[[Variable1]]))-1)/2),
-      threshold = ibd_thres,
-      type_pop_comparison = 'between',
-      ncol = 3,
-      pop_levels = NULL)
-  }
-  
-  print("WATERMARK7")
-  ## Population subdivision----
-  evectors_IBD = IBD_evectors(ampseq_object = ampseq_object,
-                              relatedness_table = pairwise_relatedness,
-                              k = length(unique(ampseq_object@metadata$Sample_id)),
-                              Pop = Variable1, q = 2)
-  
-  names(evectors_IBD$eigenvector)[3] = 'Variable1'
-  
-  set.seed(1)
-  
-  IBD_PCA = evectors_IBD$eigenvector %>% ggplot(aes(x = PC1, y = PC2, color = Variable1))+
-    geom_point(alpha = .7, size = 2) +
-    stat_ellipse(level = .6)+
-    scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
-    theme_bw()+
-    labs(x = paste0('1st PCo (', round(evectors_IBD$contrib[1],1), '%)'),
-         y = paste0('2nd PCo (', round(evectors_IBD$contrib[2],1), '%)'),
-         color = 'Countries')
-  
-  
-  
-  print('Generation of plots and tables for IBD and Connectivity report done')
-  print("WATERMARK8")
-  IBD_Connectivity_Report_expected_outputs = c(#'plot_relatedness_distribution_between',
-                                               'plot_frac_highly_related_between',
-                                               'plot_frac_highly_related_overtime_between',
-                                               'evectors_IBD',
-                                               'IBD_PCA',
-                                               'pairwise_relatedness',
-                                               'ibd_thres',
-                                               'ampseq_object',
-                                               'plot_network',
-                                               'create_ampseq',
-                                               'Variable1',
-                                               'Variable2')
-  
-  IBD_Connectivity_Report_outputs = IBD_Connectivity_Report_expected_outputs[IBD_Connectivity_Report_expected_outputs %in% ls()]
-  print("WATERMARK9")
-  if(tolower(code_environment) == 'local'){
-    imagename = file.path(wd,paste0(output, '_IBD_Connectivity_Report.RData'))
-  
-    save(file = imagename, list = IBD_Connectivity_Report_outputs)
-  
-    system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd'))))
-  
-    # Assign variables based on command-line arguments
-    render(file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd')), params = list(
-      RData_image = imagename),
-      output_dir = wd)
-  }else{
-  
-    imagename = paste0(output, '_IBD_Connectivity_Report.RData')
-    
-    save(file = imagename, list = IBD_Connectivity_Report_outputs)
-    
-    system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Connectivity_Report.Rmd')))
-    
-    # Assign variables based on command-line arguments
-    render(paste0(output, '_IBD_Connectivity_Report.Rmd'), params = list(
-      RData_image = imagename),
-      output_dir = 'Results')
-  }
-  print("Leaving render script")
-  print("WATERMARK10")
-  plot_frac_highly_related_within = plot_frac_highly_related(
-    pairwise_relatedness = pairwise_relatedness,
-    metadata = ampseq_object@metadata,
-    Population = Variable1,
-    fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
-    threshold = ibd_thres,
-    type_pop_comparison = 'within',
-    pop_levels = NULL)
-  
-  if(!is.null(Variable2)){
-    plot_frac_highly_related_overtime_within = plot_frac_highly_related_over_time(
-      pairwise_relatedness = pairwise_relatedness,
-      metadata = ampseq_object@metadata,
-      Population = c(Variable1, Variable2),
-      fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
-      threshold = ibd_thres,
-      type_pop_comparison = 'within',
-      ncol = 3,
-      pop_levels = NULL)
-  }
-  
-  print('Generation of plots and tables for IBD and Transmission report done')
-  
-  IBD_Transmission_Report_expected_outputs = c(#'plot_relatedness_distribution_within',
-                                               'plot_frac_highly_related_within',
-                                               'plot_frac_highly_related_overtime_within',
-                                               'Variable2')
-  print("WATERMARK11")
-  IBD_Transmission_Report_outputs = IBD_Transmission_Report_expected_outputs[IBD_Transmission_Report_expected_outputs %in% ls()]
-  
-  if(tolower(code_environment) == 'local'){
-    imagename = file.path(wd,paste0(output, '_IBD_Transmission_Report.RData'))
-  
-    save(file = imagename, list = IBD_Transmission_Report_outputs)
-  
-    system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd'))))
-  
-    # Assign variables based on command-line arguments
-    render(file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd')), params = list(
-      RData_image = imagename),
-      output_dir = wd)
-  }else{
-  
-    imagename = paste0(output, '_IBD_Transmission_Report.RData')
-    
-    save(file = imagename, list = IBD_Transmission_Report_outputs)
-    
-    system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Transmission_Report.Rmd')))
-    
-    # Assign variables based on command-line arguments
-    render(paste0(output, '_IBD_Transmission_Report.Rmd'), params = list(
-      RData_image = imagename),
-      output_dir = 'Results')
-  }
-  
-  print("Leaving render script")
-  
-}
-# COI----
+ if(is.null(pairwise_relatedness_table)){
+   pairwise_relatedness = NULL
 
-if(!is.null(poly_formula)){
-  print("WATERMARK12")
-  print('Starting COI report')
-  
-  if(is.null(poly_quantile)){
-    poly_quantile = 0.75
-  }
-  
-  if(!is.null(Variable1)){
-    
-    print('Calculate COI metrics by Variable1')
-    
-    poly_by_Var1 = get_polygenomic(ampseq_object = ampseq_object, 
-                                   strata = Variable1,
-                                   update_popsummary = FALSE,
-                                   na.rm = na_var_rm,
-                                   filters = NULL,
-                                   poly_quantile = poly_quantile,
-                                   poly_formula = poly_formula)
-    
-    set.seed(1)
-    
-    plot_poly_by_pop = poly_by_Var1$pop_summary %>% 
-      ggplot(aes(x = factor(pop, 
-                            levels = c(unique(poly_by_Var1$pop_summary$pop)[unique(poly_by_Var1$pop_summary$pop) != 'Total'], "Total")),
-                 y = prop_poly,
-                 fill = factor(pop, 
-                               levels = c(unique(poly_by_Var1$pop_summary$pop)[unique(poly_by_Var1$pop_summary$pop) != 'Total'], "Total"))))+
-      geom_col(alpha = .6) +
-      geom_errorbar(aes(ymin = prop_poly_lower, ymax = prop_poly_upper), width = .2)+
-      theme_bw() +
-      labs(title = "Frequency of polyclonal infections",
-           y = "Frecquency") +
-      scale_fill_manual(values = c(sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))), "gray30"))+
-      theme(axis.text = element_text(size = 12),
-            axis.title = element_blank(),
-            legend.position = "none",
-            axis.text.x = element_text(angle = 90, vjust = 0.5))
-    
-  }else{
-    
-    print('Calculate COI metrics by the overall population')
-    
-    poly_total = get_polygenomic(ampseq_object = ampseq_object, 
-                                 strata = NULL,
-                                 update_popsummary = FALSE,
-                                 na.rm = na_var_rm,
-                                 filters = NULL,
-                                 poly_quantile = poly_quantile,
-                                 poly_formula = poly_formula)
-    
-  }
-  
-  if(!is.null(Variable1) & !is.null(Variable2)){
-    
-    print('Calculate COI metrics by Variable1 and Varibale2')
-    
-    ampseq_object@metadata[['Var1_Var2']] = paste(ampseq_object@metadata[[Variable1]], ampseq_object@metadata[[Variable2]], sep = '::')
-    
-    poly_by_Var1_Var2 = get_polygenomic(ampseq_object = ampseq_object,
-                                        strata = "Var1_Var2",
-                                        update_popsummary = F,
-                                        na.rm = TRUE,
-                                        filters = NULL,
-                                        poly_quantile = poly_quantile, 
-                                        poly_formula = poly_formula
-                                        )
-    
-    set.seed(1)
-    
-    plot_poly_by_Var1_Var2 = poly_by_Var1_Var2$pop_summary %>%
-      filter(pop != 'Total')%>%
-      mutate(
-        Variable1 = stringr::str_split(pop, '::', simplify = TRUE)[,1],
-        Variable2 = stringr::str_split(pop, '::', simplify = TRUE)[,2],
-        prop_poly_lower = case_when(
-          prop_poly == 0 ~ 0,
-          prop_poly != 0 ~ prop_poly_lower),
-        prop_poly_upper = case_when(
-          prop_poly == 0 ~ 0,
-          prop_poly != 0 ~ prop_poly_upper)
-      )%>%
-      ggplot(aes(x = Variable2,
-                 y = prop_poly,
-                 ymin = prop_poly_lower,
-                 ymax = prop_poly_upper,
-                 fill = Variable1))+
-      geom_col()+
-      geom_errorbar(width = .2)+
-      facet_wrap(~Variable1, ncol = 3)+
-      theme_bw()+
-      scale_fill_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
-      labs(title = 'Temporal change of the proportion of polyclonal infections',
-           y = "Polyclonal infections",
-           x = Variable2)+
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
-            legend.position =  "none")
-    
-  }
-  
-  print('Generation of plots and tables for COI report done')
-  
-  COI_Report_expected_outputs = c('poly_total',
-                                  'poly_by_Var1',
-                                  'plot_poly_by_pop',
-                                  'poly_by_Var1_Var2',
-                                  'plot_poly_by_Var1_Var2',
-                                  'Variable1',
-                                  'Variable2')
-  
-  COI_Report_outputs = COI_Report_expected_outputs[COI_Report_expected_outputs %in% ls()]
-  
-  if(tolower(code_environment) == 'local'){
-  
-    imagename = file.path(wd,paste0(output, '_COI_Report.RData'))
-  
-    save(file = imagename, list = COI_Report_outputs)
-  
-    system(paste0('cp ', file.path(fd, 'MHap_Analysis_COI_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_COI_Report.Rmd'))))
-  
-    # Assign variables based on command-line arguments
-    render(file.path(wd, paste0(output, '_COI_Report.Rmd')), params = list(
-      RData_image = imagename),
-      output_dir = wd)
-  }else{
-  
-    imagename = paste0(output, '_COI_Report.RData')
-    
-    save(file = imagename, list = COI_Report_outputs)
-    
-    system(paste0('cp ', file.path(fd, 'MHap_Analysis_COI_Report_Template.Rmd'), ' ', paste0(output, '_COI_Report.Rmd')))
-    
-    # Assign variables based on command-line arguments
-    render(paste0(output, '_COI_Report.Rmd'), params = list(
-      RData_image = imagename),
-      output_dir = 'Results')
-  }
-  print("Leaving render script")
+   if(nchunks > (nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2) {
+     nchunks = round(((nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2)/3)
+   }
+
+   for(w in 1:nchunks){
+
+     start = Sys.time()
+     pairwise_relatedness = rbind(pairwise_relatedness,
+                                  pairwise_hmmIBD(obj = ampseq_object, parallel = parallel, w = w, n = nchunks))
+     time_diff = Sys.time() - start
+
+     print(paste0('step ', w, ' done in ', time_diff, ' secs'))
+
+   }
+
+   if(tolower(code_environment) == 'local'){
+     write.csv(pairwise_relatedness,
+               file.path(wd, paste0(output, '_pairwise_ibd', '.csv')),
+               quote = FALSE,
+               row.names = FALSE)
+   }else{
+
+     write.csv(pairwise_relatedness,
+               paste0(output, '_pairwise_ibd', '.csv'),
+               quote = FALSE,
+               row.names = FALSE)
+   }
+
+ }else{
+
+   pairwise_relatedness = read.csv(pairwise_relatedness_table)
+
+ }
+ print("WATERMARK6")
+ if(!is.null(Variable2)){
+   plot_frac_highly_related_overtime_between = plot_frac_highly_related_over_time(
+     pairwise_relatedness = pairwise_relatedness,
+     metadata = ampseq_object@metadata,
+     Population = c(Variable1, Variable2),
+     fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))*(length(unique(ampseq_object@metadata[[Variable1]]))-1)/2),
+     threshold = ibd_thres,
+     type_pop_comparison = 'between',
+     ncol = 3,
+     pop_levels = NULL)
+ }
+
+ print("WATERMARK7")
+ ## Population subdivision----
+ evectors_IBD = IBD_evectors(ampseq_object = ampseq_object,
+                             relatedness_table = pairwise_relatedness,
+                             k = length(unique(ampseq_object@metadata$Sample_id)),
+                             Pop = Variable1, q = 2)
+
+ names(evectors_IBD$eigenvector)[3] = 'Variable1'
+
+ set.seed(1)
+
+ IBD_PCA = evectors_IBD$eigenvector %>% ggplot(aes(x = PC1, y = PC2, color = Variable1))+
+   geom_point(alpha = .7, size = 2) +
+   stat_ellipse(level = .6)+
+   scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
+   theme_bw()+
+   labs(x = paste0('1st PCo (', round(evectors_IBD$contrib[1],1), '%)'),
+        y = paste0('2nd PCo (', round(evectors_IBD$contrib[2],1), '%)'),
+        color = 'Countries')
+
+
+
+ print('Generation of plots and tables for IBD and Connectivity report done')
+ print("WATERMARK8")
+ IBD_Connectivity_Report_expected_outputs = c(#'plot_relatedness_distribution_between',
+                                              'plot_frac_highly_related_between',
+                                              'plot_frac_highly_related_overtime_between',
+                                              'evectors_IBD',
+                                              'IBD_PCA',
+                                              'pairwise_relatedness',
+                                              'ibd_thres',
+                                              'ampseq_object',
+                                              'plot_network',
+                                              'create_ampseq',
+                                              'Variable1',
+                                              'Variable2')
+
+ IBD_Connectivity_Report_outputs = IBD_Connectivity_Report_expected_outputs[IBD_Connectivity_Report_expected_outputs %in% ls()]
+ print("WATERMARK9")
+ if(tolower(code_environment) == 'local'){
+   imagename = file.path(wd,paste0(output, '_IBD_Connectivity_Report.RData'))
+
+   save(file = imagename, list = IBD_Connectivity_Report_outputs)
+
+   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd'))))
+
+   # Assign variables based on command-line arguments
+   render(file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd')), params = list(
+     RData_image = imagename),
+     output_dir = wd)
+ }else{
+
+   imagename = paste0(output, '_IBD_Connectivity_Report.RData')
+
+   save(file = imagename, list = IBD_Connectivity_Report_outputs)
+
+   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Connectivity_Report.Rmd')))
+
+   # Assign variables based on command-line arguments
+   render(paste0(output, '_IBD_Connectivity_Report.Rmd'), params = list(
+     RData_image = imagename),
+     output_dir = 'Results')
+ }
+ print("Leaving render script")
+ print("WATERMARK10")
+ plot_frac_highly_related_within = plot_frac_highly_related(
+   pairwise_relatedness = pairwise_relatedness,
+   metadata = ampseq_object@metadata,
+   Population = Variable1,
+   fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
+   threshold = ibd_thres,
+   type_pop_comparison = 'within',
+   pop_levels = NULL)
+
+ if(!is.null(Variable2)){
+   plot_frac_highly_related_overtime_within = plot_frac_highly_related_over_time(
+     pairwise_relatedness = pairwise_relatedness,
+     metadata = ampseq_object@metadata,
+     Population = c(Variable1, Variable2),
+     fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
+     threshold = ibd_thres,
+     type_pop_comparison = 'within',
+     ncol = 3,
+     pop_levels = NULL)
+ }
+
+ # print('Generation of plots and tables for IBD and Transmission report done')
+ # 
+ # IBD_Transmission_Report_expected_outputs = c(#'plot_relatedness_distribution_within',
+ #                                              'plot_frac_highly_related_within',
+ #                                              'plot_frac_highly_related_overtime_within',
+ #                                              'Variable2')
+ # print("WATERMARK11")
+ # IBD_Transmission_Report_outputs = IBD_Transmission_Report_expected_outputs[IBD_Transmission_Report_expected_outputs %in% ls()]
+ # 
+ # if(tolower(code_environment) == 'local'){
+ #   imagename = file.path(wd,paste0(output, '_IBD_Transmission_Report.RData'))
+ # 
+ #   save(file = imagename, list = IBD_Transmission_Report_outputs)
+ # 
+ #   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd'))))
+ # 
+ #   # Assign variables based on command-line arguments
+ #   render(file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd')), params = list(
+ #     RData_image = imagename),
+ #     output_dir = wd)
+ # }else{
+ # 
+ #   imagename = paste0(output, '_IBD_Transmission_Report.RData')
+ # 
+ #   save(file = imagename, list = IBD_Transmission_Report_outputs)
+ # 
+ #   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Transmission_Report.Rmd')))
+ # 
+ #   # Assign variables based on command-line arguments
+ #   render(paste0(output, '_IBD_Transmission_Report.Rmd'), params = list(
+ #     RData_image = imagename),
+ #     output_dir = 'Results')
+ # }
+
+ print("Leaving render script")
+
 }
+
+## COI----
+#
+#if(!is.null(poly_formula)){
+#  print("WATERMARK12")
+#  print('Starting COI report')
+#  
+#  if(is.null(poly_quantile)){
+#    poly_quantile = 0.75
+#  }
+#  
+#  if(!is.null(Variable1)){
+#    
+#    print('Calculate COI metrics by Variable1')
+#    
+#    poly_by_Var1 = get_polygenomic(ampseq_object = ampseq_object, 
+#                                   strata = Variable1,
+#                                   update_popsummary = FALSE,
+#                                   na.rm = na_var_rm,
+#                                   filters = NULL,
+#                                   poly_quantile = poly_quantile,
+#                                   poly_formula = poly_formula)
+#    
+#    set.seed(1)
+#    
+#    plot_poly_by_pop = poly_by_Var1$pop_summary %>% 
+#      ggplot(aes(x = factor(pop, 
+#                            levels = c(unique(poly_by_Var1$pop_summary$pop)[unique(poly_by_Var1$pop_summary$pop) != 'Total'], "Total")),
+#                 y = prop_poly,
+#                 fill = factor(pop, 
+#                               levels = c(unique(poly_by_Var1$pop_summary$pop)[unique(poly_by_Var1$pop_summary$pop) != 'Total'], "Total"))))+
+#      geom_col(alpha = .6) +
+#      geom_errorbar(aes(ymin = prop_poly_lower, ymax = prop_poly_upper), width = .2)+
+#      theme_bw() +
+#      labs(title = "Frequency of polyclonal infections",
+#           y = "Frecquency") +
+#      scale_fill_manual(values = c(sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))), "gray30"))+
+#      theme(axis.text = element_text(size = 12),
+#            axis.title = element_blank(),
+#            legend.position = "none",
+#            axis.text.x = element_text(angle = 90, vjust = 0.5))
+#    
+#  }else{
+#    
+#    print('Calculate COI metrics by the overall population')
+#    
+#    poly_total = get_polygenomic(ampseq_object = ampseq_object, 
+#                                 strata = NULL,
+#                                 update_popsummary = FALSE,
+#                                 na.rm = na_var_rm,
+#                                 filters = NULL,
+#                                 poly_quantile = poly_quantile,
+#                                 poly_formula = poly_formula)
+#    
+#  }
+#  
+#  if(!is.null(Variable1) & !is.null(Variable2)){
+#    
+#    print('Calculate COI metrics by Variable1 and Varibale2')
+#    
+#    ampseq_object@metadata[['Var1_Var2']] = paste(ampseq_object@metadata[[Variable1]], ampseq_object@metadata[[Variable2]], sep = '::')
+#    
+#    poly_by_Var1_Var2 = get_polygenomic(ampseq_object = ampseq_object,
+#                                        strata = "Var1_Var2",
+#                                        update_popsummary = F,
+#                                        na.rm = TRUE,
+#                                        filters = NULL,
+#                                        poly_quantile = poly_quantile, 
+#                                        poly_formula = poly_formula
+#                                        )
+#    
+#    set.seed(1)
+#    
+#    plot_poly_by_Var1_Var2 = poly_by_Var1_Var2$pop_summary %>%
+#      filter(pop != 'Total')%>%
+#      mutate(
+#        Variable1 = stringr::str_split(pop, '::', simplify = TRUE)[,1],
+#        Variable2 = stringr::str_split(pop, '::', simplify = TRUE)[,2],
+#        prop_poly_lower = case_when(
+#          prop_poly == 0 ~ 0,
+#          prop_poly != 0 ~ prop_poly_lower),
+#        prop_poly_upper = case_when(
+#          prop_poly == 0 ~ 0,
+#          prop_poly != 0 ~ prop_poly_upper)
+#      )%>%
+#      ggplot(aes(x = Variable2,
+#                 y = prop_poly,
+#                 ymin = prop_poly_lower,
+#                 ymax = prop_poly_upper,
+#                 fill = Variable1))+
+#      geom_col()+
+#      geom_errorbar(width = .2)+
+#      facet_wrap(~Variable1, ncol = 3)+
+#      theme_bw()+
+#      scale_fill_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
+#      labs(title = 'Temporal change of the proportion of polyclonal infections',
+#           y = "Polyclonal infections",
+#           x = Variable2)+
+#      theme(axis.text.x = element_text(angle = 90, vjust = 0.5),
+#            legend.position =  "none")
+#    
+#  }
+#  
+#  print('Generation of plots and tables for COI report done')
+#  
+#  COI_Report_expected_outputs = c('poly_total',
+#                                  'poly_by_Var1',
+#                                  'plot_poly_by_pop',
+#                                  'poly_by_Var1_Var2',
+#                                  'plot_poly_by_Var1_Var2',
+#                                  'Variable1',
+#                                  'Variable2')
+#  
+#  COI_Report_outputs = COI_Report_expected_outputs[COI_Report_expected_outputs %in% ls()]
+#  
+#  if(tolower(code_environment) == 'local'){
+#  
+#    imagename = file.path(wd,paste0(output, '_COI_Report.RData'))
+#  
+#    save(file = imagename, list = COI_Report_outputs)
+#  
+#    system(paste0('cp ', file.path(fd, 'MHap_Analysis_COI_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_COI_Report.Rmd'))))
+#  
+#    # Assign variables based on command-line arguments
+#    render(file.path(wd, paste0(output, '_COI_Report.Rmd')), params = list(
+#      RData_image = imagename),
+#      output_dir = wd)
+#  }else{
+#  
+#    imagename = paste0(output, '_COI_Report.RData')
+#    
+#    save(file = imagename, list = COI_Report_outputs)
+#    
+#    system(paste0('cp ', file.path(fd, 'MHap_Analysis_COI_Report_Template.Rmd'), ' ', paste0(output, '_COI_Report.Rmd')))
+#    
+#    # Assign variables based on command-line arguments
+#    render(paste0(output, '_COI_Report.Rmd'), params = list(
+#      RData_image = imagename),
+#      output_dir = 'Results')
+#  }
+#  print("Leaving render script")
+#}
+

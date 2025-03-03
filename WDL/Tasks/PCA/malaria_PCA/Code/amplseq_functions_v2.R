@@ -6370,8 +6370,17 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
   polyclonals = which(eval(parse(text = poly_formula)))
   
   polygenomic$Clonality = NA
-  polygenomic[polyclonals,][['Clonality']] = 'Polyclonal'
-  polygenomic[-1*polyclonals,][['Clonality']] = 'Monoclonal'
+
+  
+  if(length(polyclonals) > 0 & length(polyclonals) < nrow(polygenomic)){
+    polygenomic[polyclonals,][['Clonality']] = 'Polyclonal'
+    polygenomic[-1*polyclonals,][['Clonality']] = 'Monoclonal'
+  }else if(length(polyclonals) == 0){
+    polygenomic[['Clonality']] = 'Monoclonal'
+  }else if(length(polyclonals) == nrow(polygenomic)){
+    polygenomic[['Clonality']] = 'Polyclonal'
+  }
+  
   
   pop_summary = data.frame(
     pop = "Total",

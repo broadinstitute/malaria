@@ -75,10 +75,12 @@ task pca {
 	>>>
 
 	output {
-		#File? coi_report = "Results/MHap_Profile_COI_Report.html"
+
+		File? ibs_connectivity_report = "Results/MHap_Profile_IBS_Connectivity_Report.html"
 		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
-		File? ibd_transmssion_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
-		File? ibs_transmssion_report = "Results/MHap_Profile_IBS_Transmission_Report.html"
+		#File? ibd_transmission_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
+		#File? coi_report = "Results/MHap_Profile_COI_Report.html"
+
 	}
 
 	runtime { 
