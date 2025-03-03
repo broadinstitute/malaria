@@ -21,6 +21,7 @@ workflow plot_pca {
 			selected_checkboxes = selected_checkboxes,
 			preserve_samples = preserve_samples,
 			reference_samples = reference_samples
+
 	}
 
 	output {

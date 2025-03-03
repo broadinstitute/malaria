@@ -606,6 +606,7 @@ IBD_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))
        color = 'Countries')
 
 print("WATERMARK get_polygenomic")
+
 test2 = get_polygenomic(ampseq_object, strata = NULL, update_popsummary = F)
 
 pairwise_ibs
@@ -978,3 +979,4 @@ if(!is.null(ibd_thres)){
 #  }
 #  print("Leaving render script")
 #}
+
