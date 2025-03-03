@@ -6370,6 +6370,7 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
   polyclonals = which(eval(parse(text = poly_formula)))
   
   polygenomic$Clonality = NA
+
   
   if(length(polyclonals) > 0 & length(polyclonals) < nrow(polygenomic)){
     polygenomic[polyclonals,][['Clonality']] = 'Polyclonal'

@@ -26,6 +26,7 @@ workflow plot_pca {
 		File? ibd_connectivity_report_f = t_001_pca_process.ibd_connectivity_report
 		#File? ibd_transmission_report_f = t_001_pca_process.ibd_transmission_report
 		#File? coi_report_f = t_001_report_layouting_process.coi_report
+
 	}
 }
 

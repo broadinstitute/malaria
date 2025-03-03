@@ -44,7 +44,8 @@ task amplicon_denoising {
     }
 
     #Int total_size = ceil((size(fastq1s) + size(fastq2s)) * 1.5)
-    Int total_size = ceil(length(fastq1s) * 0.5)
+    #Int total_size = ceil(length(fastq1s) * 0.5)
+    Int total_size = ceil(length(fastq1s) * 10)
 
     command <<<
         # FUTURE DEVELOPMENT: 
