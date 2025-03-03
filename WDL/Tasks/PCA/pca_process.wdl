@@ -11,6 +11,8 @@ task pca {
 		File ref_fasta
 		File selected_checkboxes
 		File? preserve_samples
+		File? reference_samples
+
 
 		String join_by = "null"
 		Boolean na_var_rm = true
@@ -45,6 +47,8 @@ task pca {
 		cp ~{ref_fasta} Reference/.
 		cp ~{selected_checkboxes} Reference/.
 		gsutil cp ~{sep=" " ampseq_excelfiles} Ampseq_Data/.
+		cp ~{reference_samples} Ampseq_Data/.
+
 		
 		#[TODO: Ask regarding placement of this statement]
 		echo -e "\ngene_names_drug_resistance__\nPfDHFR\nPfMDR1\nPfDHPS\nPfKelch13C580Y\nPF3D7_1447900\ngene_ids_drug_resistance__\nPF3D7_0417200\nPF3D7_0523000\nPF3D7_0810800\nPF3D7_1343700\nPF3D7_1447900\ngene_names_diversity__\nCSP\nAMA1\nSERA2\nTRAP\ngene_ids_diversity__\nPF3D7_0304600\nPF3D7_1133400\nPF3D7_0207900\nPF3D7_1335900\n" >> ~{selected_checkboxes}
@@ -75,12 +79,10 @@ task pca {
 	>>>
 
 	output {
-
 		File? ibs_connectivity_report = "Results/MHap_Profile_IBS_Connectivity_Report.html"
 		File? ibd_connectivity_report = "Results/MHap_Profile_IBD_Connectivity_Report.html"
 		#File? ibd_transmission_report = "Results/MHap_Profile_IBD_Transmission_Report.html"
 		#File? coi_report = "Results/MHap_Profile_COI_Report.html"
-
 	}
 
 	runtime { 
