@@ -6705,193 +6705,6 @@ estimate_r_and_k <- function(fs, ds, Ys, epsilon = 0.001, rho = 7.4 * 10 ^ (-7),
 
 
 ### pairwise_hmmIBD----
-if(FALSE){
-old_pairwise_hmmIBD = function(ampseq_object, parallel = TRUE, w = 1, n = 1){
-  library(parallel)
-  library(doMC)
-  library(svMisc)
-  loci_object = ampseq2loci(ampseq_object)
-  
-  loci_table = loci_object[["loci_table"]]
-  freq_table = loci_object[["freq_table"]]
-  markers = loci_object[["markers"]]
-
-  pairs = as.data.frame(t(combn(rownames(loci_table), 2)))
-  
-  print(pairs)
-  print(nrow(pairs))
-  s = round(seq(1,nrow(pairs)+1, length.out=n+1))
-  low = s[w]
-  high = s[w+1]-1
-  
-  pairs = pairs[low:high,]
-  
-  fx_get_relatedness = function(Yi, Yj, freq_table, markers, ...){
-
-    Ys = cbind(Yi, Yj)
-    
-    rownames(Ys) = colnames(loci_table)
-
-    fs = freq_table[!is.na(Ys[,"Yi"]) & !is.na(Ys[,"Yj"]),]
-    
-    no_na_markers = markers[!is.na(Ys[,"Yi"]) & !is.na(Ys[,"Yj"]),]
-    
-    Ys =Ys[!is.na(Ys[,"Yi"]) & !is.na(Ys[,"Yj"]),]
-    fs = fs[Ys[,1] <= 9 & Ys[,2] <= 9,]
-    no_na_markers = no_na_markers[Ys[,1] <= 9 & Ys[,2] <= 9,]
-    Ys = Ys[Ys[,1] <= 9 & Ys[,2] <= 9,]
-    
-    no_na_markers[["distance"]] = Inf
-    no_na_markers = no_na_markers[fs[,1] != 1,]
-    Ys = Ys[fs[,1] != 1,]
-    fs = fs[fs[,1] != 1,]
-
-    for(chromosome in levels(as.factor(no_na_markers[["chromosome"]]))){
-      for(amplicon in 1:(nrow(no_na_markers[no_na_markers[["chromosome"]] == chromosome,])-1)){
-        no_na_markers[no_na_markers[["chromosome"]] == chromosome,][amplicon, "distance"] = 
-          no_na_markers[no_na_markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - no_na_markers[no_na_markers[["chromosome"]] == chromosome,][amplicon, "pos"]
-      }
-    }
-    
-    no_na_markers$distance[is.na(no_na_markers$distance)] = -1     #PATCH DISCUSS WITH PAULO
-    no_na_markers$distance[no_na_markers$distance < 0 ] = Inf
-    
-    ds = no_na_markers$distance
-
-    estimate = estimate_r_and_k(fs = fs,
-                                ds = ds,
-                                Ys = Ys,
-                                warn_fs = F)
-    
-    return(estimate)
-  }
-  if(parallel){
-    registerDoMC(detectCores())
-    pairwise_df = foreach(pair = 1:nrow(pairs), .combine = 'rbind') %dopar% {
-      # If both samples are polyclonal
-      if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          for(haplotype_j in 1:ncol(Yj)){
-            estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj[,haplotype_j], freq_table, markers))
-          }
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the second sample is polyclonal 
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_j in 1:ncol(Yj)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi, Yj[,haplotype_j], freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the first sample is polyclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj, freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If both samples are monoclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = fx_get_relatedness(Yi, Yj, freq_table, markers)
-        
-      }
-      
-      data.frame(Yi = pairs[pair, 1], Yj = pairs[pair, 2], t(estimate))
-      
-    }
-    
-  }else{
-    
-    pairwise_df = NULL
-    print(nrow(pairs))
-
-    for(pair in 1:nrow(pairs)){
-      print("Before running grepl")
-      print(pair)
-      print(paste0(pairs[pair, 1],pairs[pair, 2]))
-      print("Going into if statement")
-      # If both samples are polyclonal
-      if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          for(haplotype_j in 1:ncol(Yj)){
-            estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj[,haplotype_j], freq_table, markers))
-          }
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the second sample is polyclonal 
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_j in 1:ncol(Yj)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi, Yj[,haplotype_j], freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the first sample is polyclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj, freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If both samples are monoclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = fx_get_relatedness(Yi, Yj, freq_table, markers, pair)
-        
-      }else{
-        print('pair')
-      }
-      
-      progress(round(100*pair/nrow(pairs)))
-      
-      pairwise_df = rbind(pairwise_df, data.frame(Yi = pairs[pair, 1], Yj = pairs[pair, 2], t(estimate)))
-      
-    }
-    
-  }
-  
-  return(pairwise_df)
-  
-}
-}
 
 ## loci S4class and create_loci----
 
@@ -6929,21 +6742,14 @@ split_clones = function(genotype, genotype_name = NULL){
   if(is.null(genotype_name)){
     genotype_name = 'Yi'
   }
-  
-  print('mark1_split')
-  
-  print(genotype_name)
-  print(genotype)
-  
+    
   max_nAlleles = ifelse(sum(grepl("_",genotype)) == 0,
                         1,
                         max(unlist(sapply(
                           sapply(
                             genotype[which(grepl("_",genotype))], function(x){strsplit(x, "_")}),
                           function(x) length(x)))))
-  
-  print('mark2_split')
-  
+    
   splited_genotype = matrix(NA,
                             nrow = max_nAlleles,
                             ncol = length(genotype),
@@ -6951,9 +6757,7 @@ split_clones = function(genotype, genotype_name = NULL){
                               paste0(genotype_name, '_C', 1:max_nAlleles),
                               names(genotype)
                             ))
-  
-  print('mark3_split')
-  
+    
   for(clone in 1:max_nAlleles){
     splited_genotype[clone, ] = gsub("_.+", "", genotype)
     
@@ -6967,9 +6771,7 @@ split_clones = function(genotype, genotype_name = NULL){
     }
     
   }
-  
-  
-  print('mark4')
+    
   return(splited_genotype)
   
 }
@@ -7056,10 +6858,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
-      
-      print(Yi_id)
-      print(Yj_id)
-      
+            
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
       
       
@@ -7085,12 +6884,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       estimate = NULL
       
       for(haplotype_i in 1:nrow(Yi)){
-        for(haplotype_j in 1:nrow(Yj)){
-          
-          
-          
-          print(dim(Yi))
-          print(dim(Yj))
+        for(haplotype_j in 1:nrow(Yj)){          
           
           if(sum(is.na(Yi[haplotype_i,] - Yj[haplotype_j,]))/length(Yi[haplotype_i,]) < 1){
             
@@ -7130,16 +6924,9 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
-      
-      print(Yi_id)
-      
-      
-      print('mark1_hmm')
-      
+            
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
-      
-      print('mark2_hmm')
-      
+            
       Yi = matrix(as.integer(Yi), 
                   nrow = nrow(Yi),
                   ncol = ncol(Yi),
@@ -7147,15 +6934,9 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
                     rownames(Yi),
                     colnames(Yi)
                   ))
-      
-      print(Yj_id)
-      
-      print('mark3_hmm')
-      
+            
       Yj = split_clones(loci_table[Yj_id,], Yj_id)
-      
-      print('mark4_hmm')
-      
+            
       Yj = matrix(as.integer(Yj), 
                   nrow = nrow(Yj),
                   ncol = ncol(Yj),
