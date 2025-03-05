@@ -62,6 +62,6 @@ task contamination_detection {
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: 'jorgeamaya/ci_processing:v_1_0_0'
+		docker: 'jorgeamaya/ci_processing:v_0_0_2'
 	}
 }

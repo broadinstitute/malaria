@@ -92,6 +92,6 @@ task pca {
 		bootDiskSizeGb: 10 
 		preemptible: 3 
 		maxRetries: 1
-		docker: 'jorgeamaya/pca:v_0_0_1'
+		docker: 'jorgeamaya/pca:v_0_0_2'
 	} 
 }

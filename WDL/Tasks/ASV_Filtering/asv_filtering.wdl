@@ -143,6 +143,6 @@ task asv_filtering {
 		bootDiskSizeGb: 10
 		preemptible: 3 
 		maxRetries: 1
-		docker: 'jorgeamaya/asvfilters:v_1_0_0'
+		docker: 'jorgeamaya/asvfilters:v_0_0_2'
 	}
 }

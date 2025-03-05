@@ -7736,13 +7736,15 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
   
   if(class(obj) == 'ampseq'){
     loci_object = ampseq2loci(ampseq_object)
-  }else if(class(obj) != 'loci'){
+  }else if(class(obj) == 'loci'){
+    loci_object = obj
+  }else{
     stop("This function requires an object of the class loci or ampseq")
   }
-  
-  loci_table = loci_object[["loci_table"]]
-  freq_table = loci_object[["freq_table"]]
-  markers = loci_object[["markers"]]
+
+  loci_table = loci_object@loci_table
+  freq_table = loci_object@freq_table
+  markers = loci_object@markers
   
   polymorphic_sites = which(rowSums(freq_table == 1) == 0)
   

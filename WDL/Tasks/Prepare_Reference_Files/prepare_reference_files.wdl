@@ -144,7 +144,7 @@ task prepare_reference_files {
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: "jorgeamaya/fileprep_ampseq:v_1_0_0"
+		docker: "jorgeamaya/fileprep_ampseq:v_0_0_2"
 	}
 }
 

@@ -54,6 +54,6 @@ task validate_fastqs {
 	bootDiskSizeGb: 10
 	preemptible: 3
 	maxRetries: 1
-	docker: "jorgeamaya/validate_inputs:v_1_0_0"
+	docker: "jorgeamaya/validate_inputs:v_0_0_2"
     }
 }
