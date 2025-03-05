@@ -2,9 +2,7 @@
 # Functions to create, upload, joint, write or convert formats that store genetic data ----
 
 ## cigar S4class and create_cigar----
-
 ## cigar S4 class
-
 setClass('cigar', slots = c(
   cigar_table = "ANY",
   metadata = "ANY",
@@ -27,9 +25,7 @@ create_cigar = function(cigar_table = NULL,
   return(obj)
 }
 
-
 ## read_cigar_tables----
-
 read_cigar_tables = function(paths = NULL,
                              cigar_files = NULL,
                              asv_table_files = NULL,
@@ -70,7 +66,6 @@ read_cigar_tables = function(paths = NULL,
           print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the cigar table.')
           
         }
-        
       }else{
         print(paste0('Cigar file ', file.path(paths, Run, "dada2/run_dada2/CIGARVariants_Bfilter.out.tsv"), ' not found'))
       }
@@ -79,7 +74,6 @@ read_cigar_tables = function(paths = NULL,
         asv2cigar_run = read.table(file.path(paths, Run, "dada2/run_dada2/ASV_to_CIGAR.out.txt"),
                                    header = T,
                                    check.names = FALSE)
-        
       }else{
         print(paste0('asv2cigar file ', file.path(paths, Run, "dada2/run_dada2/ASVTable.txt"), ' not found'))
       }
@@ -90,12 +84,10 @@ read_cigar_tables = function(paths = NULL,
                                    check.names = FALSE)
         asv_table_run = left_join(asv_table_run, asv2cigar_run, by = join_by(hapid == ASV))
         
-        
         if(sum(grepl('(/|-|:)', asv_table_run[['Amplicon']])) > 0){
           
           asv_table_run[['Amplicon']] = gsub('(/|-|:)', '_', asv_table_run[['Amplicon']])
           print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the column Amplicon of the ASV table.')
-          
         }
         
       }else{
@@ -300,7 +292,9 @@ read_cigar_tables = function(paths = NULL,
                                                CIGAR2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']])
         for(allele in unconsitent_cigar_strings$CIGAR){
           
-          cigar_table[cigar_table$alleles == paste(unconsitent_cigar_strings[unconsitent_cigar_strings$CIGAR == allele, c('Amplicon', 'CIGAR')], collapse = ','),][['alleles']] = 
+          cigar_table[
+            cigar_table$alleles == 
+          paste(unconsitent_cigar_strings[unconsitent_cigar_strings$CIGAR == allele, c('Amplicon', 'CIGAR')], collapse = ','),][['alleles']] = 
             paste(unconsitent_cigar_strings[unconsitent_cigar_strings$CIGAR == allele, c('Amplicon', 'CIGAR2')], collapse = ',')
           
         }
@@ -602,7 +596,38 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
                                   markers = markers,
                                   loci_performance = NULL,
                                   pop_summary = NULL)
-    print(ampseq_object@gt)
+
+    cigars_in_gt = get_cigar_alleles(ampseq_object, 
+                                           from = 'gt',
+                                           as = 'vector')
+    
+    cigars_in_asvtab = get_cigar_alleles(ampseq_object, 
+                                               from = 'asv_table',
+                                               as = 'vector',
+                                               col = 'CIGAR_masked')
+    
+    if(sum(!(cigars_in_asvtab %in% cigars_in_gt)) > 0){
+      
+      removed_alleles = cigars_in_asvtab[!(cigars_in_asvtab %in% cigars_in_gt)]
+      
+      for(allele in removed_alleles){
+        
+        Amplicon = gsub(';.+$', '', allele)
+        CIGAR_masked = gsub('^.+;', '', allele)
+        
+        
+        ampseq_object@asv_table = ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
+                                                              ampseq_object@asv_table[['CIGAR_masked']] == CIGAR_masked),]
+        
+        ampseq_object@asv_seqs = ampseq_object@asv_seqs[names(ampseq_object@asv_seqs) %in%
+                                                          ampseq_object@asv_table$hapid]
+        
+        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        
+      }
+      
+    }
     return(ampseq_object)
     
   }else{
@@ -616,6 +641,33 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
                                   markers = markers,
                                   loci_performance = NULL,
                                   pop_summary = NULL)
+    cigars_in_gt = get_cigar_alleles(ampseq_object, 
+                                     from = 'gt',
+                                     as = 'vector')
+    
+    cigars_in_asvtab = get_cigar_alleles(ampseq_object, 
+                                         from = 'asv_table',
+                                         as = 'vector',
+                                         col = 'CIGAR_masked')
+    
+    if(sum(!(cigars_in_asvtab %in% cigars_in_gt)) > 0){
+      
+      removed_alleles = cigars_in_asvtab[!(cigars_in_asvtab %in% cigars_in_gt)]
+      
+      for(allele in removed_alleles){
+        
+        Amplicon = gsub(';.+$', '', allele)
+        CIGAR_masked = gsub('^.+;', '', allele)
+        
+        ampseq_object@asv_table = ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
+                                  ampseq_object@asv_table[['CIGAR_masked']] == CIGAR_masked),]
+        
+        ampseq_object@asv_seqs = ampseq_object@asv_seqs[names(ampseq_object@asv_seqs) %in%
+                                                          ampseq_object@asv_table$hapid]
+        
+      }
+      
+    }
     return(ampseq_object)
     
   }
@@ -636,7 +688,13 @@ ampseq2cigar = function(ampseq_object){
     
     temp_cigar_long = unlist(strsplit(gt[,mhap], '_'))
     
-    temp_cigar_long = data.frame(Sample_id = names(temp_cigar_long),
+    nclones = sapply(gt[,mhap], function(Sample){
+      sum(nchar(unlist(str_extract_all(Sample, '_'))))
+    }) + 1
+    
+    nclones[is.na(nclones)] = 1
+    
+    temp_cigar_long = data.frame(Sample_id = rep(names(nclones), nclones),
                                  Amplicon = colnames(gt)[mhap],
                                  Cigar_allele = gsub(':\\d+$', '', temp_cigar_long),
                                  Read_depth = as.integer(gsub('^.+:', '', temp_cigar_long))
@@ -668,13 +726,14 @@ ampseq2cigar = function(ampseq_object){
 
 ## join_ampseq----
 
-join_ampseq = function(ampseq_obj_list = NULL){
+join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
+  
   gt = NULL
   asv_table = NULL
   asv_seqs = NULL
   metadata = NULL
   markers = NULL
-
+  
   for(obj in 1:length(ampseq_obj_list)){
     
     obj = ampseq_obj_list[[obj]]
@@ -689,12 +748,12 @@ join_ampseq = function(ampseq_obj_list = NULL){
       markers = obj@markers
       
     }else{# for subsequent objects
+      
       temp_gt1 = obj@gt
       temp_asv_table1 = obj@asv_table
       temp_asv_seqs1 = obj@asv_seqs
       temp_metadata1 = obj@metadata
       temp_markers1 = obj@markers
-      
       
       # if there are shared asvs
       if(sum(as.character(temp_asv_seqs1) %in% as.character(asv_seqs)) > 0){
@@ -737,17 +796,32 @@ join_ampseq = function(ampseq_obj_list = NULL){
             
             for(samp in 1:nrow(temp_gt1)){
               
-              cigar_string_masked_pattern_in_samp = str_extract(temp_gt1[samp, mhap], paste0('(^|_)',cigar_string_masked_pattern, ':'))
+              cigar_string_masked_pattern_in_samp = 
+                str_extract(temp_gt1[samp, mhap], 
+                            paste0('(^|_)',
+                                   ifelse(cigar_string_masked_pattern == '.', '\\.', cigar_string_masked_pattern), ':'))
               
               if(!is.na(cigar_string_masked_pattern_in_samp)){
                 
-                cigar_string_masked_replacment_in_samp = gsub(cigar_string_masked_pattern,
-                                                              cigar_string_masked_replacment,
-                                                              cigar_string_masked_pattern_in_samp)
+                if(cigar_string_masked_pattern_in_samp == '.:'){
+                  cigar_string_masked_pattern_in_samp = '\\.:'
+                }
                 
-                temp_gt1[samp, mhap] = gsub(cigar_string_masked_pattern_in_samp,
+                if(!grepl('^_',cigar_string_masked_pattern_in_samp) & cigar_string_masked_pattern_in_samp != '\\.:'){
+                  
+                  cigar_string_masked_pattern_in_samp = paste0('^', cigar_string_masked_pattern_in_samp)
+                  
+                }
+                
+                cigar_string_masked_replacment_in_samp = gsub(ifelse(cigar_string_masked_pattern == '.', '\\.', cigar_string_masked_pattern),
+                                                              cigar_string_masked_replacment,
+                                                              ifelse(cigar_string_masked_pattern_in_samp == "\\.:", '.:', cigar_string_masked_pattern_in_samp))
+               
+                cigar_sample_replacement = gsub('\\^', '',gsub(cigar_string_masked_pattern_in_samp,
                                             cigar_string_masked_replacment_in_samp, 
-                                            temp_gt1[samp, mhap])
+                                            temp_gt1[samp, mhap]))
+                
+                temp_gt1[samp, mhap] = cigar_sample_replacement
                 
                 rm(cigar_string_masked_replacment_in_samp)
                 
@@ -775,6 +849,7 @@ join_ampseq = function(ampseq_obj_list = NULL){
         rm(list = c('temp_asv_seqs2', 'temp_asv_seqs3', 'temp_asv_table2', 'temp_asv_table3', 'temp_asv_table4'))
         
       }
+      
       temp_asv_table1 = temp_asv_table1[!(as.character(temp_asv_seqs1) %in% as.character(asv_seqs)),]
       temp_asv_seqs1 = temp_asv_seqs1[!(as.character(temp_asv_seqs1) %in% as.character(asv_seqs))]
       
@@ -783,38 +858,8 @@ join_ampseq = function(ampseq_obj_list = NULL){
       
       # merging asv_seqs
       asv_seqs = DNAStringSet(c(as.character(asv_seqs), as.character(temp_asv_seqs1)))
+      
       # merging asv_table
-      # Insert "indel_filter" column at position 9 and fill with "PASS" if not present in temp_asv_table1
-      if (!"indel_filter" %in% colnames(temp_asv_table1)) {
-        temp_asv_table1[["indel_filter"]] = "PASS"
-      }
-      
-      if (!"indel_filter" %in% colnames(asv_table)) {
-        asv_table[["indel_filter"]] = "PASS"
-      }
-      
-      # Ensure both data frames have the same columns
-      all_columns <- union(colnames(temp_asv_table1), colnames(asv_table))
-      
-      # Add missing columns with NA
-      for (col in all_columns) {
-        if (!(col %in% colnames(temp_asv_table1))) {
-          temp_asv_table1[[col]] <- NA
-        }
-        if (!(col %in% colnames(asv_table))) {
-          asv_table[[col]] <- NA
-        }
-      }
-      
-      # Reorder columns to match
-      temp_asv_table1 <- temp_asv_table1[, all_columns]
-      asv_table <- asv_table[, all_columns]
-      
-      # Verify that both data frames now have the same structure
-      identical(colnames(temp_asv_table1), colnames(asv_table))
-      
-      
-      
       asv_table = rbind(asv_table, temp_asv_table1)
       asv_table = asv_table[order(as.integer(gsub('ASV','',asv_table$hapid))),]
       
@@ -899,6 +944,41 @@ join_ampseq = function(ampseq_obj_list = NULL){
     rm(list = c('obj'))
     
   }
+   
+   # Remove duplicates
+  if(remove_replicates){
+    
+    duplicated_samples = metadata[duplicated(metadata$Sample_id),][['Sample_id']]
+    
+    gt_replicates = gt[duplicated(metadata$Sample_id),]
+    gt = gt[!duplicated(metadata$Sample_id),]
+    
+    metadata_replicates = metadata[duplicated(metadata$Sample_id),]
+    metadata = metadata[!duplicated(metadata$Sample_id),]
+    
+    rownames(metadata) = metadata[['Sample_id']]
+    rownames(gt) = metadata[['Sample_id']]
+    
+    rownames(metadata_replicates) = metadata_replicates[['Sample_id']]
+    rownames(gt_replicates) = metadata_replicates[['Sample_id']]
+    
+    for(sample in duplicated_samples){
+      
+      temp_data = rbind(gt[sample,],
+                        gt_replicates[sample,])
+      
+      temp_metadata = rbind(metadata[metadata$Sample_id == sample, ],
+                            metadata_replicates[metadata_replicates$Sample_id == sample, ])
+      
+      temp_test = rowSums(!is.na(temp_data), na.rm = T)
+      
+      gt[sample,] = temp_data[which.max(temp_test),]
+      metadata[metadata$Sample_id == sample, ] = temp_metadata[which.max(temp_test),]
+      
+    }
+    
+  }
+  ## ADD VERIFICATION STEP OF "gt", "asv_table" AND "asv_seqs slots"
   
   ampseq_object = create_ampseq(gt = gt,
                                 asv_table = asv_table,
@@ -1553,7 +1633,9 @@ read_ampseq = function(file = NULL, format = 'excel'){
       }else if(sheet == 'markers.csv'){
         
         temp_sheet = read.csv(file.path(file, sheet))
-        temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+        if(sum(is.na(temp_sheet[['distance']]))>0){
+          temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf  
+        }
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
         
       }else if(grepl('discarded_loci', sheet)){
@@ -1569,7 +1651,9 @@ read_ampseq = function(file = NULL, format = 'excel'){
         }else if(sheet == 'discarded_loci_markers.csv'){
           
           temp_sheet = read.csv(file.path(file, sheet))
-          temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+          if(sum(is.na(temp_sheet[['distance']]))>0){
+            temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+          }
           ampseq_object@discarded_loci[['markers']] = temp_sheet
           
         }else if(sheet == 'discarded_loci_loci_performance.csv'){
@@ -1635,6 +1719,37 @@ read_ampseq = function(file = NULL, format = 'excel'){
   
 }
 
+## loci S4class and create_loci----
+
+## loci S4 class
+
+setClass('loci', slots = c(
+  loci_table = "ANY",
+  metadata = "ANY",
+  freq_table = 'ANY',
+  ampseq_alleles_per_locus = 'ANY',
+  markers = 'ANY'
+  
+))
+
+## loci constructor
+create_loci = function(loci_table = NULL,
+                        metadata = NULL,
+                        freq_table = NULL,
+                        ampseq_alleles_per_locus = NULL,
+                        markers = NULL
+                        ){
+  
+  obj = new('loci')
+  obj@loci_table = loci_table
+  obj@metadata = metadata
+  obj@freq_table = freq_table
+  obj@ampseq_alleles_per_locus = ampseq_alleles_per_locus
+  obj@markers = markers
+  
+  return(obj)
+}
+
 
 ## ampseq2loci----
 
@@ -1673,66 +1788,572 @@ ampseq2loci = function(ampseq_object){
   
   loci_table[loci_table == ""] = NA
   
-  return(list(loci_table = loci_table,
-              freq_table = freq_table,
-              ampseq_alleles_per_locus  = ampseq_allele_freq,
-              markers = ampseq_object@markers))
+  loci_object = create_loci(
+    loci_table = loci_table,
+    metadata = ampseq_object@metadata,
+    freq_table = freq_table,
+    ampseq_alleles_per_locus = ampseq_allele_freq,
+    markers = ampseq_object@markers)
+  
+  return(loci_object)
   
 }
 
+## ampseq2vcf----
+
+ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref_fasta){
+  
+  markers = ampseq_object@markers
+  asv_table = ampseq_object@asv_table
+  gt_ampseq = ampseq_object@gt
+  
+  reference_genome = readDNAStringSet(ref_fasta)
+  
+  loci_table = NULL
+  gt = NULL
+  
+  if(is.null(monoclonals) & is.null(polyclonals)){
+    monoclonals = ampseq_object@metadata$Sample_id
+  }
+  
+  # amplicon = markers$amplicon[1]
+  # 
+  # amplicon = "PVP01_0109700_2"
+
+  # 
+  # which(markers$amplicon == amplicon)
+  # 
+  amplicon = markers$amplicon[1]
+  for(amplicon in markers$amplicon){
+    
+    print(amplicon)
+    
+    #View(asv_table[asv_table$Amplicon == amplicon,])
+    
+    amplicon_cigars = asv_table[asv_table$Amplicon == amplicon,][['CIGAR_masked']]
+    
+    amplicon_cigars = unique(amplicon_cigars[!is.na(amplicon_cigars) &
+                                               amplicon_cigars != '.'])
+    
+    if(length(amplicon_cigars) != 0){
+      
+      cigar_position_variants = NULL
+      
+      for(cigar in amplicon_cigars){
+        cigar_position_variants = 
+          rbind(cigar_position_variants,
+                data.frame(cigar = cigar,
+                           CHROM = markers[markers$amplicon == amplicon,][['chromosome']],
+                           amplicon_POS = unlist(str_extract_all(cigar, '\\d+')),
+                           POS = as.integer(unlist(str_extract_all(cigar, '\\d+'))) + 
+                             markers[markers$amplicon == amplicon,][['start']] - 1,
+                           ALT = unlist(str_extract_all(cigar, '[DI]?=?[ATGC]+')),
+                           ALT_label = NA
+                ))
+      }
+      
+      amplicon_loci_table = NULL
+      
+      
+      for(position in as.character(sort(as.integer(unique(cigar_position_variants$amplicon_POS))))){
+        ALT_alleles = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['ALT']])
+        
+        for(ALT_allele in 1:length(ALT_alleles)){
+          
+          cigar_position_variants[
+            cigar_position_variants$amplicon_POS == position &
+              cigar_position_variants$ALT == ALT_alleles[ALT_allele],][['ALT_label']] = ALT_allele
+          
+        }
+        
+        if(sum(grepl('D', ALT_alleles)) > 0 & sum(grepl('I', ALT_alleles)) == 0){
+          
+          REF = gsub('D=', '', ALT_alleles[which.max(nchar(ALT_alleles))])
+          
+          ALT_alleles[which.max(nchar(ALT_alleles))] = '*'
+          
+          ALT_alleles = gsub('D=', '', ALT_alleles)
+          
+        }else if(sum(grepl('I', ALT_alleles)) > 0 & sum(grepl('D', ALT_alleles)) == 0){
+          
+          REF = as.character(Biostrings::substr(reference_genome[[unique(cigar_position_variants$CHROM)]],
+                                                start = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]),
+                                                stop = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']])))
+          
+          ALT_alleles[which(grepl('I=', ALT_alleles))] = paste0(REF, gsub('I=', '', ALT_alleles[which(grepl('I=', ALT_alleles))]))
+          
+        }else if(sum(grepl('I', ALT_alleles)) == 0 & sum(grepl('D', ALT_alleles)) == 0){
+          
+          REF = Biostrings::substr(reference_genome[[unique(cigar_position_variants$CHROM)]],
+                                   start = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]),
+                                   stop = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]))
+          
+        }else if(sum(grepl('I', ALT_alleles)) > 0 & sum(grepl('D', ALT_alleles)) > 0){
+          
+          ALT_del = ALT_alleles[grepl('D=', ALT_alleles)]
+          
+          REF = gsub('D=', '', ALT_del[which.max(nchar(ALT_del))])
+          
+          ALT_alleles[ALT_alleles == paste0('D=', REF)] = '*'
+          
+          ALT_alleles = gsub('D=', '', ALT_alleles)
+          
+          ALT_alleles[which(grepl('I=', ALT_alleles))] = paste0(REF, gsub('I=', '', ALT_alleles[which(grepl('I=', ALT_alleles))]))
+          
+        }
+        
+        amplicon_loci_table = rbind(amplicon_loci_table,
+                                    data.frame(CHROM = unique(cigar_position_variants$CHROM),
+                                               POS = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]),
+                                               ID = NA,
+                                               REF = REF,
+                                               ALT = paste(ALT_alleles, collapse = ','),
+                                               QUAL = NA,
+                                               FILTER = NA,
+                                               INFO = NA, 
+                                               FORMAT = NA))
+        
+      }
+      
+      amplicon_gt = NULL
+      
+      # Sample_id = rownames(gt_ampseq)[3]
+      
+      for(Sample_id in rownames(gt_ampseq)){
+        
+        Sample_amplicon_gt = gt_ampseq[Sample_id, amplicon]
+        
+        if(Sample_id %in% monoclonals){
+          
+          Sample_amplicon_gt = gsub('_.+', '', Sample_amplicon_gt)
+          
+          if(is.na(Sample_amplicon_gt)){
+            
+            sample_vcf_gt = NULL
+            
+            for(position in amplicon_loci_table$POS){
+              sample_vcf_gt = c(sample_vcf_gt,
+                                paste0('./.:', 
+                                       paste(rep(0,
+                                                 length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1
+                                       ), collapse = ','), ':0'))
+            }
+            
+          }else if(grepl('\\.', Sample_amplicon_gt)){
+            
+            sample_vcf_gt = NULL
+            
+            for(position in amplicon_loci_table$POS){
+              sample_vcf_gt = c(sample_vcf_gt,
+                                paste0('0/0:', 
+                                       paste(c(gsub('^\\.:', '', Sample_amplicon_gt),
+                                               rep(0,
+                                                   length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                               )), collapse = ','), ':', gsub('^\\.:', '', Sample_amplicon_gt)))
+            }
+            
+          }else{
+            
+            sample_positions = data.frame(amplicon_POS = unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '\\d+')),
+                                          POS = as.integer(unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '\\d+'))) + 
+                                            markers[markers$amplicon == amplicon,][['start']] - 1,
+                                          ALT = unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '[DI]?=?[ATGC]+')),
+                                          read_depth = gsub('^.+:', '',Sample_amplicon_gt)
+            )
+            
+            sample_vcf_gt = NULL
+            
+            for(position in amplicon_loci_table$POS){
+              
+              if(position %in% sample_positions$POS){
+                
+                GT = cigar_position_variants[
+                  cigar_position_variants[['cigar']] == gsub(':\\d+', '', Sample_amplicon_gt) &
+                    cigar_position_variants[['POS']] == sample_positions[sample_positions$POS == position,][['POS']] &
+                    cigar_position_variants[['ALT']] == sample_positions[sample_positions$POS == position,][['ALT']],][['ALT_label']]
+                
+                if(length(GT) == 0){
+                  GT = '.'
+                  print('Cigar string not in Cigar table')
+                }
+                
+                AD = rep(0,
+                         length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1)
+                
+                AD[as.integer(GT) + 1] = gsub('^.+:', '', Sample_amplicon_gt)
+                
+                
+                sample_vcf_gt = c(sample_vcf_gt,
+                                  paste0(GT, '/', GT,':', 
+                                         paste(AD, collapse = ','), ':', gsub('^.+:', '', Sample_amplicon_gt)))
+                
+              }else{
+                
+                sample_vcf_gt = c(sample_vcf_gt,
+                                  paste0('0/0:', 
+                                         paste(c(gsub('^.+:', '', Sample_amplicon_gt),
+                                                 rep(0,
+                                                     length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                 )), collapse = ','), ':', gsub('^.+:', '', Sample_amplicon_gt)))
+                
+              }
+              
+            }
+            
+          }
+          
+          sample_vcf_gt = matrix(sample_vcf_gt,
+                                 nrow = nrow(amplicon_loci_table),
+                                 ncol = 1,
+                                 dimnames = list(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'),
+                                                 Sample_id))
+          
+        }else if(Sample_id %in% polyclonals){
+          
+          nclones = ampseq_object@metadata[ampseq_object@metadata$Sample_id == Sample_id,][['max_nAlleles']]
+          
+          clones_amplicon_gt = unlist(strsplit(Sample_amplicon_gt, '_'))
+          
+          if(length(clones_amplicon_gt) < nclones){
+            
+            clones_amplicon_gt = c(clones_amplicon_gt, rep(clones_amplicon_gt[1], nclones - length(clones_amplicon_gt)))
+            
+          }
+          
+          sample_vcf_gt = NULL
+          
+          for(clone in 1:nclones){
+            
+            Clone_amplicon_gt = clones_amplicon_gt[clone]
+            
+            if(grepl('\\.', Clone_amplicon_gt)){
+              
+              clone_vcf_gt = NULL
+              
+              for(position in amplicon_loci_table$POS){
+                clone_vcf_gt = c(clone_vcf_gt,
+                                 paste0('0:', 
+                                        paste(c(gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt),
+                                                rep(0,
+                                                    length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                )), collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+              }
+              
+            }else{
+              
+              sample_positions = data.frame(amplicon_POS = unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '\\d+')),
+                                            POS = as.integer(unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '\\d+'))) + 
+                                              markers[markers$amplicon == amplicon,][['start']] - 1,
+                                            ALT = unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '[DI]?=?[ATGC]+')),
+                                            read_depth = gsub('^.+:', '',Clone_amplicon_gt)
+              )
+              
+              clone_vcf_gt = NULL
+              
+              for(position in amplicon_loci_table$POS){
+                
+                if(position %in% sample_positions$POS){
+                  
+                  GT = cigar_position_variants[
+                    cigar_position_variants[['cigar']] == gsub(':\\d+', '', Clone_amplicon_gt) &
+                      cigar_position_variants[['POS']] == sample_positions[sample_positions$POS == position,][['POS']] &
+                      cigar_position_variants[['ALT']] == sample_positions[sample_positions$POS == position,][['ALT']],][['ALT_label']]
+                  
+                  AD = rep(0,
+                           length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1)
+                  
+                  AD[as.integer(GT) + 1] = gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)
+                  
+                  
+                  clone_vcf_gt = c(clone_vcf_gt,
+                                   paste0(GT,':', 
+                                          paste(AD, collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                  
+                }else{
+                  
+                  clone_vcf_gt = c(clone_vcf_gt,
+                                   paste0('0:', 
+                                          paste(c(gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt),
+                                                  rep(0,
+                                                      length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                  )), collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                  
+                }
+                
+              }
+              
+            }
+            
+            clone_vcf_gt = matrix(clone_vcf_gt,
+                                  nrow = nrow(amplicon_loci_table),
+                                  ncol = 1,
+                                  dimnames = list(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'),
+                                                  paste0(Sample_id, '_C', clone)))
+            
+            sample_vcf_gt = cbind(sample_vcf_gt, clone_vcf_gt)
+            
+          }
+          
+        }else{
+          sample_vcf_gt = NULL
+          
+          print(paste0('Sample_ID ', Sample_id, ' not in monoclonal or polyclonal list,\nthis sample will be omited in the output'))
+          
+        }
+        
+        amplicon_gt = cbind(amplicon_gt, sample_vcf_gt)
+        
+        if(sum(duplicated(colnames(amplicon_gt))) > 0){
+          stop('Duplicated ID')
+        }
+        
+      }
+      
+      loci_table = rbind(loci_table, amplicon_loci_table)
+      gt = rbind(gt, amplicon_gt)
+      
+    }
+    
+  }
+  
+  loci_table[['ID']] = '.'
+  loci_table[['INFO']] = '.'
+  loci_table[['QUAL']] = '.'
+  loci_table[['FILTER']] = '.'
+  loci_table[['FORMAT']] = 'GT:AD:DP'
+  
+  VCF_object = cbind(loci_table, gt)
+  
+  return(VCF_object)
+  
+}
 
 # Functions to filter or mask alleles, loci, or samples on the ampseq object----
 
-# filter_samples----
+## filter_samples----
 
-
-filter_samples = function(ampseq_object, v){
+filter_samples = function(obj, v, update_cigars = TRUE){
   
-  obj = ampseq_object
+  if(class(obj) == 'ampseq'){
+    obj2 = obj
+    obj2@gt = obj@gt[v,]
+    obj2@metadata = obj@metadata[v,]
+    
+    if(update_cigars){
+      
+      cigars_gt = get_cigar_alleles(obj2, 
+                                    from = 'gt',
+                                    as = 'vector')
+      
+      cigars_asvtab = get_cigar_alleles(obj2, 
+                                        from = 'asv_table',
+                                        as = 'vector',
+                                        col = 'CIGAR_masked')
+      
+      if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+         sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n\n',
+                   'Cigar strings in asv_table that are not present in gt matrix are:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'
+        ))
+        
+        stop('There are cigar strings that are different in the gt and the asv_table')
+        
+      }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
+        
+      }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('The following cigar strings in asv_table are not longer present in gt matrix:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'))
+        
+        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
+        
+        for(cigar_string_to_remove in cigar_strings_to_remove){
+          
+          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
+          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
+          
+          obj2@asv_table = 
+            obj2@asv_table[!(obj2@asv_table[['Amplicon']] == Amplicon &
+                               obj2@asv_table[['CIGAR_masked']] == CIGAR),]
+          
+          obj2@asv_seqs = obj2@asv_seqs[
+            names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
+          
+          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
+          names(obj2@asv_seqs) = obj2@asv_table$hapid
+          
+        }
+        
+        
+      }else{
+        print('cigar strings are consistent between gt and asv_table')
+      }
+      
+      consistency_between_gt_and_asvtab(obj2)
+      
+    }
+    
+    
+    
+    
+  }else if(class(obj) == 'rGenome'){
+    
+    obj2 = rGenome(gt = obj@gt[,v],
+                   loci_table = obj@loci_table,
+                   metadata = obj@metadata[v,])
+    
+  }else(
+    stop('Object should be of class ampseq or rGenome')
+  )
   
-  obj@gt = ampseq_object@gt[v,]
-  obj@metadata = ampseq_object@metadata[v,]
-  
-  return(obj)
+  return(obj2)
 }
 
-# filter_loci----
+## filter_loci----
 
-filter_loci = function(ampseq_object, v){
+filter_loci = function(obj, v, update_cigars = TRUE){
   
-  obj = ampseq_object
-  
-  if(is.logical(v)){
-    obj@gt = ampseq_object@gt[, v]
-    obj@markers = ampseq_object@markers[v, ]
+  if(class(obj) == 'ampseq'){
     
-    if(!is.null(obj@loci_performance)){
-      obj@loci_performance = ampseq_object@loci_performance[v, ]
+    obj2 = obj
+    
+    if(is.logical(v)){
+      obj2@gt = obj@gt[, v]
+      obj2@markers = obj@markers[v, ]
+      
+      if(!is.null(obj2@loci_performance)){
+        obj2@loci_performance = obj@loci_performance[v, ]
+      }
+      
+    }else if(is.character(v)){
+      obj2@gt = obj@gt[, colnames(obj@gt) %in% v]
+      obj2@markers = obj@markers[obj@markers$amplicon %in% v, ]
+      
+      if(!is.null(obj2@loci_performance)){
+        obj2@loci_performance = obj@loci_performance[obj@loci_performance$loci %in% v, ]
+      }
+      
     }
     
-  }else if(is.character(v)){
-    obj@gt = ampseq_object@gt[, colnames(ampseq_object@gt) %in% v]
-    obj@markers = ampseq_object@markers[ampseq_object@markers$amplicon %in% v, ]
+    obj2@markers[["distance"]] = Inf
     
-    if(!is.null(obj@loci_performance)){
-      obj@loci_performance = ampseq_object@loci_performance[ampseq_object@loci_performance$loci %in% v, ]
+    for(chromosome in levels(as.factor(obj2@markers[["chromosome"]]))){
+      for(amplicon in 1:(nrow(obj2@markers[obj2@markers[["chromosome"]] == chromosome,])-1)){
+        obj2@markers[
+          obj2@markers[["chromosome"]] == chromosome,
+        ][amplicon, "distance"] = 
+          obj2@markers[obj2@markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
+          obj2@markers[obj2@markers[["chromosome"]] == chromosome,][amplicon, "pos"]
+      }
     }
     
+    if(update_cigars){
+      
+      cigars_gt = get_cigar_alleles(obj2, 
+                                    from = 'gt',
+                                    as = 'vector')
+      
+      cigars_asvtab = get_cigar_alleles(obj2, 
+                                        from = 'asv_table',
+                                        as = 'vector',
+                                        col = 'CIGAR_masked')
+      
+      if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+         sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n\n',
+                   'Cigar strings in asv_table that are not present in gt matrix are:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'
+        ))
+        
+        stop('There are cigar strings that are different in the gt and the asv_table')
+        
+      }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
+        
+      }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('The following cigar strings in asv_table are not longer present in gt matrix:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'))
+        
+        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
+        
+        for(cigar_string_to_remove in cigar_strings_to_remove){
+          
+          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
+          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
+          
+          obj2@asv_table = 
+            obj2@asv_table[!(obj2@asv_table[['Amplicon']] == Amplicon &
+                               obj2@asv_table[['CIGAR_masked']] == CIGAR),]
+          
+          obj2@asv_seqs = obj2@asv_seqs[
+            names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
+          
+          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
+          names(obj2@asv_seqs) = obj2@asv_table$hapid
+          
+        }
+        
+      }else{
+        print('cigar strings are consistent between gt and asv_table')
+      }
+      
+      consistency_between_gt_and_asvtab(obj2)
+      
+    }
+    
+    
+  }else if(class(obj) == 'rGenome'){
+    
+    obj2 = obj
+    obj2@gt = obj2@gt[v,]
+    obj2@loci_table = obj2@loci_table[v,]
+    
+    if(is.null(nrow(obj2@gt)) & ncol(obj@gt) > 1){
+      
+      obj2@gt = matrix(obj2@gt, nrow = 1, ncol = length(obj2@gt),
+                       dimnames = list(
+                         rownames(obj2@loci_table),
+                         names(obj2@gt)
+                       ))
+      
+    }else if(is.null(nrow(obj2@gt)) & ncol(obj@gt) == 1){
+      
+      obj2@gt = matrix(obj2@gt, ncol = 1, nrow = length(obj2@gt),
+                       dimnames = list(
+                         rownames(obj2@loci_table),
+                         colnames(obj@gt)
+                       ))
+      
+    }
+    
+  }else{
+    stop('Object should be of calss ampseq or rGenome')
   }
   
-  obj@markers[["distance"]] = Inf
-  
-  for(chromosome in levels(as.factor(obj@markers[["chromosome"]]))){
-    for(amplicon in 1:(nrow(obj@markers[obj@markers[["chromosome"]] == chromosome,])-1)){
-      obj@markers[
-        obj@markers[["chromosome"]] == chromosome,
-      ][amplicon, "distance"] = 
-        obj@markers[obj@markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
-        obj@markers[obj@markers[["chromosome"]] == chromosome,][amplicon, "pos"]
-    }
-  }
-  
-  return(obj)
+  return(obj2)
 }
 # Mask alternative alleles----
 setGeneric("mask_alt_alleles", function(obj = NULL, ref_fasta = NULL, mask_formula = "dVSITES_ij > 0.3", homopolymer_length = 5) standardGeneric("mask_alt_alleles"))
@@ -1746,6 +2367,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
             asv_table = obj@asv_table
             
             mhaps$homopolymer_regions = NA
+            mhaps$homopolymer_anchors = NA
             
             ref_sequences = readDNAStringSet(ref_fasta)
             
@@ -1773,6 +2395,30 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                                                                              homopolymers_location[[1]][,'end'], sep = '-'), sep = ':'),
                                                                                  collapse = ',')
                 
+                homopolymer_starts = homopolymers_location[[1]][,'start']
+                
+                anchor_position = NULL
+                for(homopolymer in 1:length(homopolymers_location[[1]][,'start'])){
+                  
+                  homopolymer_start = homopolymers_location[[1]][,'start'][homopolymer]
+                  
+                  if(homopolymer_start > 1){
+                    
+                    anchor_position = c(anchor_position, 
+                                        as.character(Biostrings::substr(ref_sequences[[mhap]], 
+                                                                        start = homopolymer_start - 1, 
+                                                                        stop = homopolymer_start - 1)))
+                  }else{
+                    anchor_position = c(anchor_position, '')
+                  }
+                  
+                  
+                }
+                
+                if(!is.null(anchor_position)){
+                  homopolymer_anchors = paste0(homopolymers_location[[1]][,'start'] - 1, anchor_position)
+                  mhaps[mhaps$amplicon == mhap, ][['homopolymer_anchors']] = paste(homopolymer_anchors, collapse = ',')  
+                }
               }
               
               
@@ -2054,8 +2700,10 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                   polymorphisms = unlist(strsplit(gsub('^\\d+', '', allele), '\\d+'))
                                   type_polymorphism = sapply(polymorphisms, function(polymorphism){
                                     if(nchar(polymorphism) == 1){
-                                      'SNV'}else if(nchar(polymorphism) > 1){
-                                        'INDEL'
+                                      'SNV'}else if(grepl('I', polymorphism)){
+                                        'Insertion'
+                                      }else if(grepl('D', polymorphism)){
+                                        'Deletion'
                                       }
                                   })
                                   
@@ -2078,6 +2726,46 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                   }else{
                                     SNV_in_homopolymer = FALSE
                                   }
+
+                                  # CODE NEEDED FOR MASKING SNVs THAT ARE INSIDE OF INDELs, THIS PART IS STILL IN DEVELOPMENT
+                                  # if('Insertion' %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])){
+                                  #   snv_in_insertion_positions = positions[type_polymorphism == 'Insertion']
+                                  #   snv_in_insertion_polymorphisms = polymorphisms[type_polymorphism == 'Insertion']
+                                  #   snv_in_insertion_polymorphisms = substr(snv_in_insertion_polymorphisms, 3, 3)
+                                  #   
+                                  #   if(sum(snv_in_insertion_positions %in% masked_region) > 0){
+                                  #     
+                                  #     snv_in_insertion_polymorphisms_in_homopolymers = snv_in_insertion_polymorphisms[snv_in_insertion_positions %in% masked_region]
+                                  #     snv_in_insertion_positions_in_homopolymers = snv_in_insertion_positions[snv_in_insertion_positions %in% masked_region]
+                                  #     
+                                  #     start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '\\d+-'))))
+                                  #     end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '-\\d+'))))
+                                  #     
+                                  #     homopolymer_repeat = unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '[ATGC]+'))
+                                  #     homopolymer_repeat = sapply(homopolymer_repeat, function(repeated_nucleotide){
+                                  #       unique(unlist(strsplit(repeated_nucleotide, '')))
+                                  #     })
+                                  #     
+                                  #     homopolymer_repeat = data.frame(
+                                  #       start,
+                                  #       end,
+                                  #       homopolymer_repeat)
+                                  #     
+                                  #     homopolymer_repeat_motive_in_asv = NULL
+                                  #     
+                                  #     for(snv_in_insertion_position in snv_in_insertion_positions_in_homopolymers){
+                                  #       homopolymer_repeat_motive_in_asv = c(homopolymer_repeat_motive_in_asv,
+                                  #                                         homopolymer_repeat[homopolymer_repeat[["start"]] <= snv_in_insertion_position &
+                                  #                                         homopolymer_repeat[["end"]] >= snv_in_insertion_position,][["start"]])
+                                  #     }
+                                  #     
+                                  #     homopolymer_repeat_motive_in_asv = homopolymer_repeat[homopolymer_repeat$start %in% homopolymer_repeat_motive_in_asv,]
+                                  #     
+                                  #     SNV_in_Insertion_in_homopolymer = sum(homopolymer_repeat_motive_in_asv$homopolymer_repeat != snv_in_insertion_polymorphisms_in_homopolymers)
+                                  #     
+                                  #   }
+                                  #   
+                                  # }
                                   
                                   
                                   # SNV_in_homopolymer pattern and replacement
@@ -2089,8 +2777,8 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     snv_positions_remined = snv_positions[!(snv_positions %in% masked_region)]
                                     snv_polymorphisms_remined = snv_polymorphisms[!(snv_positions %in% masked_region)]
                                     
-                                    indel_postions_to_add = positions[type_polymorphism == 'INDEL']
-                                    indel_polymorphisms_to_add = polymorphisms[type_polymorphism == 'INDEL']
+                                    indel_postions_to_add = positions[type_polymorphism %in% c('Insertion', 'Deletion')]
+                                    indel_polymorphisms_to_add = polymorphisms[type_polymorphism %in% c('Insertion', 'Deletion')]
                                     
                                     SNV_in_homopolymer_replacement = data.frame(positions = c(snv_positions_remined,
                                                                                               indel_postions_to_add),
@@ -2121,40 +2809,56 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                   
                                   # INDEL_in_homopolymer
                                   
-                                  if('INDEL' %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])){
+                                  if(sum(c('Insertion', 'Deletion') %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])) > 0){
                                     
-                                    indel_positions = positions[type_polymorphism == 'INDEL']
-                                    indel_polymorphisms = polymorphisms[type_polymorphism == 'INDEL']
+                                    deleted_positions = positions[type_polymorphism %in% c('Deletion')]
+                                    inserted_positions = positions[type_polymorphism %in% c('Insertion')]
+                                    
+                                    deleted_polymorphisms = polymorphisms[type_polymorphism %in% c('Deletion')]
+                                    inserted_polymorphisms = polymorphisms[type_polymorphism %in% c('Insertion')]
+                                    
                                     
                                     start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '\\d+-'))))
                                     end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '-\\d+'))))
                                     
                                     masked_region = c(unlist(sapply(1:length(start), function(pos){
-                                      seq(start[pos], end[pos], 1)
-                                    })))
+                                      seq(start[pos], end[pos], 1)})))
                                     
-                                    INDEL_in_homopolymer = sum(indel_positions %in% masked_region) > 0
+                                    masked_region_for_insertions = c(masked_region[1] - 1, masked_region)
+                                    
+                                    masked_region_for_deletions = masked_region
+                                    
+                                    Insertions_in_homopolymer = sum(inserted_positions %in% masked_region_for_insertions) > 0
+                                    Deletions_in_homopolymer = sum(deleted_positions %in% masked_region_for_insertions) > 0
                                     
                                   }else{
-                                    INDEL_in_homopolymer = FALSE
+                                    Insertions_in_homopolymer = FALSE
+                                    Deletions_in_homopolymer = FALSE
                                   }
                                   
                                   
                                   # INDEL_in_homopolymer pattern and replacement
                                   
+                                  INDEL_in_homopolymer = Insertions_in_homopolymer == 1 | Deletions_in_homopolymer == 1
+                                  
                                   if(INDEL_in_homopolymer == 1){
                                     
                                     INDEL_in_homopolymer_pattern = allele
                                     
-                                    indel_positions_remined = indel_positions[!(indel_positions %in% masked_region)]
-                                    indel_polymorphisms_remined = indel_polymorphisms[!(indel_positions %in% masked_region)]
+                                    inserted_positions_remined = inserted_positions[!(inserted_positions %in% masked_region_for_insertions)]
+                                    inserted_polymorphisms_remined = inserted_polymorphisms[!(inserted_positions %in% masked_region_for_insertions)]
+                                    
+                                    deleted_positions_remined = deleted_positions[!(deleted_positions %in% masked_region_for_deletions)]
+                                    deleted_polymorphisms_remined = deleted_polymorphisms[!(deleted_positions %in% masked_region_for_deletions)]
                                     
                                     snv_postions_to_add = positions[type_polymorphism == 'SNV']
                                     snv_polymorphisms_to_add = polymorphisms[type_polymorphism == 'SNV']
                                     
-                                    INDEL_in_homopolymer_replacement = data.frame(positions = c(indel_positions_remined,
+                                    INDEL_in_homopolymer_replacement = data.frame(positions = c(inserted_positions_remined,
+                                                                                                deleted_positions_remined,
                                                                                                 snv_postions_to_add),
-                                                                                  polymorphisms = c(indel_polymorphisms_remined,
+                                                                                  polymorphisms = c(inserted_polymorphisms_remined,
+                                                                                                    deleted_polymorphisms_remined,
                                                                                                     snv_polymorphisms_to_add)
                                     )
                                     
@@ -2181,14 +2885,25 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                   
                                   # INDELs in flanking regions
                                   
-                                  flanking_INDEL = as.integer(grepl(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+') ,allele))
+                                  flanking_Insertion = as.integer(grepl(paste0(paste('(^0', mhaps[mhap,][['length']], sep = '|'),')I(=|\\.)[ATGC]+') ,allele))
+                                  flanking_Deletion = as.integer(grepl(paste0(paste('(^1', mhaps[mhap,][['length']], sep = '|'),')D(=|\\.)[ATGC]+') ,allele)) # ERROR: this recognition pattern only takes into account deletions that occurs at the last position and not deletions that includes the last position
+                                  
+                                  flanking_INDEL = flanking_Insertion == 1 | flanking_Deletion == 1
                                   
                                   if(flanking_INDEL == 1){
-                                    temp_flanking_INDEL_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']] + 1), sep = '|'),')(I|D)(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    temp_flanking_Insertion_pattern = str_extract_all(allele, paste0(paste('(^0', paste0('[ATGC]?', mhaps[mhap,][['length']]), sep = '|'),')I(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    temp_flanking_Insertion_replacement = gsub(paste0(paste('(^0', mhaps[mhap,][['length']], sep = '|'),')I(=|\\.)[ATGC]+'), '', temp_flanking_Insertion_pattern)
                                     
-                                    temp_flanking_INDEL_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+'), '', temp_flanking_INDEL_pattern)
+                                    temp_flanking_Deletion_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']]), sep = '|'),')D(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    temp_flanking_Deletion_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']], sep = '|'),')D(=|\\.)[ATGC]+'), '', temp_flanking_Deletion_pattern)
                                     
                                     
+                                    temp_flanking_INDEL_pattern = c(temp_flanking_Insertion_pattern,
+                                                                    temp_flanking_Deletion_pattern
+                                    )
+                                    
+                                    temp_flanking_INDEL_replacement = c(temp_flanking_Insertion_replacement,
+                                                                        temp_flanking_Deletion_replacement)
                                     
                                     if('' %in% temp_flanking_INDEL_replacement){
                                       
@@ -2246,6 +2961,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     nINDELs_ij,
                                     dINDELs_ij,
                                     
+                                    mhaps[mhap,][['homopolymer_anchors']],
                                     mhaps[mhap,][['homopolymer_regions']],
                                     
                                     SNV_in_homopolymer,
@@ -2281,6 +2997,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                                       'dSNVs_ij',
                                                       'nINDELs_ij',
                                                       'dINDELs_ij',
+                                                      'homopolymer_anchors',
                                                       'homopolymer_regions',
                                                       'SNV_in_homopolymer',
                                                       'SNV_in_homopolymer_pattern',
@@ -2313,7 +3030,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                 ASVs_attributes_table_temp[['SNV_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['SNV_in_homopolymer']])
                 ASVs_attributes_table_temp[['INDEL_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['INDEL_in_homopolymer']])
                 
-                ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
+                #ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
                 
                 ASVs_attributes_table_temp[['flanking_INDEL_pattern']] = unlist(sapply(ASVs_attributes_table_temp[['flanking_INDEL_pattern']],
                                                                                        function(pattern){
@@ -2349,16 +3066,6 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
-                    # mask_formula2 = str_extract(mask_formula,
-                    #                             "ASVs_attributes_table_temp\\[\\['SNV_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
-                    # 
-                    # replaced_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_pattern']]
-                    # 
-                    # 
-                    # replacement_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_replacement']]
-                    
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['SNV_in_homopolymer_replacement']]
                     
@@ -2380,7 +3087,11 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                         if(!is.na(replaced_pattern)){
                           
                           replacement_pattern = gsub(temp_replaced_allele, temp_replacement_allele, replaced_pattern)
-                          gt_masked[sample,mhap] = gsub(replaced_pattern, replacement_pattern, gt_masked[sample,mhap])
+                          
+                          gt_masked[sample,mhap] = gsub(ifelse(grepl('_',replaced_pattern), replaced_pattern, paste0('^', replaced_pattern)), 
+                                                        replacement_pattern, 
+                                                        gt_masked[sample,mhap])
+                          
                         }
                         
                       }
@@ -2419,15 +3130,6 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
-                    # mask_formula2 = str_extract(mask_formula,
-                    #                             "ASVs_attributes_table_temp\\[\\['INDEL_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
-                    #
-                    # replaced_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_pattern']]
-                    #
-                    #
-                    # replacement_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_replacement']]
                     
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['INDEL_in_homopolymer_replacement']]
@@ -2450,7 +3152,9 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                         if(!is.na(replaced_pattern)){
                           
                           replacement_pattern = gsub(temp_replaced_allele, temp_replacement_allele, replaced_pattern)
-                          gt_masked[sample,mhap] = gsub(replaced_pattern, replacement_pattern, gt_masked[sample,mhap])
+                          gt_masked[sample,mhap] = gsub(ifelse(grepl('_',replaced_pattern), replaced_pattern, paste0('^', replaced_pattern)), 
+                                                        replacement_pattern, 
+                                                        gt_masked[sample,mhap])
                         }
                         
                       }
@@ -2488,16 +3192,6 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                     eval(parse(text = mask_formula)),][['flanking_INDEL_pattern']]
                   
                   if(length(replaced_alleles) > 0){
-                    
-                    # mask_formula2 = str_extract(mask_formula,
-                    #                             "ASVs_attributes_table_temp\\[\\['flanking_INDEL'\\]\\] (=|!)+ (TRUE|FALSE)")
-                    #
-                    # replaced_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['flanking_INDEL_pattern']]
-                    #
-                    #
-                    # replacement_alleles = ASVs_attributes_table_temp[
-                    #   eval(parse(text = mask_formula2)),][['flanking_INDEL_replacement']]
 
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['flanking_INDEL_replacement']]
@@ -2575,24 +3269,47 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                     eval(parse(text = mask_formula)),][['Allele']]
                   
                   if(length(removed_alleles) > 0){
-                    removed_pattern =paste('_?(', paste(removed_alleles, collapse = '|'), '):\\d+_?', sep = '')
-                    # Mask alleles below threshold
-                    gt_masked[,mhap] = gsub(removed_pattern, '//', gt_masked[,mhap])
                     
-                    gt_masked[,mhap] = gsub(removed_pattern, '//', gt_masked[,mhap])
+                    gt_ad = sapply(gt_masked[,mhap], function(Sample_id){
+                      sum(as.integer(gsub(':', '',unlist(str_extract_all(Sample_id, ':\\d+')))), na.rm = T)
+                    }, simplify = T)
                     
-                    gt_masked[,mhap] = ifelse(grepl('^//|//$', gt_masked[,mhap]), gsub('//', '', gt_masked[,mhap]), gt_masked[,mhap])
-                    
-                    gt_masked[,mhap] = gsub('//', '_', gt_masked[,mhap])
-                    
-                    
-                    if(length(gt_masked[gt_masked[,mhap] == '' &
-                                        !is.na(gt_masked[,mhap])
-                                        , mhap]) > 0){
+                    for(removed_pattern in paste('(^|_)', removed_alleles, ':\\d+_?', sep = '')){
                       
-                      gt_masked[gt_masked[,mhap] == '' &
-                                  !is.na(gt_masked[,mhap])
-                                , mhap] = NA
+                      # Mask alleles below threshold
+                      gt_masked[,mhap] = gsub(removed_pattern, 'R', gt_masked[,mhap])
+                      
+                      gt_masked[,mhap] = gsub('^R', '', gt_masked[,mhap])
+                      
+                      gt_masked[,mhap] = gsub('R$', '', gt_masked[,mhap])
+                      
+                      gt_masked[,mhap] = gsub('R', '_', gt_masked[,mhap])
+                      
+                      
+                      if(length(gt_masked[gt_masked[,mhap] == '' &
+                                          !is.na(gt_masked[,mhap])
+                                          , mhap]) > 0){
+                        
+                        # THINK IN POTENTIAL BIAS OF THIS STRATEGY
+                        if('.' %in% asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
+                                            !is.na(asv_table[['Amplicon']])
+                                            ,][['CIGAR_masked']]){
+                          
+                          gt_masked[gt_masked[,mhap] == '' &
+                                      !is.na(gt_masked[,mhap])
+                                    , mhap] = paste0('.:', gt_ad[gt_masked[,mhap] == '' &
+                                                                   !is.na(gt_masked[,mhap])])
+                          
+                        }else{
+                          
+                          gt_masked[gt_masked[,mhap] == '' &
+                                      !is.na(gt_masked[,mhap])
+                                    , mhap] = NA
+                          
+                        }
+                        
+                        
+                      }
                       
                     }
                     
@@ -2604,7 +3321,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                       asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
                                   !is.na(asv_table[['Amplicon']]) &
                                   asv_table[['CIGAR_masked']] %in% removed_alleles
-                                ,][['CIGAR_masked']] = NA
+                                ,][['CIGAR_masked']] = NA # CHANGE TO REMOVE THESE LINES IN asv_table IN NEXT IMPLEMENTATION
                       
                     }
                     
@@ -2680,14 +3397,12 @@ sample_ReadDepth = function(ampseq_object, stat = c('sum', 'mean', 'median', 'sd
     
     
   }
-  
   return(output)
-  
 }
 
 ## get_ReadDepth_coverage----
 
-get_ReadDepth_coverage = function(ampseq_object, variable){
+get_ReadDepth_coverage = function(ampseq_object, variable = NULL, plot = TRUE){
   coverage = sapply(1:ncol(ampseq_object@gt), function(mhap){
     
     temp_mhap = strsplit(ampseq_object@gt[,mhap], '_')
@@ -2725,82 +3440,98 @@ get_ReadDepth_coverage = function(ampseq_object, variable){
                              names_to = 'Markers',
                              values_to = 'Read_depth')
   
-  sample_order = coverage %>%
-    group_by(Sample_id) %>%
-    summarise(Read_depth = sum(Read_depth, na.rm = T)) %>%
-    arrange(Read_depth) %>%
-    select(Sample_id) %>% unlist
-  
-  coverage$Markers = factor(coverage$Markers,
-                            levels = ampseq_object@markers$amplicon)
-  
-  plot_read_depth_heatmap = coverage %>% 
-    ggplot(aes(x = Markers, y = factor(Sample_id, levels = sample_order), fill = log10(Read_depth+1)))+
-    geom_tile()+
-    # scale_fill_gradient(low="white", high="red",
-    #                     breaks = 1:ceiling(log10(max(coverage$Read_depth, na.rm = T))),
-    #                     labels = 10^(1:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))+
-    facet_wrap(var~., scales = 'free_y', ncol = 1)+
-    labs(y = 'Samples',
-         fill = "Read depth")+
-    theme_bw()+
-    theme(axis.text.x = element_text(angle = 90, size = 6),
-          axis.text.y = element_text(size = 6))
-  
-
-  
-  plot_read_depth_violin = coverage %>% 
-    ggplot(aes(x = var, y = log10(Read_depth + 1), color = var))+
-    geom_violin()+
-    geom_jitter(alpha = .1, width = .2)+
-    # scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T))))+1),
-    #                    labels = 10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))+
-    labs(x = variable, y = 'Read depth')+
-    theme_bw()+
-    theme(legend.position = 'none')
-  
-  if(max(coverage$Read_depth, na.rm = T) > 0) {
-    plot_read_depth_heatmap = plot_read_depth_heatmap + 
-      scale_fill_gradient(low="white", high="red",
-                          breaks = 1:ceiling(log10(max(coverage$Read_depth, na.rm = T))),
-                          labels = 10^(1:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))
-    
-    plot_read_depth_violin = plot_read_depth_violin + 
-      scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T))))+1),
-                         labels = 10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))
-  }
-  
-  
   coverage_by_sample = coverage %>% 
     summarise(Total_Read_depth = sum(Read_depth, na.rm = T), .by = c(var, Sample_id))
   
-  plot_read_depth_violin_by_sample = coverage_by_sample %>% 
-    ggplot(aes(x = var, y = log10(Total_Read_depth + 1), color = var))+
-    geom_violin()+
-    geom_jitter(alpha = .1, width = .2)+
-    # scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T))))+1),
-    #                    labels = 10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T)))))+
-    labs(x = variable, y = 'Sample Read depth')+
-    theme_bw()+
-    theme(legend.position = 'none')
-  
-  if(max(coverage_by_sample$Total_Read_depth, na.rm = T ) > 0) {
-    plot_read_depth_violin_by_sample = plot_read_depth_violin_by_sample + 
-      scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T))))+1),
-                         labels = 10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T)))))
+  if(plot == TRUE){
+    
+    sample_order = coverage %>%
+      group_by(Sample_id) %>%
+      summarise(Read_depth = sum(Read_depth, na.rm = T)) %>%
+      arrange(Read_depth) %>%
+      dplyr::select(Sample_id) %>% unlist
+    
+    coverage$Markers = factor(coverage$Markers,
+                              levels = ampseq_object@markers$amplicon)
+    
+    plot_read_depth_heatmap = coverage %>% 
+      ggplot(aes(x = Markers, y = factor(Sample_id, levels = sample_order), fill = log10(Read_depth+1)))+
+      geom_tile()+
+      # scale_fill_gradient(low="white", high="red",
+      #                     breaks = 1:ceiling(log10(max(coverage$Read_depth, na.rm = T))),
+      #                     labels = 10^(1:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))+
+      facet_wrap(var~., scales = 'free_y', ncol = 1)+
+      labs(y = 'Samples',
+           fill = "Read depth")+
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 90, size = 6),
+            axis.text.y = element_text(size = 6))
+    
+    
+    
+    plot_read_depth_violin = coverage %>% 
+      ggplot(aes(x = var, y = log10(Read_depth + 1), color = var))+
+      geom_violin()+
+      geom_jitter(alpha = .1, width = .2)+
+      # scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T))))+1),
+      #                    labels = 10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))+
+      labs(x = variable, y = 'Read depth')+
+      theme_bw()+
+      theme(legend.position = 'none')
+    
+    if(max(coverage$Read_depth, na.rm = T) > 0) {
+      plot_read_depth_heatmap = plot_read_depth_heatmap + 
+        scale_fill_gradient(low="white", high="red",
+                            breaks = 1:ceiling(log10(max(coverage$Read_depth, na.rm = T))),
+                            labels = 10^(1:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))
+      
+      plot_read_depth_violin = plot_read_depth_violin + 
+        scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T))))+1),
+                           labels = 10^(0:ceiling(log10(max(coverage$Read_depth, na.rm = T)))))
+    }
+    
+    plot_read_depth_violin_by_sample = coverage_by_sample %>% 
+      ggplot(aes(x = var, y = log10(Total_Read_depth + 1), color = var))+
+      geom_violin()+
+      geom_jitter(alpha = .1, width = .2)+
+      # scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T))))+1),
+      #                    labels = 10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T)))))+
+      labs(x = variable, y = 'Sample Read depth')+
+      theme_bw()+
+      theme(legend.position = 'none')
+    
+    if(max(coverage_by_sample$Total_Read_depth, na.rm = T ) > 0) {
+      plot_read_depth_violin_by_sample = plot_read_depth_violin_by_sample + 
+        scale_y_continuous(breaks = log10(10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T))))+1),
+                           labels = 10^(0:ceiling(log10(max(coverage_by_sample$Total_Read_depth, na.rm = T)))))
+    }
+    
+    return(list(plot_read_depth_heatmap = plot_read_depth_heatmap,
+                plot_read_depth_violin = plot_read_depth_violin,
+                plot_read_depth_violin_by_sample = plot_read_depth_violin_by_sample))
+    
+  }else{
+    
+    if(is.null(variable)){
+      names(coverage) = c(names(coverage)[1], variable, names(coverage)[c(-1, -2)])
+      names(coverage_by_sample) = c(variable, names(coverage_by_sample)[-1])
+      }else{
+      
+      names(coverage) = c(names(coverage)[1], 'Population', names(coverage)[c(-1, -2)])
+      names(coverage_by_sample) = c('Population', names(coverage_by_sample)[-1])
+      
+    }
+    
+    return(list(coverage_by_marker_by_sample = coverage,
+                coverage_by_sample = coverage_by_sample))
+    
   }
-  
-  
-  return(list(plot_read_depth_heatmap = plot_read_depth_heatmap,
-              plot_read_depth_violin = plot_read_depth_violin,
-              plot_read_depth_violin_by_sample = plot_read_depth_violin_by_sample))
-  
 }
 
 
 ## locus_amplification_rate----
 
-locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci = TRUE, strata = NULL, based_on_strata = FALSE){
+locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci = TRUE, strata = NULL, based_on_strata = FALSE, chr_lengths = NULL){
   
   # , chr_lengths = c(640851,
   #                   947102,
@@ -2887,24 +3618,28 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     geom_vline(xintercept = threshold) +
     theme_bw()
   
-  # amplification_rate_per_locus = ggplot()+
-  #   geom_segment(data = data.frame(x = 0, y = 1:14, xend =chr_lengths, yend = 1:14),
-  #                aes(x=x, y=y, xend=xend, yend=yend), alpha = .5)+
-  #   geom_point(data = data.frame(Position = ampseq_object@markers$pos,
-  #                                Amplification_rate = 
-  #                                  loci_performance$loci_ampl_rate,
-  #                                Chr = as.character(gsub("(Pf3D7_|_v3|PvP01_|_v1)", "", ampseq_object@markers$chromosome))),
-  #              aes(x = Position, y = Chr, color = Amplification_rate),
-  #              pch = "|", size = 5)+
-  #   theme_bw()+
-  #   labs(title = "Amplification rate by locus",
-  #        x = "Chromosome position",
-  #        y = "Chromosome",
-  #        color = NULL)+
-  #   theme(legend.position = c(.9,.4))+
-  #   scale_y_continuous(breaks = 1:14)+
-  #   scale_color_continuous(type = "viridis")
-
+   if(!is.null(chr_lengths)){
+    amplification_rate_per_locus = ggplot()+
+      geom_segment(data = data.frame(x = 0, y = 1:14, xend =chr_lengths, yend = 1:14),
+                   aes(x=x, y=y, xend=xend, yend=yend, size = 2), alpha = .5)+
+      geom_point(data = data.frame(Position = ampseq_object@markers$pos,
+                                   Amplification_rate =
+                                     loci_performance$loci_ampl_rate,
+                                   Chr = as.integer(gsub("(Pf3D7_|_v3|PvP01_|_v1)", "", ampseq_object@markers$chromosome))),
+                 aes(x = Position, y = Chr, color = Amplification_rate),
+                 pch = "|", size = 5)+
+      theme_bw()+
+      labs(title = "Amplification rate by locus",
+           x = "Chromosome position",
+           y = "Chromosome",
+           color = NULL)+
+      theme(legend.position = 'none',
+            text = element_text(size = 18))+
+      scale_y_continuous(breaks = 1:14)+
+      scale_color_continuous(type = "viridis")
+  }else{
+    amplification_rate_per_locus = NULL
+  }
   print("Updating loci based on locus amplification rate...")
   if(update_loci){
     
@@ -2914,38 +3649,37 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                               1,
                                               function(x){
                                                 sum(x >= threshold) == 0
-                                              }),][["loci"]]
+                                              }), , drop=FALSE][["loci"]]
       keeped_loci = loci_performance[apply(loci_performance[, grepl('loci_ampl_rate', colnames(loci_performance))], 
                                            1,
                                            function(x){
                                              sum(x >= threshold) > 0
-                                           }),][["loci"]]
+                                           }), , drop=FALSE][["loci"]]
       
       ampseq_loci_abd_table_discarded_loci =
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci, drop=FALSE]
       
       ampseq_loci_abd_table = 
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci, drop=FALSE]
       
       markers = ampseq_object@markers
       
-      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci,]
-      markers = markers[markers[['amplicon']] %in% keeped_loci,]
+      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
+      markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
       
       markers[["distance"]] = Inf
       
       for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-        for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome,])-1)){
+        for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome, ,drop=FALSE])-1)){
           markers[
-            markers[["chromosome"]] == chromosome,
-          ][amplicon, "distance"] = 
-            markers[markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
-            markers[markers[["chromosome"]] == chromosome,][amplicon, "pos"]
+            markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon, "distance"] = 
+            markers[markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon + 1, "pos"] - 
+            markers[markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon, "pos"]
         }
       }
       
       loci_performance_complete = loci_performance
-      loci_performance = loci_performance[keeped_loci,]
+      loci_performance = loci_performance[keeped_loci, , drop=FALSE]
       
       ampseq_object@gt = ampseq_loci_abd_table
       ampseq_object@markers = markers
@@ -2954,55 +3688,181 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                           loci_performance = loci_performance_complete,
                                           markers = discarded_markers)
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
-      #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
+      cigars_gt = get_cigar_alleles(ampseq_object, 
+                                    from = 'gt',
+                                    as = 'vector')
+      
+      cigars_asvtab = get_cigar_alleles(ampseq_object, 
+                                        from = 'asv_table',
+                                        as = 'vector',
+                                        col = 'CIGAR_masked')
+      
+      if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+          sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n\n',
+                   'Cigar strings in asv_table that are not present in gt matrix are:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'
+        ))
+        
+        stop('There are cigar strings that are different in the gt and the asv_table')
+        
+      }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
+        
+      }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('The following cigar strings in asv_table are not longer present in gt matrix:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'))
+        
+        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
+        
+        for(cigar_string_to_remove in cigar_strings_to_remove){
+          
+          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
+          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
+          
+          ampseq_object@asv_table = 
+            ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
+                               ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
+          
+          ampseq_object@asv_seqs = ampseq_object@asv_seqs[
+            names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
+          
+          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          
+        }
+        
+        
+      }else{
+        print('cigar strings are consistent between gt and asv_table')
+      }
+      
+      consistency_between_gt_and_asvtab(ampseq_object)
+      
       return(ampseq_object)
       
     }else if((is.null(strata) | !based_on_strata)){
-      
       print("Deciding which loci to keep/discard...")
 
-      discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold,][["loci"]]
-      keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold,][["loci"]]
+      discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold, , drop=FALSE][["loci"]]
+      keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold, , drop=FALSE][["loci"]]
       
       # Ensure that these stay as dataframes
 
       ampseq_loci_abd_table_discarded_loci =
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci, drop=FALSE]
       ampseq_loci_abd_table = 
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci]
+        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci, drop=FALSE]
       
       print("Finished deciding loci to keep/discard!")
 
       markers = ampseq_object@markers      
-      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci,]
-      markers = markers[markers[['amplicon']] %in% keeped_loci,]
+      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
+      markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
       
-      print("Deciding which markers to keep/discard...")
+      print("Calculating marker distance...")
       # markers[["distance"]] = Inf
         
-        for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-          for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome,])-1)){
-            markers[
-              markers[["chromosome"]] == chromosome,
-            ][amplicon, "distance"] = 
-              markers[markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
-              markers[markers[["chromosome"]] == chromosome,][amplicon, "pos"]
-          }
+      #Per-chromosome calculation of distance
+      print(markers)
+      for(chromosome in levels(as.factor(markers[["chromosome"]]))){
+        chr_markers = markers[markers[["chromosome"]] == chromosome, , drop=FALSE]
+        if (nrow(chr_markers) > 1 && all(!is.na(chr_markers[["pos"]]))) {
+          chr_markers[["distance"]] = c(diff(chr_markers[["pos"]], lag=1), NA)
+        } else {
+          chr_markers[["distance"]] = NA
         }
+      }
 
-        print("Finished deciding which markers to keep/discard!")
+      print("Finished calculating marker distance!")
+ 
+      loci_performance_complete = loci_performance
+      loci_performance = loci_performance[keeped_loci,]
         
-        loci_performance_complete = loci_performance
-        loci_performance = loci_performance[keeped_loci,]
-        
-        ampseq_object@gt = ampseq_loci_abd_table
-        ampseq_object@markers = markers
-        ampseq_object@loci_performance = loci_performance
-        ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
-                                            loci_performance = loci_performance_complete,
-                                            markers = discarded_markers)
+      ampseq_object@gt = ampseq_loci_abd_table
+      ampseq_object@markers = markers
+      ampseq_object@loci_performance = loci_performance
+      ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
+                                          loci_performance = loci_performance_complete,
+                                          markers = discarded_markers)
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
       #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
+
+      cigars_gt = get_cigar_alleles(ampseq_object, 
+                                    from = 'gt',
+                                    as = 'vector')
+      
+      cigars_asvtab = get_cigar_alleles(ampseq_object, 
+                                        from = 'asv_table',
+                                        as = 'vector',
+                                        col = 'CIGAR_masked')
+      
+      if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+         sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n\n',
+                   'Cigar strings in asv_table that are not present in gt matrix are:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'
+        ))
+        
+        stop('There are cigar strings that are different in the gt and the asv_table')
+        
+      }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+        
+        cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                   paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                   '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
+        
+      }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+        
+        cat(paste0('The following cigar strings in asv_table are not longer present in gt matrix:\n',
+                   paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                   '\n'))
+        
+        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
+        
+        for(cigar_string_to_remove in cigar_strings_to_remove){
+          
+          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
+          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
+          
+          ampseq_object@asv_table = 
+            ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
+                                        ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
+          
+          ampseq_object@asv_seqs = ampseq_object@asv_seqs[
+            names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
+          
+          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          
+        }
+        
+        
+      }else{
+        print('cigar strings are consistent between gt and asv_table')
+      }
+      
+      consistency_between_gt_and_asvtab(ampseq_object)
+      
+      
+      
       return(ampseq_object)
       
     }
@@ -3081,7 +3941,7 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     name_of_discarded_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] <= threshold ,][["Sample_id"]]]
     number_of_discarded_samples = length(name_of_discarded_samples)
     
-    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold ,][["Sample_id"]]]
+    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold , ,][["Sample_id"]]]
     number_of_kept_samples = length(name_of_kept_samples)
     
     print("Table with discarded samples")
@@ -3127,6 +3987,68 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     # ampseq_object@plots[["loci_amplification_rate"]] = loci_performance_plot
     ampseq_object@plots[["samples_amplification_rate"]] = all_samples_performance_plot
     
+    cigars_gt = get_cigar_alleles(ampseq_object, 
+                                  from = 'gt',
+                                  as = 'vector')
+    
+    cigars_asvtab = get_cigar_alleles(ampseq_object, 
+                                      from = 'asv_table',
+                                      as = 'vector',
+                                      col = 'CIGAR_masked')
+    
+    if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+       sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+      
+      cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                 paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                 '\n\n',
+                 'Cigar strings in asv_table that are not present in gt matrix are:\n',
+                 paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                 '\n'
+      ))
+      
+      stop('There are cigar strings that are different in the gt and the asv_table')
+      
+    }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+      
+      cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                 paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                 '\n'))
+      
+      stop('There are cigar strings in the gt that are not present in the asv_table')
+      
+    }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+      
+      cat(paste0('The following cigar strings in asv_table are not longer present in gt matrix:\n',
+                 paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                 '\n'))
+      
+      cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
+      
+      for(cigar_string_to_remove in cigar_strings_to_remove){
+        
+        Amplicon = gsub(';.+$', '', cigar_string_to_remove)
+        CIGAR = gsub('^.+;', '', cigar_string_to_remove)
+        
+        ampseq_object@asv_table = 
+          ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
+                                      ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
+        
+        ampseq_object@asv_seqs = ampseq_object@asv_seqs[
+          names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
+        
+        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        
+      }
+      
+      
+    }else{
+      print('cigar strings are consistent between gt and asv_table')
+    }
+    
+    consistency_between_gt_and_asvtab(ampseq_object)
+    
     return(ampseq_object)
     
   }else if(update_samples & sum(metadata[["sample_ampl_rate"]] > threshold) > 0){
@@ -3160,6 +4082,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             asv_table = obj@asv_table
             
             mhaps$homopolymer_regions = NA
+            mhaps$homopolymer_anchors = NA
             
             ref_sequences = readDNAStringSet(ref_fasta)
             
@@ -3187,6 +4110,30 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                                                              homopolymers_location[[1]][,'end'], sep = '-'), sep = ':'),
                                                                                  collapse = ',')
                 
+                homopolymer_starts = homopolymers_location[[1]][,'start']
+                
+                anchor_position = NULL
+                for(homopolymer in 1:length(homopolymers_location[[1]][,'start'])){
+                  
+                  homopolymer_start = homopolymers_location[[1]][,'start'][homopolymer]
+                  
+                  if(homopolymer_start > 1){
+                    
+                    anchor_position = c(anchor_position, 
+                                        as.character(Biostrings::substr(ref_sequences[[mhap]], 
+                                                                        start = homopolymer_start - 1, 
+                                                                        stop = homopolymer_start - 1)))
+                  }else{
+                    anchor_position = c(anchor_position, '')
+                  }
+                  
+                  
+                }
+                
+                if(!is.null(anchor_position)){
+                  homopolymer_anchors = paste0(homopolymers_location[[1]][,'start'] - 1, anchor_position)
+                  mhaps[mhaps$amplicon == mhap, ][['homopolymer_anchors']] = paste(homopolymer_anchors, collapse = ',')  
+                }
               }
               
               
@@ -3243,8 +4190,10 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   polymorphisms = unlist(strsplit(gsub('^\\d+', '', allele), '\\d+'))
                                   type_polymorphism = sapply(polymorphisms, function(polymorphism){
                                     if(nchar(polymorphism) == 1){
-                                      'SNV'}else if(nchar(polymorphism) > 1){
-                                        'INDEL'
+                                      'SNV'}else if(grepl('I', polymorphism)){
+                                        'Insertion'
+                                      }else if(grepl('D', polymorphism)){
+                                        'Deletion'
                                       }
                                   })
                                   
@@ -3268,6 +4217,46 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     SNV_in_homopolymer = FALSE
                                   }
                                   
+                                  # CODE NEEDED FOR MASKING SNVs THAT ARE INSIDE OF INDELs
+                                  # if('Insertion' %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])){
+                                  #   snv_in_insertion_positions = positions[type_polymorphism == 'Insertion']
+                                  #   snv_in_insertion_polymorphisms = polymorphisms[type_polymorphism == 'Insertion']
+                                  #   snv_in_insertion_polymorphisms = substr(snv_in_insertion_polymorphisms, 3, 3)
+                                  #   
+                                  #   if(sum(snv_in_insertion_positions %in% masked_region) > 0){
+                                  #     
+                                  #     snv_in_insertion_polymorphisms_in_homopolymers = snv_in_insertion_polymorphisms[snv_in_insertion_positions %in% masked_region]
+                                  #     snv_in_insertion_positions_in_homopolymers = snv_in_insertion_positions[snv_in_insertion_positions %in% masked_region]
+                                  #     
+                                  #     start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '\\d+-'))))
+                                  #     end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '-\\d+'))))
+                                  #     
+                                  #     homopolymer_repeat = unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '[ATGC]+'))
+                                  #     homopolymer_repeat = sapply(homopolymer_repeat, function(repeated_nucleotide){
+                                  #       unique(unlist(strsplit(repeated_nucleotide, '')))
+                                  #     })
+                                  #     
+                                  #     homopolymer_repeat = data.frame(
+                                  #       start,
+                                  #       end,
+                                  #       homopolymer_repeat)
+                                  #     
+                                  #     homopolymer_repeat_motive_in_asv = NULL
+                                  #     
+                                  #     for(snv_in_insertion_position in snv_in_insertion_positions_in_homopolymers){
+                                  #       homopolymer_repeat_motive_in_asv = c(homopolymer_repeat_motive_in_asv,
+                                  #                                         homopolymer_repeat[homopolymer_repeat[["start"]] <= snv_in_insertion_position &
+                                  #                                         homopolymer_repeat[["end"]] >= snv_in_insertion_position,][["start"]])
+                                  #     }
+                                  #     
+                                  #     homopolymer_repeat_motive_in_asv = homopolymer_repeat[homopolymer_repeat$start %in% homopolymer_repeat_motive_in_asv,]
+                                  #     
+                                  #     SNV_in_Insertion_in_homopolymer = sum(homopolymer_repeat_motive_in_asv$homopolymer_repeat != snv_in_insertion_polymorphisms_in_homopolymers)
+                                  #     
+                                  #   }
+                                  #   
+                                  # }
+                                  
                                   
                                   # SNV_in_homopolymer pattern and replacement
                                   
@@ -3278,8 +4267,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     snv_positions_remined = snv_positions[!(snv_positions %in% masked_region)]
                                     snv_polymorphisms_remined = snv_polymorphisms[!(snv_positions %in% masked_region)]
                                     
-                                    indel_postions_to_add = positions[type_polymorphism == 'INDEL']
-                                    indel_polymorphisms_to_add = polymorphisms[type_polymorphism == 'INDEL']
+                                    indel_postions_to_add = positions[type_polymorphism %in% c('Insertion', 'Deletion')]
+                                    indel_polymorphisms_to_add = polymorphisms[type_polymorphism %in% c('Insertion', 'Deletion')]
                                     
                                     SNV_in_homopolymer_replacement = data.frame(positions = c(snv_positions_remined,
                                                                                               indel_postions_to_add),
@@ -3310,40 +4299,54 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   
                                   # INDEL_in_homopolymer
                                   
-                                  if('INDEL' %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])){
+                                  if(sum(c('Insertion', 'Deletion') %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])) > 0){
                                     
-                                    indel_positions = positions[type_polymorphism == 'INDEL']
-                                    indel_polymorphisms = polymorphisms[type_polymorphism == 'INDEL']
+                                    deleted_positions = positions[type_polymorphism %in% c('Deletion')]
+                                    inserted_positions = positions[type_polymorphism %in% c('Insertion')]
+                                    
+                                    deleted_polymorphisms = polymorphisms[type_polymorphism %in% c('Deletion')]
+                                    inserted_polymorphisms = polymorphisms[type_polymorphism %in% c('Insertion')]
                                     
                                     start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '\\d+-'))))
                                     end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '-\\d+'))))
                                     
                                     masked_region = c(unlist(sapply(1:length(start), function(pos){
-                                      seq(start[pos], end[pos], 1)
-                                    })))
+                                      seq(start[pos], end[pos], 1)})))
                                     
-                                    INDEL_in_homopolymer = sum(indel_positions %in% masked_region) > 0
+                                    masked_region_for_insertions = c(masked_region[1] - 1, masked_region)
+                                    
+                                    masked_region_for_deletions = masked_region
+                                    
+                                    Insertions_in_homopolymer = sum(inserted_positions %in% masked_region_for_insertions) > 0
+                                    Deletions_in_homopolymer = sum(deleted_positions %in% masked_region_for_insertions) > 0
                                     
                                   }else{
-                                    INDEL_in_homopolymer = FALSE
+                                    Insertions_in_homopolymer = FALSE
+                                    Deletions_in_homopolymer = FALSE
                                   }
                                   
                                   
                                   # INDEL_in_homopolymer pattern and replacement
+                                  INDEL_in_homopolymer = Insertions_in_homopolymer == 1 | Deletions_in_homopolymer == 1
                                   
                                   if(INDEL_in_homopolymer == 1){
                                     
                                     INDEL_in_homopolymer_pattern = allele
                                     
-                                    indel_positions_remined = indel_positions[!(indel_positions %in% masked_region)]
-                                    indel_polymorphisms_remined = indel_polymorphisms[!(indel_positions %in% masked_region)]
+                                    inserted_positions_remined = inserted_positions[!(inserted_positions %in% masked_region_for_insertions)]
+                                    inserted_polymorphisms_remined = inserted_polymorphisms[!(inserted_positions %in% masked_region_for_insertions)]
+                                    
+                                    deleted_positions_remined = deleted_positions[!(deleted_positions %in% masked_region_for_deletions)]
+                                    deleted_polymorphisms_remined = deleted_polymorphisms[!(deleted_positions %in% masked_region_for_deletions)]
                                     
                                     snv_postions_to_add = positions[type_polymorphism == 'SNV']
                                     snv_polymorphisms_to_add = polymorphisms[type_polymorphism == 'SNV']
                                     
-                                    INDEL_in_homopolymer_replacement = data.frame(positions = c(indel_positions_remined,
+                                    INDEL_in_homopolymer_replacement = data.frame(positions = c(inserted_positions_remined,
+                                                                                                deleted_positions_remined,
                                                                                                 snv_postions_to_add),
-                                                                                  polymorphisms = c(indel_polymorphisms_remined,
+                                                                                  polymorphisms = c(inserted_polymorphisms_remined,
+                                                                                                    deleted_polymorphisms_remined,
                                                                                                     snv_polymorphisms_to_add)
                                     )
                                     
@@ -3370,14 +4373,27 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   
                                   # INDELs in flanking regions
                                   
-                                  flanking_INDEL = as.integer(grepl(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+') ,allele))
+                                  flanking_Insertion = as.integer(grepl(paste0(paste('(^0', mhaps[mhap,][['length']], sep = '|'),')I(=|\\.)[ATGC]+') ,allele))
+                                  flanking_Deletion = as.integer(grepl(paste0(paste('(^1', mhaps[mhap,][['length']], sep = '|'),')D(=|\\.)[ATGC]+') ,allele)) # ERROR: this recognition pattern only takes into account deletions that occurs at the last position and not deletions that includes the last position
+                                  
+                                  flanking_INDEL = flanking_Insertion == 1 | flanking_Deletion == 1
+                                  
+                                  #print(flanking_INDEL)
                                   
                                   if(flanking_INDEL == 1){
-                                   temp_flanking_INDEL_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']] + 1), sep = '|'),')(I|D)(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    temp_flanking_Insertion_pattern = str_extract_all(allele, paste0(paste('(^0', paste0('[ATGC]?', mhaps[mhap,][['length']]), sep = '|'),')I(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    temp_flanking_Insertion_replacement = gsub(paste0(paste('(^0', mhaps[mhap,][['length']], sep = '|'),')I(=|\\.)[ATGC]+'), '', temp_flanking_Insertion_pattern)
                                     
-                                    temp_flanking_INDEL_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']] + 1, sep = '|'),')(I|D)(=|\\.)[ATGC]+'), '', temp_flanking_INDEL_pattern)
+                                    temp_flanking_Deletion_pattern = str_extract_all(allele, paste0(paste('(^1', paste0('[ATGC]?', mhaps[mhap,][['length']]), sep = '|'),')D(=|\\.)[ATGC]+\\d?'))[[1]]
+                                    temp_flanking_Deletion_replacement = gsub(paste0(paste('(^1', mhaps[mhap,][['length']], sep = '|'),')D(=|\\.)[ATGC]+'), '', temp_flanking_Deletion_pattern)
                                     
                                     
+                                    temp_flanking_INDEL_pattern = c(temp_flanking_Insertion_pattern,
+                                                                    temp_flanking_Deletion_pattern
+                                                                    )
+                                    
+                                    temp_flanking_INDEL_replacement = c(temp_flanking_Insertion_replacement,
+                                                                        temp_flanking_Deletion_replacement)
                                     
                                     if('' %in% temp_flanking_INDEL_replacement){
                                       
@@ -3433,7 +4449,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     
                                     nINDELs_ij,
                                     dINDELs_ij,
-                                    
+
+                                    mhaps[mhap,][['homopolymer_anchors']],
                                     mhaps[mhap,][['homopolymer_regions']],
                                     
                                     SNV_in_homopolymer,
@@ -3455,7 +4472,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                 }, simplify = T))
 
                 ASVs_attributes_table_temp = as.data.frame(cbind(alleles, h_ij))
-                names(ASVs_attributes_table_temp)  = c('Allele',
+                names(ASVs_attributes_table_temp) = c('Allele',
                                                       'P_ij',
                                                       'H_ij',
                                                       'H_ijminor',
@@ -3468,6 +4485,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                       'dSNVs_ij',
                                                       'nINDELs_ij',
                                                       'dINDELs_ij',
+                                                      'homopolymer_anchors',
                                                       'homopolymer_regions',
                                                       'SNV_in_homopolymer',
                                                       'SNV_in_homopolymer_pattern',
@@ -3498,11 +4516,11 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                 ASVs_attributes_table_temp[['SNV_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['SNV_in_homopolymer']])
                 ASVs_attributes_table_temp[['INDEL_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['INDEL_in_homopolymer']])
                 
-                ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
+                #ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
                 
                 ASVs_attributes_table_temp[['bimera']] = as.logical(ASVs_attributes_table_temp[['bimera']])
                 
-                ASVs_attributes_table_temp[['p_ij']] = ASVs_attributes_table_temp[['P_ij']]/nrow(gt)
+                ASVs_attributes_table_temp[['p_ij']] = ASVs_attributes_table_temp[['P_ij']]/nrow(gt) # CORRECT THIS LINE OR ADD AN ARGUMENT TO CHANGE THE DENOMINATOR
                 
                 ASVs_attributes_table_temp[['MHap']] = colnames(gt)[mhap]
                 
@@ -3556,6 +4574,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                      dSNVs_ij,
                                                      nINDELs_ij,
                                                      dINDELs_ij,
+                                                     homopolymer_anchors,
                                                      homopolymer_regions,
                                                      SNV_in_homopolymer,
                                                      SNV_in_homopolymer_pattern,
@@ -3602,7 +4621,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
                                            na.var.rm = FALSE){
   library(ape)
   library(Biostrings)
-
+  
   # Call 3D7 genome and gff---
   # Call 3D7 reference genome and its corresponding annotation in the gff file
   reference_gff = read.gff(gff_file)
@@ -4560,7 +5579,8 @@ drug_resistant_haplotypes = function(ampseq_object,
                                      na.var.rm = FALSE,
                                      na.hap.rm = TRUE,
                                      hap_color_palette = 'random'){
-
+  
+  
   # Call reference alleles
   print("Uploading Resistant and Sensitive Alleles")
   drugR_reference_alleles = read.csv(reference_alleles)
@@ -5254,7 +6274,7 @@ drug_resistant_haplotypes = function(ampseq_object,
   
   genotype_phenotype_match = genotype_phenotype_match[!duplicated(genotype_phenotype_match$Genotype),]
   
-  print("Handling polyclonal samples for haplotype count")
+  print("Handeling polyclonal samples for haplotype count")
   
   mon_aacigar_table = aacigar_table[(apply(aacigar_table, 1, function(i){sum(grepl("\\|",i))}) == 0),]
   
@@ -6054,7 +7074,7 @@ drug_resistant_haplotypes = function(ampseq_object,
 
   
   print("Estimating frequency for drug resistant phenotypes")
-
+  
   if(!is.null(Longitude) & !is.null(Latitude)){
     
     drug_phenotype_summary_sdf = drug_phenotype_summary %>% 
@@ -6067,6 +7087,7 @@ drug_resistant_haplotypes = function(ampseq_object,
     drug_phenotype_summary_sdf$freq = NA
     drug_phenotype_summary_sdf$freq_lower = NA
     drug_phenotype_summary_sdf$freq_upper = NA
+    
     
     for(drug in levels(as.factor(drug_phenotype_summary_sdf$Drug))){
       for(Pop in levels(as.factor(drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug,][['var1']]))){
@@ -6096,12 +7117,14 @@ drug_resistant_haplotypes = function(ampseq_object,
       }
     }
     
+    
     drug_phenotype_summary_sdf %<>% filter(!is.na(Longitude), !is.na(Latitude))
     
     drug_phenotype_summary_sdf %<>% mutate(logssize = log(ssize, 1.3))
-
+    
     drug_phenotype_summary_sdf %<>% filter(Phenotype == "Mutation(s) associated with a resistant phenotype")
-
+    
+    
     print("Transforming data to spatial points")
     drug_phenotype_summary_sdf = SpatialPointsDataFrame(coords = drug_phenotype_summary_sdf[,c("Longitude", "Latitude")],
                                                         data = drug_phenotype_summary_sdf,
@@ -6112,8 +7135,9 @@ drug_resistant_haplotypes = function(ampseq_object,
     i_drug_map = tm_shape(drug_phenotype_summary_sdf)+
       tm_dots(size = "logssize", style="pretty", col = "freq")+
       tm_text("freq", size=1)+
-      tm_facets(by = "Drug") +
+      tm_facets(by = "Drug")+
       tm_scale_bar()
+    
     
     drug_resistant_hap_list = list(aa_mutations = haps_respect_to_ref$loci_aa_table,
                                    dna_mutations = haps_respect_to_ref$loci_dna_table,
@@ -6194,6 +7218,8 @@ get_Fws = function(ampseq_object = NULL){
 
 
 
+
+########## UNUSED FUNCTIONS?
 ## Functions for Complexity of infection----
 
 ### get_polygenomic----
@@ -6276,13 +7302,13 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
   
   if(!is.null(strata)){
     if(na.rm){
-      ampseq_object = filter_samples(ampseq_object, v = !(is.na(ampseq_object@metadata[[strata]]) | grepl('NA',ampseq_object@metadata[[strata]])))
-    }else if(length(metadata[is.na(metadata[[strata]]) | grepl('NA',metadata[[strata]]),][[strata]])>0){
+      ampseq_object = filter_samples(ampseq_object, v = !(is.na(ampseq_object@metadata[[strata]]) | grepl('NA',ampseq_object@metadata[[strata]])), update_cigars = F)
+    }else if(length(ampseq_object@metadata[is.na(ampseq_object@metadata[[strata]]) | grepl('NA',ampseq_object@metadata[[strata]]),][[strata]])>0){
       ampseq_object@metadata[is.na(ampseq_object@metadata[[strata]]) | grepl('NA',ampseq_object@metadata[[strata]]),][[strata]] = 'missing data'
     }
     
     if(!is.null(filters)){
-      ampseq_object = filter_samples(ampseq_object, v = grepl(filters,ampseq_object@metadata[[strata]]))
+      ampseq_object = filter_samples(ampseq_object, v = grepl(filters,ampseq_object@metadata[[strata]]), update_cigars = F)
     }
     
   }
@@ -6369,9 +7395,8 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
   
   polyclonals = which(eval(parse(text = poly_formula)))
   
-  polygenomic$Clonality = NA
-  
   if(length(polyclonals) > 0 & length(polyclonals) < nrow(polygenomic)){
+    polygenomic$Clonality = NA
     polygenomic[polyclonals,][['Clonality']] = 'Polyclonal'
     polygenomic[-1*polyclonals,][['Clonality']] = 'Monoclonal'
   }else if(length(polyclonals) == 0){
@@ -6379,7 +7404,6 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
   }else if(length(polyclonals) == nrow(polygenomic)){
     polygenomic[['Clonality']] = 'Polyclonal'
   }
-  
   
   pop_summary = data.frame(
     pop = "Total",
@@ -6451,7 +7475,7 @@ draw_haplotypes = function(ampseq_object = NULL, comparison_list = NULL){
   
   for(comparison in 1:length(comparison_list)){
     
-    temp_ampseq = filter_samples(ampseq_object, comparison_list[[comparison]])
+    temp_ampseq = filter_samples(ampseq_object, comparison_list[[comparison]], update_cigars = FALSE)
     
     gt = temp_ampseq@gt
     gt = gsub(':\\d+', '', gt)
@@ -6670,7 +7694,6 @@ estimate_r_and_k <- function(fs, ds, Ys, epsilon = 0.001, rho = 7.4 * 10 ^ (-7),
   # and perform some checks
   if (!is.matrix(fs)) fs <- as.matrix(fs)
   # If no errors, returns numeric logic for fs zero/non-zero
-
   # fs_checks_return <- fs_checks(fs, warn = warn_fs, do_return = TRUE)
   # 
   # # Check Ys for NAs
@@ -6688,7 +7711,7 @@ estimate_r_and_k <- function(fs, ds, Ys, epsilon = 0.001, rho = 7.4 * 10 ^ (-7),
   
   # Define the function to pass to optim()
   ll <- function(k, r) loglikelihood_cpp(k, r, Ys, fs, ds, epsilon, rho)
-
+  
   # Optimise the negative log likelihood
   optimization <- optim(par = c(kinit, rinit), fn = function(x) - ll(x[1], x[2]))
   
@@ -6705,274 +7728,6 @@ estimate_r_and_k <- function(fs, ds, Ys, epsilon = 0.001, rho = 7.4 * 10 ^ (-7),
 
 
 ### pairwise_hmmIBD----
-if(FALSE){
-old_pairwise_hmmIBD = function(ampseq_object, parallel = TRUE, w = 1, n = 1){
-  library(parallel)
-  library(doMC)
-  library(svMisc)
-  loci_object = ampseq2loci(ampseq_object)
-  
-  loci_table = loci_object[["loci_table"]]
-  freq_table = loci_object[["freq_table"]]
-  markers = loci_object[["markers"]]
-
-  pairs = as.data.frame(t(combn(rownames(loci_table), 2)))
-  
-  print(pairs)
-  print(nrow(pairs))
-  s = round(seq(1,nrow(pairs)+1, length.out=n+1))
-  low = s[w]
-  high = s[w+1]-1
-  
-  pairs = pairs[low:high,]
-  
-  fx_get_relatedness = function(Yi, Yj, freq_table, markers, ...){
-
-    Ys = cbind(Yi, Yj)
-    
-    rownames(Ys) = colnames(loci_table)
-
-    fs = freq_table[!is.na(Ys[,"Yi"]) & !is.na(Ys[,"Yj"]),]
-    
-    no_na_markers = markers[!is.na(Ys[,"Yi"]) & !is.na(Ys[,"Yj"]),]
-    
-    Ys =Ys[!is.na(Ys[,"Yi"]) & !is.na(Ys[,"Yj"]),]
-    fs = fs[Ys[,1] <= 9 & Ys[,2] <= 9,]
-    no_na_markers = no_na_markers[Ys[,1] <= 9 & Ys[,2] <= 9,]
-    Ys = Ys[Ys[,1] <= 9 & Ys[,2] <= 9,]
-    
-    no_na_markers[["distance"]] = Inf
-    no_na_markers = no_na_markers[fs[,1] != 1,]
-    Ys = Ys[fs[,1] != 1,]
-    fs = fs[fs[,1] != 1,]
-
-    for(chromosome in levels(as.factor(no_na_markers[["chromosome"]]))){
-      for(amplicon in 1:(nrow(no_na_markers[no_na_markers[["chromosome"]] == chromosome,])-1)){
-        no_na_markers[no_na_markers[["chromosome"]] == chromosome,][amplicon, "distance"] = 
-          no_na_markers[no_na_markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - no_na_markers[no_na_markers[["chromosome"]] == chromosome,][amplicon, "pos"]
-      }
-    }
-    
-    no_na_markers$distance[is.na(no_na_markers$distance)] = -1     #PATCH DISCUSS WITH PAULO
-    no_na_markers$distance[no_na_markers$distance < 0 ] = Inf
-    
-    ds = no_na_markers$distance
-
-    estimate = estimate_r_and_k(fs = fs,
-                                ds = ds,
-                                Ys = Ys,
-                                warn_fs = F)
-    
-    return(estimate)
-  }
-  if(parallel){
-    registerDoMC(detectCores())
-    pairwise_df = foreach(pair = 1:nrow(pairs), .combine = 'rbind') %dopar% {
-      # If both samples are polyclonal
-      if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          for(haplotype_j in 1:ncol(Yj)){
-            estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj[,haplotype_j], freq_table, markers))
-          }
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the second sample is polyclonal 
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_j in 1:ncol(Yj)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi, Yj[,haplotype_j], freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the first sample is polyclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj, freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If both samples are monoclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = fx_get_relatedness(Yi, Yj, freq_table, markers)
-        
-      }
-      
-      data.frame(Yi = pairs[pair, 1], Yj = pairs[pair, 2], t(estimate))
-      
-    }
-    
-  }else{
-    
-    pairwise_df = NULL
-    print(nrow(pairs))
-
-    for(pair in 1:nrow(pairs)){
-      print("Before running grepl")
-      print(pair)
-      print(paste0(pairs[pair, 1],pairs[pair, 2]))
-      print("Going into if statement")
-      # If both samples are polyclonal
-      if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          for(haplotype_j in 1:ncol(Yj)){
-            estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj[,haplotype_j], freq_table, markers))
-          }
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the second sample is polyclonal 
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) != 0){
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 2],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 2],])))
-        
-        estimate = NULL
-        for(haplotype_j in 1:ncol(Yj)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi, Yj[,haplotype_j], freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If only the first sample is polyclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) != 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        Yi = cbind(as.numeric(gsub("_.+","",loci_table[pairs[pair, 1],])), as.numeric(gsub(".+_","",loci_table[pairs[pair, 1],])))
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = NULL
-        for(haplotype_i in 1:ncol(Yi)){
-          estimate = rbind(estimate, fx_get_relatedness(Yi[,haplotype_i], Yj, freq_table, markers))
-        }
-        
-        estimate = estimate[which.max(estimate[,'rhat']),]
-        
-        # If both samples are monoclonal
-      }else if(sum(grepl("_",loci_table[pairs[pair, 1],])) == 0 & sum(grepl("_",loci_table[pairs[pair, 2],])) == 0){
-        
-        Yi = as.numeric(loci_table[pairs[pair, 1],])
-        Yj = as.numeric(loci_table[pairs[pair, 2],])
-        
-        estimate = fx_get_relatedness(Yi, Yj, freq_table, markers, pair)
-        
-      }else{
-        print('pair')
-      }
-      
-      progress(round(100*pair/nrow(pairs)))
-      
-      pairwise_df = rbind(pairwise_df, data.frame(Yi = pairs[pair, 1], Yj = pairs[pair, 2], t(estimate)))
-      
-    }
-    
-  }
-  
-  return(pairwise_df)
-  
-}
-}
-
-## loci S4class and create_loci----
-
-## loci S4 class
-
-setClass('loci', slots = c(
-  loci_table = "ANY",
-  metadata = "ANY",
-  freq_table = 'ANY',
-  ampseq_alleles_per_locus = 'ANY',
-  markers = 'ANY'
-  
-))
-
-## loci constructor
-create_loci = function(loci_table = NULL,
-                       metadata = NULL,
-                       freq_table = NULL,
-                       ampseq_alleles_per_locus = NULL,
-                       markers = NULL
-){
-  
-  obj = new('loci')
-  obj@loci_table = loci_table
-  obj@metadata = metadata
-  obj@freq_table = freq_table
-  obj@ampseq_alleles_per_locus = ampseq_alleles_per_locus
-  obj@markers = markers
-  
-  return(obj)
-}
-
-split_clones = function(genotype, genotype_name = NULL){
-  
-  if(is.null(genotype_name)){
-    genotype_name = 'Yi'
-  }
-  
-  print('mark1_split')
-  
-  print(genotype_name)
-  print(genotype)
-  
-  max_nAlleles = ifelse(sum(grepl("_",genotype)) == 0,
-                        1,
-                        max(unlist(sapply(
-                          sapply(
-                            genotype[which(grepl("_",genotype))], function(x){strsplit(x, "_")}),
-                          function(x) length(x)))))
-  
-  print('mark2_split')
-  
-  splited_genotype = matrix(NA,
-                            nrow = max_nAlleles,
-                            ncol = length(genotype),
-                            dimnames = list(
-                              paste0(genotype_name, '_C', 1:max_nAlleles),
-                              names(genotype)
-                            ))
-  
-  print('mark3_split')
-  
-  for(clone in 1:max_nAlleles){
-    splited_genotype[clone, ] = gsub("_.+", "", genotype)
-    
-    genotype = gsub("^\\d+", "", genotype)
-    genotype = gsub("^_", "", genotype)
-    
-    if(clone > 1){
-      
-      splited_genotype[clone, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] = splited_genotype[1, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] 
-      
-    }
-    
-  }
-  
-  
-  print('mark4')
-  return(splited_genotype)
-  
-}
 
 
 pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
@@ -7057,11 +7812,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
       
-      print(Yi_id)
-      print(Yj_id)
-      
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
-      
       
       Yi = matrix(as.integer(Yi), 
                   nrow = nrow(Yi),
@@ -7087,16 +7838,9 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       for(haplotype_i in 1:nrow(Yi)){
         for(haplotype_j in 1:nrow(Yj)){
           
-          
-          
-          print(dim(Yi))
-          print(dim(Yj))
-          
           if(sum(is.na(Yi[haplotype_i,] - Yj[haplotype_j,]))/length(Yi[haplotype_i,]) < 1){
             
-            
             estimate = rbind(estimate, fx_get_relatedness(Yi[haplotype_i,], Yj[haplotype_j,], freq_table, markers))
-            
             
           }else{
             
@@ -7133,12 +7877,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       
       print(Yi_id)
       
-      
-      print('mark1_hmm')
-      
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
-      
-      print('mark2_hmm')
       
       Yi = matrix(as.integer(Yi), 
                   nrow = nrow(Yi),
@@ -7148,13 +7887,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
                     colnames(Yi)
                   ))
       
-      print(Yj_id)
-      
-      print('mark3_hmm')
-      
       Yj = split_clones(loci_table[Yj_id,], Yj_id)
-      
-      print('mark4_hmm')
       
       Yj = matrix(as.integer(Yj), 
                   nrow = nrow(Yj),
@@ -7755,6 +8488,63 @@ plot_frac_highly_related_over_time = function(pairwise_relatedness = pairwise_re
   
 }
 
+### Relatedness_heatmap----
+
+
+
+sort_Long_matrix = function(pairwise_relatedness_l, Var1, Var2){
+  
+  pairwise_relatedness_l = pairwise_relatedness_l[,c('Yi', 'Yj', 'khat', 'rhat', Var1, Var2)]
+  
+  pairwise_relatedness_l_sorted = NULL
+  
+  comparisons = cbind(rbind(
+    sort(unique(c(unique(pairwise_relatedness_l[[Var1]]), unique(pairwise_relatedness_l[[Var2]])))),
+    sort(unique(c(unique(pairwise_relatedness_l[[Var1]]), unique(pairwise_relatedness_l[[Var2]]))))),
+    combn(sort(unique(c(unique(pairwise_relatedness_l[[Var1]]), unique(pairwise_relatedness_l[[Var2]])))), 2))
+  
+  for(comparison in 1:ncol(comparisons)){
+    var1 = comparisons[,comparison][1]
+    var2 = comparisons[,comparison][2]
+    if(var1 == var2){
+      
+      pairwise_relatedness_l_sorted = rbind(
+        pairwise_relatedness_l_sorted,
+        pairwise_relatedness_l[pairwise_relatedness_l[[Var1]] == var1 &
+                                 pairwise_relatedness_l[[Var2]] == var2, ])
+      
+    }else{
+      
+      temp1 = pairwise_relatedness_l[pairwise_relatedness_l[[Var1]] == var1 &
+                                       pairwise_relatedness_l[[Var2]] == var2, ]
+      
+      temp2 = pairwise_relatedness_l[pairwise_relatedness_l[[Var1]] == var2 &
+                                       pairwise_relatedness_l[[Var2]] == var1, ]
+      
+      Yi = temp2[['Yj']]
+      Population_Var1 = temp2[[Var2]]
+      
+      Yj = temp2[['Yi']]
+      Population_Var2 = temp2[[Var1]]
+      
+      temp2[['Yi']] = Yi
+      temp2[[Var1]] = Population_Var1
+      
+      temp2[['Yj']] = Yj
+      temp2[[Var2]] = Population_Var2
+      
+      pairwise_relatedness_l_sorted = rbind(pairwise_relatedness_l_sorted,
+                                            temp1,
+                                            temp2)
+      
+    }
+    
+  }
+  
+  return(pairwise_relatedness_l_sorted)
+  
+}
+
 ### plot_network----
 
 plot_network = function(pairwise_relatedness,  
@@ -7764,7 +8554,8 @@ plot_network = function(pairwise_relatedness,
                            group_by,
                            levels,
                            colors,
-                        vertex.size = 4){
+                        vertex.size = 4,
+                        method = 'mst'){
   
   if(sum(is.na(metadata[[group_by]])) > 0){
     metadata[is.na(metadata[[group_by]]),][[group_by]] = 'missing data'
@@ -7779,6 +8570,27 @@ plot_network = function(pairwise_relatedness,
   cols = c("Yi", "Yj")
   
   library(igraph)
+  if(!require(GGally)){
+    install.packages("GGally")
+    library(GGally)
+  }else{library(GGally)}
+  
+  if(!require(network)){
+    install.packages("network")
+    library(network)
+  }else{library(network)}
+  
+  if(!require(sna)){
+    install.packages("sna")
+    library(sna)
+  }else{library(sna)}
+  
+  
+  if(!require(ggnet)){
+    devtools::install_github("briatte/ggnet")
+    library(ggnet)
+  }else{library(ggnet)}
+  
   
   edges = NULL
   
@@ -7799,17 +8611,38 @@ plot_network = function(pairwise_relatedness,
     node_colors[node_colors %in% metadata[metadata[[group_by]] == levels[level],][[sample_id]]] = colors[level]
   }
   
-  plot_network = plot.igraph(network_object,
-                             vertex.color = node_colors,
-                             vertex.size=vertex.size,
-                             vertex.label.cex=0,
-                             vertex.label.dist=.5, 
-                             #vertex.label.degree=-pi/2,
-                             vertex.label.color="black",
-                             vertex.label=NA,
-                             asp=0,
-                             xlim=c(-1,1),
-                             ylim=c(-1,1))
+  
+  if(method %in% c('msn', 'mst')){
+    
+    network_object <- mst(network_object)
+    
+    plot_network = plot.igraph(network_object,
+                               vertex.color = node_colors,
+                               vertex.size=vertex.size,
+                               vertex.label.cex=0,
+                               vertex.label.dist=.5, 
+                               #vertex.label.degree=-pi/2,
+                               vertex.label.color="black",
+                               vertex.label=NA,
+                               asp=0,
+                               xlim=c(-1,1),
+                               ylim=c(-1,1))
+    
+  }else{
+    
+    plot_network = plot.igraph(network_object,
+                               vertex.color = node_colors,
+                               vertex.size=vertex.size,
+                               vertex.label.cex=0,
+                               vertex.label.dist=.5, 
+                               #vertex.label.degree=-pi/2,
+                               vertex.label.color="black",
+                               vertex.label=NA,
+                               asp=0,
+                               xlim=c(-1,1),
+                               ylim=c(-1,1))
+    
+  }
   
   return(list(network_object = network_object,
               plot_network = plot_network))
@@ -7817,6 +8650,126 @@ plot_network = function(pairwise_relatedness,
 }
 
 
+### plot_ggnetwork----
+
+plot_ggnetwork = function(pairwise_relatedness,  
+                          threshold,
+                          metadata,
+                          sample_id,
+                          color_by = NULL,
+                          shape_by = NULL,
+                          alpha_by = NULL,
+                          alpha = NULL,
+                          vertex.size = 4,
+                          mode = 'fruchtermanreingold'){
+  
+  
+  library(igraph)
+  if(!require(GGally)){
+    install.packages("GGally")
+    library(GGally)
+  }else{library(GGally)}
+  
+  if(!require(network)){
+    install.packages("network")
+    library(network)
+  }else{library(network)}
+  
+  if(!require(sna)){
+    install.packages("sna")
+    library(sna)
+  }else{library(sna)}
+  
+  if(!require(ggnet)){
+    devtools::install_github("briatte/ggnet")
+    library(ggnet)
+  }else{library(ggnet)}
+  
+  
+  if(!is.null(color_by)){
+    if(sum(is.na(metadata[[color_by]])) > 0){
+      metadata[is.na(metadata[[color_by]]),][[color_by]] = 'missing data'
+    }
+  }
+  
+  if(!is.null(shape_by)){
+    if(sum(is.na(metadata[[shape_by]])) > 0){
+      metadata[is.na(metadata[[shape_by]]),][[shape_by]] = 'missing data'
+    }
+  }
+  
+  
+  if(!is.null(alpha_by)){
+    if(sum(is.na(metadata[[alpha_by]])) > 0){
+      metadata[is.na(metadata[[alpha_by]]),][[alpha_by]] = 'missing data'
+    }
+  }
+  
+  
+  pairwise_relatedness_l = pairwise_relatedness
+  
+  pairwise_relatedness_l %<>% filter(Yi %in% metadata$Sample_id,
+                                     Yj %in% metadata$Sample_id)
+  
+  pairwise_relatedness_matrix = matrix(data = NA,
+                                       ncol = nrow(metadata),
+                                       nrow = nrow(metadata),
+                                       dimnames = list(metadata$Sample_id,
+                                                       metadata$Sample_id))
+  
+  for(pair in 1:nrow(pairwise_relatedness_l)){
+    
+    pairwise_relatedness_matrix[pairwise_relatedness_l[pair,][['Yi']],
+                                pairwise_relatedness_l[pair,][['Yj']]] = 
+      pairwise_relatedness_l[pair,][['rhat']]
+    
+    pairwise_relatedness_matrix[pairwise_relatedness_l[pair,][['Yj']],
+                                pairwise_relatedness_l[pair,][['Yi']]] = 
+      pairwise_relatedness_l[pair,][['rhat']]
+  }
+  
+  pairwise_relatedness_matrix[pairwise_relatedness_matrix < threshold] = 0
+  
+  
+  relatedness_network = network(pairwise_relatedness_matrix, directed = FALSE)
+  
+  network.vertex.names(relatedness_network) = metadata$Sample_id
+  
+  
+  if(!is.null(color_by)){
+    relatedness_network %v% color_by = metadata[[color_by]]
+  }else{
+    color_by = 'gray75'
+  }
+  
+  if(!is.null(shape_by)){
+    relatedness_network %v% shape_by = metadata[[shape_by]]  
+  }else{
+    shape_by = 16
+  }
+  
+  if(!is.null(alpha_by)){
+    relatedness_network %v% alpha_by = metadata[[alpha_by]]
+  }else if(!is.null(alpha)){
+    alpha_by = alpha
+  }else{
+    alpha_by = 1
+  }
+  
+  
+  plot_network = ggnet2(relatedness_network,
+                        size = vertex.size,
+                        color = color_by,
+                        shape = shape_by,
+                        palette = 'Paired',
+                        alpha = alpha_by,
+                        mode = mode)
+
+  
+  return(list(network_object = relatedness_network,
+              plot_network = plot_network))
+  
+}
 
 ### fastGRMcpp----
 #' C++ implementation of a Genomic relationship matrix 'GRM'
@@ -7887,9 +8840,10 @@ fastSVD = function(X, k, q = 2){
 #' @export
 #' 
 
-GRM_evectors = function(gt = NULL, ibs_table = NULL, k = nrow(gt), metadata, Pop = 'Population', q = 2){
+GRM_evectors = function(gt = NULL, dist_table = NULL, k = nrow(gt), metadata, Pop = 'Population', q = 2){
   
   if(!is.null(gt)){
+    
     X = t(gsub('_.+$','',gt))
     
     X = matrix(as.numeric(X), ncol = ncol(X),
@@ -7900,39 +8854,42 @@ GRM_evectors = function(gt = NULL, ibs_table = NULL, k = nrow(gt), metadata, Pop
                ))
     
     X[is.na(X)] = 0
-  }else if(!is.null(ibs_table)){
-    
-    ibs_dist_matrix = matrix(data = NA,
-                                         ncol = nrow(metadata),
-                                         nrow = nrow(metadata),
-                                         dimnames = list(metadata$Sample_id,
-                                                         metadata$Sample_id))
-    
-    #### Add metadata to the PCA
-    Pop_col = merge(data.frame(Sample_id = gsub('_C[1,2]$','',colnames(ibs_dist_matrix)),
-                               order = 1:ncol(ibs_dist_matrix)), metadata[,c('Sample_id', Pop)], by = 'Sample_id', all.y = T)
-    
-    Pop_col = Pop_col[order(Pop_col$order),]
     
     
-    ibs_table %<>% filter(Yi %in% metadata$Sample_id,
-                                  Yj %in% metadata$Sample_id)
+  }else if(!is.null(dist_table)){
     
     
-    for(pair in 1:nrow(ibs_table)){
+    dist_matrix = matrix(data = NA,
+                         ncol = nrow(metadata),
+                         nrow = nrow(metadata),
+                         dimnames = list(metadata$Sample_id,
+                                         metadata$Sample_id))
+    
+    # #### Add metadata to the PCA
+    # Pop_col = merge(data.frame(Sample_id = gsub('_C[1,2]$','',colnames(dist_matrix)),
+    #                            order = 1:ncol(dist_matrix)), metadata[,c('Sample_id', Pop)], 
+    #                 by = 'Sample_id', all.y = T)
+    # 
+    # Pop_col = Pop_col[order(Pop_col$order),]
+    
+    
+    dist_table %<>% filter(Yi %in% metadata$Sample_id & Yj %in% metadata$Sample_id)
+    
+    
+    for(pair in 1:nrow(dist_table)){
       
-      ibs_dist_matrix[ibs_table[pair,][['Yi']],
-                      ibs_table[pair,][['Yj']]] = 
-        ibs_table[pair,][['euDist']]
+      dist_matrix[dist_table[pair,][['Yi']],
+                  dist_table[pair,][['Yj']]] = 
+        dist_table[pair,][['euDist']]
       
-      ibs_dist_matrix[ibs_table[pair,][['Yj']],
-                      ibs_table[pair,][['Yi']]] = 
-        ibs_table[pair,][['euDist']]
+      dist_matrix[dist_table[pair,][['Yj']],
+                  dist_table[pair,][['Yi']]] = 
+        dist_table[pair,][['euDist']]
     }
     
-    ibs_dist_matrix[is.na(ibs_dist_matrix)] = 1
+    dist_matrix[is.na(dist_matrix)] = 1
     
-    X = ibs_dist_matrix
+    X = dist_matrix
     
   }
   
@@ -7953,7 +8910,10 @@ GRM_evectors = function(gt = NULL, ibs_table = NULL, k = nrow(gt), metadata, Pop
 }
 
 ### IBD_evectors----
-IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Population', q = 2){
+IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Population', q = 2,
+                        method = 'primcomp', # fastGRM
+                        cor = T
+                        ){
   
   metadata = ampseq_object@metadata
   
@@ -7967,7 +8927,8 @@ IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Popul
   
   #### Add metadata to the PCA
   Pop_col = merge(data.frame(Sample_id = gsub('_C[1,2]$','',colnames(pairwise_relatedness_matrix)),
-                             order = 1:ncol(pairwise_relatedness_matrix)), metadata[,c('Sample_id', Pop)], by = 'Sample_id', all.y = T)
+                             order = 1:ncol(pairwise_relatedness_matrix)), metadata[,c('Sample_id', Pop)], 
+                  by = 'Sample_id', all.y = T)
   
   Pop_col = Pop_col[order(Pop_col$order),]
   
@@ -7993,38 +8954,47 @@ IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Popul
   
   ## Using_fastSVDCpp
   
-  # evector = fastSVDCpp(pairwise_relatedness_matrix, k, q)
-  # 
-  # for(i in 1:k){
-  #   evector[,i] = sign(evector[1,i])*evector[,i]
-  # }
-  # 
-  # evalues = NULL
-  # 
-  # for(i in 1:k){
-  #   evalues = c(evalues, unlist((pairwise_dist_matrix %*% evector[,i])/evector[,i])[1])
-  # }
-  # 
-  # contrib = 100*(evalues)^2/sum((evalues)^2)
-  # 
-  # evector = data.frame(Pop_col, evector)
-  # names(evector) = c(colnames(Pop_col), paste0(rep('PC', k), 1:k))
-  # 
-  # ibd_pca_fast = list(eigenvector=evector, eigenvalues = evalues, contrib = contrib)
+  if(method == 'fastGRM'){
+    
+    
+    evector = fastSVDCpp(pairwise_relatedness_matrix, k, q)
+
+    for(i in 1:k){
+      evector[,i] = sign(evector[1,i])*evector[,i]
+    }
+
+    evalues = NULL
+
+    for(i in 1:k){
+      evalues = c(evalues, unlist((pairwise_dist_matrix %*% evector[,i])/evector[,i])[1])
+    }
+
+    contrib = 100*(evalues)^2/sum((evalues)^2)
+
+    evector = data.frame(Pop_col, evector)
+    names(evector) = c(colnames(Pop_col), paste0(rep('PC', k), 1:k))
+
+    ibd_pca = list(eigenvector=evector, eigenvalues = evalues, contrib = contrib)
+
+  }else if(method == 'princomp'){
+    
+    ## Using princomp from R
+    
+    ibd_pca = princomp(pairwise_dist_matrix, cor = cor)
+    ibd_evector = ibd_pca$scores
+    ibd_evalues = ibd_pca$sdev
+    
+    ibd_contrib = 100*(ibd_evalues)^2/sum((ibd_evalues)^2)
+    
+    ibd_evector = data.frame(Pop_col, ibd_evector)
+    names(ibd_evector) = c(colnames(Pop_col), paste0(rep('PC', k), 1:k))
+    
+    ibd_pca = list(eigenvector=ibd_evector, eigenvalues = ibd_evalues, contrib = ibd_contrib)
+    
+  }
+
   
-  ## Using princomp from R
-  
-  ibd_pca = princomp(pairwise_dist_matrix, cor = T)
-  
-  ibd_evector = ibd_pca$scores
-  ibd_evalues = ibd_pca$sdev
-  
-  ibd_contrib = 100*(ibd_evalues)^2/sum((ibd_evalues)^2)
-  
-  ibd_evector = data.frame(Pop_col, ibd_evector)
-  names(ibd_evector) = c(colnames(Pop_col), paste0(rep('PC', k), 1:k))
-  
-  ibd_pca = list(eigenvector=ibd_evector, eigenvalues = ibd_evalues, contrib = ibd_contrib)
+
   
   return(ibd_pca)
   
@@ -8361,6 +9331,1914 @@ get_gene_description = function(obj = NULL, gff = NULL){
   return(data[, c('gene_id', 'gene_name', 'gene_description')])
 }
 
+remove_replicates = function(ampseq_object, v){
+  
+  gt = ampseq_object@gt
+  metadata = ampseq_object@metadata
+  
+  # Remove duplicates
+
+  duplicated_samples = metadata[duplicated(metadata[[v]]),][[v]]
+  
+  duplicated_samples = unique(duplicated_samples)
+  
+  gt_replicates = gt[duplicated(metadata[[v]]),]
+  gt = gt[!duplicated(metadata[[v]]),]
+  
+  metadata_replicates = metadata[duplicated(metadata[[v]]),]
+  metadata = metadata[!duplicated(metadata[[v]]),]
+  
+  for(sample in duplicated_samples){
+    
+    temp_data = rbind(gt[metadata[metadata[[v]] == sample, ][['Sample_id']],],
+                      gt_replicates[metadata_replicates[metadata_replicates[[v]] == sample, ][["Sample_id"]],])
+    
+    temp_metadata = rbind(metadata[metadata[[v]] == sample, ],
+                          metadata_replicates[metadata_replicates[[v]]== sample, ])
+    
+    temp_test = rowSums(!is.na(temp_data), na.rm = T)
+    
+    gt[metadata[metadata[[v]] == sample, ][['Sample_id']],] = temp_data[which.max(temp_test),]
+    metadata[metadata[[v]] == sample, ] = temp_metadata[which.max(temp_test),]
+    
+  }  
+  
+  ampseq_object@gt = gt
+  ampseq_object@metadata = metadata
+  
+  
+  cigars_gt = get_cigar_alleles(ampseq_object, 
+                                from = 'gt',
+                                as = 'vector')
+  
+  cigars_asvtab = get_cigar_alleles(ampseq_object, 
+                                    from = 'asv_table',
+                                    as = 'vector',
+                                    col = 'CIGAR_masked')
+  
+  if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+     sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+    
+    cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+               paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+               '\n\n',
+               'Cigar strings in asv_table that are not present in gt matrix are:\n',
+               paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+               '\n'
+    ))
+    
+    stop('There are cigar strings that are different in the gt and the asv_table')
+    
+  }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+    
+    cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+               paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+               '\n'))
+    
+    stop('There are cigar strings in the gt that are not present in the asv_table')
+    
+  }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+    
+    cat(paste0('The following cigar strings in asv_table are not longer present in gt matrix:\n',
+               paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+               '\n'))
+    
+    cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
+    
+    for(cigar_string_to_remove in cigar_strings_to_remove){
+      
+      Amplicon = gsub(';.+$', '', cigar_string_to_remove)
+      CIGAR = gsub('^.+;', '', cigar_string_to_remove)
+      
+      ampseq_object@asv_table = 
+        ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
+                                ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
+      
+      ampseq_object@asv_seqs = ampseq_object@asv_seqs[
+        names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
+      
+      
+      ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+      names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      
+    }
+    
+    
+  }else{
+    print('cigar strings are consistent between gt and asv_table')
+  }
+  
+  consistency_between_gt_and_asvtab(ampseq_object)
+  
+  return(ampseq_object)
+  
+}
+
+
+## rGenome2ampseq----
+rGenome2ampseq = function(rGenome_object,
+                          markers,
+                          ref_seqs = '~/Documents/Github/MHap-Analysis/docs/reference/Pviv_P01/PvGTSeq249_refseqs.fasta'){
+  
+  
+  markers[['amplicon']] = gsub('(-|:|/)', '_', markers[['amplicon']])
+  
+  ampseq_gt_table = matrix(NA,
+                           ncol = length(markers[['amplicon']]),
+                           nrow = ncol(rGenome_object@gt),
+                           dimnames = list(
+                             colnames(rGenome_object@gt),
+                             markers[['amplicon']]
+                           )
+                           )
+  
+  for(amplicon in markers$amplicon){
+    
+    amplicon_start = markers[markers[['amplicon']] == amplicon,][['start']]
+    amplicon_end = markers[markers[['amplicon']] == amplicon,][['end']]
+    amplicon_chromosome = markers[markers[['amplicon']] == amplicon,][['chromosome']]
+    amplicon_positions = amplicon_start:amplicon_end
+    
+    rGenome_positions = which(rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+            rGenome_object@loci_table[['POS']] %in% amplicon_positions)
+    
+    if(length(rGenome_positions) > 0){
+      
+      if(length(rGenome_positions) == 1){
+        
+        rGenome_gt_amplicon = 
+          matrix(rGenome_object@gt[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                     rGenome_object@loci_table[['POS']] %in% amplicon_positions,],
+                 nrow = length(rGenome_positions),
+                 dimnames = list(
+                   rownames(rGenome_object@loci_table[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                                rGenome_object@loci_table[['POS']] %in% amplicon_positions,]),
+                   names(rGenome_object@gt[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                                rGenome_object@loci_table[['POS']] %in% amplicon_positions,])
+                 )
+          )
+        
+      }else if(length(rGenome_positions) >1){
+        rGenome_gt_amplicon = 
+          matrix(rGenome_object@gt[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                     rGenome_object@loci_table[['POS']] %in% amplicon_positions,],
+                 nrow = length(rGenome_positions),
+                 dimnames = list(
+                   rownames(rGenome_object@gt[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                                rGenome_object@loci_table[['POS']] %in% amplicon_positions,]),
+                   colnames(rGenome_object@gt[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                                rGenome_object@loci_table[['POS']] %in% amplicon_positions,])
+                 )
+          )
+        
+      }
+      
+      
+      rGenome_loci_table_amplicon = rGenome_object@loci_table[rGenome_object@loci_table[['CHROM']] == amplicon_chromosome &
+                                                                rGenome_object@loci_table[['POS']] %in% amplicon_positions, c('CHROM', 'POS', 'REF', 'ALT')]
+      
+      
+      rGenome_gt_amplicon_alleles = gsub(':\\d+', '', rGenome_gt_amplicon)
+      rGenome_gt_amplicon_rd = gsub('\\d+:', '', rGenome_gt_amplicon)
+      
+      for(amplicon_position in rGenome_loci_table_amplicon$POS){
+        
+        alt_alleles = strsplit(rGenome_loci_table_amplicon[rGenome_loci_table_amplicon$POS == amplicon_position, ][['ALT']], ',')[[1]]
+        ref_allele = rGenome_loci_table_amplicon[rGenome_loci_table_amplicon$POS == amplicon_position, ][['REF']]
+        
+        #alt_allele = 1
+        
+        for(alt_allele in 1:length(alt_alleles)){
+          
+          if(nchar(ref_allele) == 1 & nchar(alt_alleles[alt_allele]) == 1 & alt_alleles[alt_allele] != '*'){# it is an SNV
+            
+            # For monoclonals
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('^', alt_allele, '$'), 
+                   paste0(amplicon_position - amplicon_start + 1, alt_alleles[alt_allele]), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+                   ])
+            
+            # For first clone
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('^', alt_allele, '/'), 
+                   paste0(amplicon_position - amplicon_start + 1, alt_alleles[alt_allele], '/'), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+                   ])
+            
+            # For second clone
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('/', alt_allele ,'$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('/', alt_allele, '$'), 
+                   paste0('/', amplicon_position - amplicon_start + 1, alt_alleles[alt_allele]), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+                   ])
+            
+            
+          }else if(nchar(ref_allele) > nchar(alt_alleles[alt_allele]) | alt_alleles[alt_allele] == '*'){# if it is a deletion
+            
+            if(alt_alleles[alt_allele] == '*'){ # The current position is deleted
+              
+              deletion_region = paste0('D=', ref_allele)
+              
+              # For monoclonals
+              
+              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                          grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+              ] =
+                gsub(paste0('^', alt_allele, '$'), 
+                     paste0(amplicon_position - amplicon_start + 1, deletion_region), 
+                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                                 grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+
+              # For first clone
+              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                          grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+              ] =
+                gsub(paste0('^', alt_allele, '/'), 
+                     paste0(amplicon_position - amplicon_start + 1, deletion_region, '/'), 
+                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                                 grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+              
+                            
+              # For second clone
+              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                          grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+              ] =
+                gsub(paste0('/', alt_allele, '$'), 
+                     paste0('/', amplicon_position - amplicon_start + 1, deletion_region), 
+                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                                 grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+              
+              
+            }else{ # The next position is deleted
+              
+              deletion_region = paste0('D=', gsub(alt_alleles[alt_allele], '',ref_allele))
+              
+              # For monoclonals
+              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                          grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+              ] =
+                gsub(paste0('^', alt_allele, '$'), 
+                     paste0(amplicon_position - amplicon_start + 2, deletion_region), 
+                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                                 grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+     
+              # For first clone
+              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                          grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+              ] =
+                gsub(paste0('^', alt_allele, '/'), 
+                     paste0(amplicon_position - amplicon_start + 2, deletion_region, '/'), 
+                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                                 grepl(paste0('^', alt_allele, '/'), rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+              
+                       
+              # For second clone
+              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                          grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+              ] =
+                gsub(paste0('/', alt_allele, '$'), 
+                     paste0('/', amplicon_position - amplicon_start + 2, deletion_region), 
+                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                                 grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+              
+            }
+            
+            
+          }else if(nchar(ref_allele) == nchar(alt_alleles[alt_allele]) & alt_alleles[alt_allele] != '*'){
+            
+            ref_allele2 = strsplit(ref_allele, '')[[1]]
+            
+            alt_allele2 = strsplit(alt_alleles[alt_allele], '')[[1]]
+            
+            polymorphic_sites = which(ref_allele2 != alt_allele2)
+            
+            alt_allele_replacement = NULL
+            
+            # site = 1
+            
+            for(site in polymorphic_sites){
+              
+              alt_allele_replacement = paste0(alt_allele_replacement,
+                                              paste0(amplicon_position - amplicon_start + site, alt_allele2[site])
+                                              )
+              
+            }
+            
+            
+            # For monoclonals
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('^', alt_allele, '$'),
+                                              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('^', alt_allele, '$'), 
+                   alt_allele_replacement, 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('^', alt_allele, '$'),
+                                                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+                   ])
+            
+            # For first clone
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('^', alt_allele, '/'),
+                                              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('^', alt_allele, '/'), 
+                   paste0(alt_allele_replacement, '/'), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('^', alt_allele, '/'),
+                                                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+                   ])
+            
+            # For second clone
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('/', alt_allele ,'$'),
+                                              rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('/', alt_allele, '$'), 
+                   paste0('/', alt_allele_replacement), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('/', alt_allele, '$'),
+                                                     rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+                   ])
+            
+            
+            
+          }else if(nchar(ref_allele) < nchar(alt_alleles[alt_allele])){# if it is an insertion
+            
+            #inserted_region = paste0('I=', gsub(paste0('^', ref_allele), '',alt_alleles[alt_allele]))
+            inserted_region = paste0('I=', alt_alleles[alt_allele])
+            
+            # For monoclonals
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('^', alt_allele, '$'), 
+                   paste0(amplicon_position - amplicon_start + 1,# + nchar(ref_allele), 
+                          inserted_region), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('^', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+            
+            # For first clone
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('^', alt_allele, '/'), 
+                   paste0(amplicon_position - amplicon_start + 1,# + nchar(ref_allele), 
+                          inserted_region, '/'), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('^', alt_allele, '/'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+            
+            # For second clone
+            rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                        grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])
+            ] =
+              gsub(paste0('/', alt_allele, '$'), 
+                   paste0('/', amplicon_position - amplicon_start + 1, # + nchar(ref_allele), 
+                          inserted_region), 
+                   rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),
+                                               grepl(paste0('/', alt_allele, '$'),rGenome_gt_amplicon_alleles[which(rGenome_loci_table_amplicon$POS == amplicon_position),])])
+            
+          }
+          
+        }
+        
+      }
+      
+      amplicon_cigarstrings = NULL
+
+      for(Sample_id in colnames(rGenome_gt_amplicon_alleles)){
+
+        
+        sample_positions = rGenome_gt_amplicon_alleles[,Sample_id]
+        
+        if(sum(is.na(sample_positions)) == 0){ # if samples do not contain missing information
+          
+          if(sum(grepl('/', sample_positions)) == 0){ # monoclonal samples
+            
+            if(sum(sample_positions != 0) > 0){# samples with mutations respect to reference strain
+              
+              sample_polymorphic_positions_alleles = sample_positions[sample_positions != 0]
+              
+              sample_polymorphic_positions = unlist(str_extract_all(sample_polymorphic_positions_alleles, '\\d+'))
+              
+              if(sum(duplicated(sample_polymorphic_positions)) > 0){
+                
+                duplicated_positions = sample_polymorphic_positions[duplicated(sample_polymorphic_positions)]
+                
+                for(duplicated_position in duplicated_positions){
+                  
+                  duplicated_positions_alleles = sample_polymorphic_positions_alleles[grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles)]
+                  
+                  if(sum(grepl('D', duplicated_positions_alleles)) == length(duplicated_positions_alleles)){
+                    
+                    correct_allele = paste0(duplicated_positions_alleles[1], gsub('^\\d+D=','',duplicated_positions_alleles[-1]))
+                    
+                    sample_polymorphic_positions_alleles = sample_polymorphic_positions_alleles[!(duplicated(sample_polymorphic_positions) & 
+                                                                                                  grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles))]
+                    
+                    if(length(correct_allele) != length(sample_polymorphic_positions_alleles[grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles)])){
+                      stop('1')
+                    }
+                    
+                    sample_polymorphic_positions_alleles[grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles)] = correct_allele
+                    
+                    sample_polymorphic_positions = unlist(str_extract_all(sample_polymorphic_positions_alleles, '\\d+'))
+                    
+                  }
+                  
+                }
+                
+              }
+              
+              amplicon_cigarstrings = 
+                c(amplicon_cigarstrings,
+                  paste0(paste(sample_polymorphic_positions_alleles, collapse = ''),
+                         ":",
+                         min(as.integer(rGenome_gt_amplicon_rd[,Sample_id])))
+                )
+              
+            }else{ # Samples equals to reference strain
+              
+              amplicon_cigarstrings = 
+                c(amplicon_cigarstrings,
+                  paste0('.',
+                         ":",
+                         min(as.integer(rGenome_gt_amplicon_rd[,Sample_id])))
+                )
+            }
+            
+          }else{ # samples with more than two alleles (polyclonal samples)
+            
+            clones = list(gsub('/.+', '', sample_positions),
+                          gsub('.+/', '', sample_positions))
+            
+            clones_rds = list(gsub('/.+', '', rGenome_gt_amplicon_rd[,Sample_id]),
+                              gsub('.+/', '', rGenome_gt_amplicon_rd[,Sample_id]))
+            clone = 1
+            clone_cigarstring = NULL
+            
+            for(clone in 1:length(clones)){
+              
+              if(sum(clones[[clone]] != 0) > 0){# clones with mutations respect to reference strain
+                
+                
+                sample_polymorphic_positions_alleles = clones[[clone]][clones[[clone]] != 0]
+                
+                sample_polymorphic_positions = unlist(str_extract_all(sample_polymorphic_positions_alleles, '\\d+'))
+                
+                if(sum(duplicated(sample_polymorphic_positions)) > 0){
+                  
+                  duplicated_positions = sample_polymorphic_positions[duplicated(sample_polymorphic_positions)]
+                  
+                  for(duplicated_position in duplicated_positions){
+                    
+                    duplicated_positions_alleles = sample_polymorphic_positions_alleles[grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles)]
+                    
+                    if(sum(grepl('D', duplicated_positions_alleles)) == length(duplicated_positions_alleles)){
+                      
+                      correct_allele = paste0(duplicated_positions_alleles[1], gsub('^\\d+D=','',duplicated_positions_alleles[-1]))
+                      
+                      sample_polymorphic_positions_alleles = sample_polymorphic_positions_alleles[!(duplicated(sample_polymorphic_positions) & 
+                                                                                                      grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles))]
+                      
+                      if(length(correct_allele) != length(sample_polymorphic_positions_alleles[grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles)])){
+                        stop('2')
+                      }
+                      
+                      sample_polymorphic_positions_alleles[grepl(paste0('^', duplicated_position, '[DIAGTC]'), sample_polymorphic_positions_alleles)] = correct_allele
+                      
+                      sample_polymorphic_positions = unlist(str_extract_all(sample_polymorphic_positions_alleles, '\\d+'))
+                      
+                    }
+                    
+                  }
+                  
+                }
+                
+                
+                clone_cigarstring = 
+                  c(clone_cigarstring,
+                    paste0(paste(sample_polymorphic_positions_alleles, collapse = ''),
+                           ":",
+                           min(as.integer(clones_rds[[clone]])))
+                  )
+                
+              }else{ # clones equals to reference strain
+                
+                clone_cigarstring = 
+                  c(clone_cigarstring,
+                    paste0('.',
+                           ":",
+                           min(as.integer(clones_rds[[clone]])))
+                  )
+              }
+              
+            }
+            
+            amplicon_cigarstrings = c(amplicon_cigarstrings, paste0(clone_cigarstring, collapse = "_"))
+            
+          }
+          
+        }else{ # samples with at least one missing position
+          amplicon_cigarstrings = c(amplicon_cigarstrings, NA)
+        }
+        
+        
+      } # Finish getting cigarstring for the amplicon in all samples
+      
+      ampseq_gt_table[, amplicon] = amplicon_cigarstrings
+      
+    }
+    
+  }
+  
+  asv_table = NULL
+  
+  for(amplicon in colnames(ampseq_gt_table)){
+    
+    cigar_strings = unique(unlist(strsplit(gsub(':\\d+','' , ampseq_gt_table[,amplicon]), '_')))
+    
+    cigar_strings = cigar_strings[!is.na(cigar_strings)]
+    
+    if(length(cigar_strings) > 0){
+      
+      asv_table = rbind(asv_table,
+                        data.frame(hapid = paste0('ASV', (length(asv_table) + 1):(length(asv_table) + length(cigar_strings))),
+                                   Amplicon = amplicon,
+                                   CIGAR = cigar_strings,
+                                   CIGAR_masked = cigar_strings
+                        ))
+      
+    }
+    
+  }
+
+  
+  amplicons_ref_seqs = Biostrings::readDNAStringSet(ref_seqs)
+  
+  names(amplicons_ref_seqs) = gsub('(-|:|/)', '_', names(amplicons_ref_seqs))
+  
+  asv_table$haplength = NA
+  asv_table$total_reads = NA
+  asv_table$total_samples = NA
+  asv_table$refid_PvP01 = asv_table$Amplicon
+  asv_table$snv_dist_from_PvP01 = 0
+  asv_table$indel_dist_from_PvP01 = 0
+  asv_table$bimera = FALSE
+  asv_table$strain = NA
+  
+  
+  asv_table$hapid = paste0('ASV', 1:nrow(asv_table))
+  
+  asv_seqs = NULL
+  
+  for(asv in asv_table$hapid){
+    
+    amplicon = asv_table[asv_table$hapid == asv,][['Amplicon']]
+    cigar_string = asv_table[asv_table$hapid == asv,][['CIGAR']]
+    cigar_string_masked = asv_table[asv_table$hapid == asv,][['CIGAR_masked']]
+    
+    asv_table[asv_table$hapid == asv,][['total_samples']] = 
+      sum(grepl(paste0('(^|_)',cigar_string_masked,':'), ampseq_gt_table[,amplicon]), na.rm = T)
+    
+    asv_table[asv_table$hapid == asv,][['total_reads']] =
+      sum(as.integer(gsub('_.+$', '', gsub(paste0('(^|^.+_)',cigar_string_masked,':'),
+                                           '',
+                                           ampseq_gt_table[grepl(paste0('(^|_)',cigar_string_masked,':'),
+                                                                 ampseq_gt_table[,amplicon]),amplicon]))))
+    
+    asv_seq = as.character(amplicons_ref_seqs[[amplicon]])
+    
+    if(cigar_string != '.'){
+      
+      positions = as.integer(str_extract_all(cigar_string, '\\d+')[[1]])
+      variants = strsplit(cigar_string, '\\d+')[[1]]
+      variants = variants[variants != '']
+      
+      variants = variants[!duplicated(positions)]
+      positions = positions[!duplicated(positions)]
+      
+      asv_seq = strsplit(asv_seq, '')[[1]]
+      
+      for(position in positions){
+        variant = variants[which(positions == position)]
+        
+        if(!grepl('(I|D)=', variant)){
+          
+          asv_seq[position] = variant
+          
+        }else if(grepl('I=', variant)){
+          
+          asv_seq[position] = paste0(asv_seq[position], gsub('I=', '', variant))
+          
+        }else if(grepl('D=', variant)){
+          
+          variant = gsub('D=', '', variant)
+          
+          asv_seq[position:(position + nchar(variant))] = NA
+          
+        }
+        
+      }
+      
+      asv_seq = asv_seq[!is.na(asv_seq)]
+      
+      asv_seq = paste(asv_seq, collapse = '')
+      
+      asv_seqs[[asv]] = asv_seq
+      
+      
+      
+    }else{
+      
+      asv_seqs[[asv]] = asv_seq
+      
+    }
+    
+    asv_table[asv_table$hapid == asv,][['haplength']] = nchar(asv_seqs[[asv]])
+    
+  }
+  
+
+  modified_gt = ampseq_gt_table
+  
+  duplicated_asvs = names(asv_seqs)[(duplicated(unlist(asv_seqs)))]
+  
+  for(duplicated_asv in duplicated_asvs){
+
+    duplicated_asv_ids = names(asv_seqs)[asv_seqs %in% asv_seqs[duplicated_asv]]
+    
+    if(sum(asv_table[asv_table$hapid %in% duplicated_asv_ids,][['total_reads']]) == 0){
+      
+      for(hap_id_to_remove in duplicated_asv_ids){
+        asv_seqs[[hap_id_to_remove]] = NULL
+        asv_table = asv_table[!(asv_table$hapid %in% hap_id_to_remove),]
+      }
+      
+    }else{
+      
+      duplicated_asv_ids_with_zero_reads = which(asv_table[asv_table$hapid %in% duplicated_asv_ids,][['total_reads']] == 0)
+      duplicated_asv_ids_with_nozero_reads = which(asv_table[asv_table$hapid %in% duplicated_asv_ids,][['total_reads']] != 0)
+      
+      if(length(duplicated_asv_ids_with_nozero_reads) == 1){
+        
+        for(hap_id_to_remove in duplicated_asv_ids[duplicated_asv_ids_with_zero_reads]){
+          asv_seqs[[hap_id_to_remove]] = NULL
+          asv_table = asv_table[!(asv_table$hapid %in% hap_id_to_remove),]
+        }
+        
+      }else{
+        
+        hap_id_to_keep = duplicated_asv_ids[
+          which.max(asv_table[(asv_table$hapid %in% duplicated_asv_ids),][['total_reads']])]
+        
+        hap_ids_to_remove = duplicated_asv_ids[duplicated_asv_ids != hap_id_to_keep]
+        
+        hap_id_to_remove = hap_ids_to_remove[1]
+        
+        for(hap_id_to_remove in hap_ids_to_remove){
+          
+          reads_in_id_to_remove = asv_table[(asv_table$hapid == hap_id_to_remove),][['total_reads']]
+          
+          
+          if(reads_in_id_to_remove > 0){
+            
+            amplicon_of_id_to_remove = asv_table[(asv_table$hapid == hap_id_to_remove),][['Amplicon']]
+            samples_in_id_to_remove = asv_table[(asv_table$hapid == hap_id_to_remove),][['total_samples']]
+            cigar_masked_in_id_to_remove = asv_table[(asv_table$hapid == hap_id_to_remove),][['CIGAR_masked']]
+            
+
+            
+            reads_in_id_to_keep = asv_table[(asv_table$hapid == hap_id_to_keep),][['total_reads']]
+            samples_in_id_to_keep = asv_table[(asv_table$hapid == hap_id_to_keep),][['total_samples']]
+            cigar_masked_in_id_to_keep = asv_table[(asv_table$hapid == hap_id_to_keep),][['CIGAR_masked']]
+            
+            modified_gt[grepl(paste0('^', cigar_masked_in_id_to_remove, ':'), modified_gt[,amplicon_of_id_to_remove]),
+                        amplicon_of_id_to_remove
+            ] = gsub(paste0('^', cigar_masked_in_id_to_remove, ':'),
+                     paste0(cigar_masked_in_id_to_keep, ':'),
+                     modified_gt[grepl(paste0('^', cigar_masked_in_id_to_remove, ':'),
+                                       modified_gt[,amplicon_of_id_to_remove]),
+                                 amplicon_of_id_to_remove])
+            
+            modified_gt[grepl(paste0('_', cigar_masked_in_id_to_remove, ':'), modified_gt[,amplicon_of_id_to_remove]),
+                        amplicon_of_id_to_remove
+            ] = gsub(paste0('_', cigar_masked_in_id_to_remove, ':'),
+                     paste0('_',cigar_masked_in_id_to_keep, ':'),
+                     modified_gt[grepl(paste0('_', cigar_masked_in_id_to_remove, ':'),
+                                       modified_gt[,amplicon_of_id_to_remove]),
+                                 amplicon_of_id_to_remove])
+            
+            
+            asv_table[(asv_table$hapid == hap_id_to_keep),][['total_reads']] =
+              reads_in_id_to_keep + reads_in_id_to_remove
+            asv_table[(asv_table$hapid == hap_id_to_keep),][['total_samples']] =
+              samples_in_id_to_keep + samples_in_id_to_remove
+            
+          }
+          
+          asv_seqs[[hap_id_to_remove]] = NULL
+          asv_table = asv_table[!(asv_table$hapid %in% hap_id_to_remove),]
+          
+          
+        }
+        
+      }
+      
+    }
+    
+    
+  }
+  
+
+  
+
+  
+  asv_seqs = Biostrings::DNAStringSet(unlist(asv_seqs))
+  
+  asv_table = asv_table[, c(
+    "hapid",
+    "haplength",
+    "total_reads",
+    "total_samples",
+    "strain",
+    "refid_PvP01",
+    "snv_dist_from_PvP01",
+    "indel_dist_from_PvP01",
+    "bimera",
+    "Amplicon",
+    "CIGAR",
+    "CIGAR_masked" 
+  )]
+  
+
+  ampseq_object = create_ampseq(gt = modified_gt,
+                metadata = rGenome_object@metadata,
+                markers = markers,
+                asv_table = asv_table,
+                asv_seqs = asv_seqs
+                )
+  
+  
+  return(ampseq_object)
+}
+
+
+
+## run_vcftools ----
+run_vcftools = function(vcf = NULL,
+                        
+                        bash_file = NULL, 
+                        
+                        out = NULL,
+                        
+                        keep_regexp = NULL, # regular expression pattern that identify samples
+                        remove_regexp = NULL,
+                        
+                        keep = NULL,
+                        remove = NULL,
+                        
+                        chr = NULL,
+                        not_chr = NULL,
+                        
+                        bed = NULL,
+                        exclude_bed = NULL,
+                        
+                        positions = NULL,
+                        exclude_positions = NULL,
+                        
+                        keep_only_indels = FALSE,
+                        remove_indels = FALSE,
+                        
+                        remove_filtered_all = FALSE,
+                        
+                        maf = NULL,
+                        max_maf = NULL,
+                        
+                        non_ref_af = NULL,
+                        max_non_ref_af = NULL,
+                        non_ref_ac = NULL,
+                        max_non_ref_ac = NULL,
+                        
+                        non_ref_af_any = NULL,
+                        max_non_ref_af_any = NULL,
+                        non_ref_ac_any = NULL,
+                        max_non_ref_ac_any = NULL,
+                        
+                        mac = NULL,
+                        max_mac = NULL,
+                        
+                        min_alleles = NULL,
+                        max_alleles = NULL,
+                        
+                        # Output options
+                        freq = FALSE,
+                        counts = FALSE,
+                        
+                        depth = FALSE,
+                        site_depth = FALSE,
+                        site_mean_depth = FALSE,
+                        geno_depth = FALSE,
+                        
+                        hap_r2 = FALSE,
+                        geno_r2 = FALSE,
+                        geno_chisq = FALSE,
+                        hap_r2_positions = NULL,
+                        geno_r2_positions = NULL,
+                        ld_window = NULL,
+                        ld_window_bp = NULL,
+                        ld_window_min = NULL,
+                        ld_window_bp_min = NULL,
+                        min_r2 = NULL,
+                        interchrom_hap_r2 = FALSE,
+                        interchrom_geno_r2 = FALSE,
+                        
+                        TsTv = NULL,
+                        TsTv_by_count = FALSE,
+                        TsTv_by_qual = FALSE,
+                        
+                        site_pi = FALSE,
+                        window_pi = NULL,
+                        window_pi_step = NULL,
+                        
+                        weir_fst_pop = NULL,
+                        fst_window_size = NULL,
+                        fst_window_step = NULL,
+                        
+                        het = FALSE,
+                        TajimaD = NULL,
+                        relatedness = FALSE,
+                        relatedness2 = FALSE,
+                        
+                        recode = FALSE,
+                        recode_bcf = FALSE,
+                        recode_INFO_all = FALSE
+){
+  
+  print('Starting VCFTools')
+  
+  vcf_run_file = c('#!/bin/bash',
+                   'source /broad/software/scripts/useuse',
+                   'use .vcftools-0.1.14',
+                   'use Tabix')
+  
+  vcf_arguments = 'vcftools'
+  
+  if(grepl('.vcf$', vcf)){
+    vcf_arguments = paste0(vcf_arguments, ' --vcf ', vcf)
+  }else if(grepl('.vcf.gz$', vcf)){
+    vcf_arguments = paste0(vcf_arguments, ' --gzvcf ', vcf)
+  }else if(grepl('.bcf$', vcf)){
+    vcf_arguments = paste0(vcf_arguments, ' --bcf ', vcf)}
+  
+  # Filters
+  
+  if(!is.null(keep_regexp)){
+    system(paste0("zgrep '^#[A-Z]' ",  vcf, " > ", "temp_samples.indv"))
+    temp_samples = as.character(read.csv("temp_samples.indv", header = FALSE, sep = '\t'))
+    samples = temp_samples[grepl(keep_regexp,temp_samples)]
+    write.table(samples, 'samples.indv', sep = '\t', quote = FALSE, row.names = FALSE, col.names = F)
+    system(paste0('rm ', "temp_samples.indv"))
+    vcf_arguments = paste0(vcf_arguments, ' --keep samples.indv')
+  }
+  
+  if(!is.null(remove_regexp)){
+    system(paste0("zgrep '^#[A-Z]' ",  vcf, " > ", "temp_samples.indv"))
+    temp_samples = as.character(read.csv("temp_samples.indv", header = FALSE, sep = '\t'))
+    samples = temp_samples[grepl(keep_regexp,temp_samples)]
+    write.table(samples, 'rsamples.indv', sep = '\t', quote = FALSE, row.names = FALSE, col.names = F)
+    system(paste0('rm ', "temp_samples.indv"))
+    vcf_arguments = paste0(vcf_arguments, ' --remove rsamples.indv')
+  }
+  
+  if(!is.null(keep)){
+    vcf_arguments = paste0(vcf_arguments, ' --keep ', keep)
+  }
+  
+  if(!is.null(remove)){
+    vcf_arguments = paste0(vcf_arguments, ' --remove ', remove)
+  }
+  
+  if(!is.null(chr)){
+    for(chromosome in chr){
+      vcf_arguments = paste0(vcf_arguments, ' --chr ', chromosome)
+    }
+  }
+  
+  if(!is.null(not_chr)){
+    for(chromosome in not_chr){
+      vcf_arguments = paste0(vcf_arguments, ' --not-chr ', chromosome)
+    }
+  }
+  
+  if(!is.null(bed)){vcf_arguments = paste0(vcf_arguments, ' --bed ', bed)
+  print('Adding bed argument')
+  }
+  if(!is.null(exclude_bed)){vcf_arguments = paste0(vcf_arguments, ' --exclude-bed ', exclude_bed)}
+  
+  if(!is.null(positions)){vcf_arguments = paste0(vcf_arguments, ' --positions ', positions)}
+  if(!is.null(exclude_positions)){vcf_arguments = paste0(vcf_arguments, ' --exclude-positions ', exclude_positions)}
+  
+  if(keep_only_indels){vcf_arguments = paste0(vcf_arguments, ' --keep-only-indels')}
+  if(remove_indels){vcf_arguments = paste0(vcf_arguments, ' --remove-indels')}
+  
+  if(remove_filtered_all){vcf_arguments = paste0(vcf_arguments, ' --remove-filtered-all')}
+  
+  if(!is.null(maf)){vcf_arguments = paste0(vcf_arguments, ' --maf ', maf)}
+  if(!is.null(max_maf)){vcf_arguments = paste0(vcf_arguments, ' --max-maf ', max_maf)}
+  
+  if(!is.null(non_ref_af)){vcf_arguments = paste0(vcf_arguments, ' --non-ref-af ', non_ref_af)}
+  if(!is.null(max_non_ref_af)){vcf_arguments = paste0(vcf_arguments, ' --max-non-ref-af ', max_non_ref_af)}
+  if(!is.null(non_ref_ac)){vcf_arguments = paste0(vcf_arguments, ' --non-ref-ac ', non_ref_ac)}
+  if(!is.null(max_non_ref_ac)){vcf_arguments = paste0(vcf_arguments, ' --max-non-ref-ac ', max_non_ref_ac)}
+  
+  if(!is.null(non_ref_af_any)){vcf_arguments = paste0(vcf_arguments, ' --non-ref-af-any ', non_ref_af_any)}
+  if(!is.null(max_non_ref_af_any)){vcf_arguments = paste0(vcf_arguments, ' --max-non-ref-af-any ', max_non_ref_af_any)}
+  if(!is.null(non_ref_ac_any)){vcf_arguments = paste0(vcf_arguments, ' --non-ref-ac-any ', non_ref_ac_any)}
+  if(!is.null(max_non_ref_ac_any)){vcf_arguments = paste0(vcf_arguments, ' --max-non-ref-ac-any ', max_non_ref_ac_any)}
+  if(!is.null(mac)){vcf_arguments = paste0(vcf_arguments, ' --mac ', mac)}
+  if(!is.null(max_mac)){vcf_arguments = paste0(vcf_arguments, ' --max-mac ', max_mac)}
+  
+  if(!is.null(min_alleles)){vcf_arguments = paste0(vcf_arguments, ' --min-alleles ', min_alleles)}
+  if(!is.null(max_alleles)){vcf_arguments = paste0(vcf_arguments, ' --max-alleles ', max_alleles)}
+  
+  # Output options
+  
+  if(freq){vcf_arguments = paste0(vcf_arguments, ' --freq')}
+  if(counts){vcf_arguments = paste0(vcf_arguments, ' --counts')}
+  
+  if(depth){vcf_arguments = paste0(vcf_arguments, ' --depth')}
+  if(site_depth){vcf_arguments = paste0(vcf_arguments, ' --site-depth')}
+  if(site_mean_depth){vcf_arguments = paste0(vcf_arguments, ' --site-mean-depth')}
+  if(geno_depth){vcf_arguments = paste0(vcf_arguments, ' --geno_depth')}
+  
+  if(hap_r2){vcf_arguments = paste0(vcf_arguments, ' --hap-r2')}
+  if(geno_r2){vcf_arguments = paste0(vcf_arguments, ' --geno-r2')}
+  if(geno_chisq){vcf_arguments = paste0(vcf_arguments, ' --geno-chisq')}
+  if(!is.null(ld_window)){vcf_arguments = paste0(vcf_arguments, ' --ld-window ', ld_window)}
+  if(!is.null(ld_window_bp)){vcf_arguments = paste0(vcf_arguments, ' --ld-window-bp ', ld_window_bp)}
+  if(!is.null(ld_window_min)){vcf_arguments = paste0(vcf_arguments, ' --ld-window-min ', ld_window_min)}
+  if(!is.null(ld_window_bp_min)){vcf_arguments = paste0(vcf_arguments, ' --ld-window-bp-min ', ld_window_bp_min)}
+  if(!is.null(min_r2)){vcf_arguments = paste0(vcf_arguments, ' --min-r2 ', min_r2)}
+  if(interchrom_hap_r2){vcf_arguments = paste0(vcf_arguments, ' --interchrom-hap-r2')}
+  if(interchrom_geno_r2){vcf_arguments = paste0(vcf_arguments, ' --interchrom-geno-r2')}
+  
+  if(!is.null(TsTv)){vcf_arguments = paste0(vcf_arguments, ' --TsTv ', TsTv)}
+  if(TsTv_by_count){vcf_arguments = paste0(vcf_arguments, ' --TsTv-by-count')}
+  if(TsTv_by_qual){vcf_arguments = paste0(vcf_arguments, ' --TsTv-by-qual')}
+  
+  if(site_pi){vcf_arguments = paste0(vcf_arguments, ' --site-pi')}
+  if(!is.null(window_pi)){vcf_arguments = paste0(vcf_arguments, ' --window-pi ', window_pi)}
+  if(!is.null(window_pi_step)){vcf_arguments = paste0(vcf_arguments, ' --window-pi-step ', window_pi_step)}
+  
+  if(!is.null(weir_fst_pop)){
+    for(pop in weir_fst_pop){
+      vcf_arguments = paste0(vcf_arguments, ' --weir-fst-pop ', pop)
+    }
+  }
+  
+  if(!is.null(fst_window_size)){vcf_arguments = paste0(vcf_arguments, ' --fst-window-size ', fst_window_size)}
+  if(!is.null(fst_window_step)){vcf_arguments = paste0(vcf_arguments, ' --fst-window-step ', fst_window_step)}
+  
+  if(het){vcf_arguments = paste0(vcf_arguments, ' --het')}
+  if(!is.null(TajimaD)){vcf_arguments = paste0(vcf_arguments, ' --TajimaD ', TajimaD)}
+  if(relatedness){vcf_arguments = paste0(vcf_arguments, ' --relatedness')}
+  if(relatedness2){vcf_arguments = paste0(vcf_arguments, ' --relatedness2')}
+  
+  if(recode){vcf_arguments = paste0(vcf_arguments, ' --recode')}
+  if(recode_bcf){vcf_arguments = paste0(vcf_arguments, ' --recode-bcf')}
+  if(recode_INFO_all){vcf_arguments = paste0(vcf_arguments, ' --recode-INFO-all')}
+  
+  if(!is.null(out)){vcf_arguments = paste0(vcf_arguments, ' --out ', out)}
+  
+  vcf_run_file = c(vcf_run_file, vcf_arguments)
+  
+  print(vcf_arguments)
+  
+  write.table(vcf_run_file, bash_file, row.names = FALSE, quote = FALSE, col.names = FALSE)
+  
+  system(paste0('chmod 777 ', bash_file))
+  system(paste0('./', bash_file))
+  system(paste0('rm ', bash_file))
+  
+}
+
+## load_vcf----
+load_vcf = function(vcf = NULL,
+                    gzvcf = NULL,
+                    na.rm = TRUE,
+                    start = NULL,
+                    end = NULL
+){
+  
+  if(!is.null(vcf)){
+    
+    temp_tsv_name = gsub('vcf', 'tsv', vcf)
+    system(paste0("grep -v '^##' ", vcf, " > ", temp_tsv_name))
+  }
+  
+  if(!is.null(gzvcf)){
+    system(paste0("zgrep -v '^##' ", vcf, " > ", temp_tsv_name))
+  }
+  
+  col_names = strsplit(system(paste0("grep '^#' ", temp_tsv_name), intern = TRUE), '\t')[[1]]
+  col_names[1] = 'CHROM'
+  
+  temp_tsv_name2 = gsub('.tsv$','_2.tsv',temp_tsv_name)
+  
+  if(is.null(start) | is.null(end)){
+    system(paste0("grep -v '^#' ", temp_tsv_name, " > ", temp_tsv_name2))
+  }else if(!is.null(start) & !is.null(end)){
+    system(paste0("grep -v '^#' ", 
+                  temp_tsv_name, 
+                  " | sed -n ", 
+                  as.character(as.integer(start)), 
+                  ",", 
+                  as.character(as.integer(end)), 
+                  "p > ", 
+                  temp_tsv_name2))
+  }
+  
+  vcf = read.table(temp_tsv_name2, header = FALSE)
+  names(vcf) = col_names
+  
+  if(na.rm){
+    vcf %<>% filter(ALT != '.')
+  }
+  
+  system(paste0('rm ', temp_tsv_name))
+  system(paste0('rm ', temp_tsv_name2))
+  
+  return(vcf)
+}
+
+
+## rGenome S4class and vcf2rGenome----
+
+## rGenome S4 class
+
+setClass('rGenome', slots = c(
+  gt = "ANY",
+  loci_table = "ANY",
+  metadata = "ANY"
+))
+
+## rGenome constructor
+rGenome = function(gt = NULL,
+                   loci_table = NULL,
+                   metadata = NULL){
+  obj = new('rGenome')
+  obj@gt = gt
+  obj@loci_table = loci_table
+  obj@metadata = metadata
+  
+  return(obj)
+}
+
+## vcf2rGenome----
+
+vcf2rGenome = function(vcf, n = 500, threshold = 5) {
+  
+  # Generate metadata
+  metadata = data.frame(Sample_id = names(vcf)[-1:-9])
+  rownames(metadata) = metadata[['Sample_id']]
+  
+  # generate loci_table
+  loci_table = vcf[,1:9]
+  rownames(loci_table) = paste(loci_table$CHROM, loci_table$POS, sep = '_')
+  
+  # generate a haplotype table (gt)
+  
+  gt = NULL
+  for(w in 1:n){
+    start = Sys.time()
+    gt = rbind(gt, get_GTAD_matrix(vcf, w = w, n = n, threshold = threshold))
+    end = Sys.time()
+    print(w)
+    print(end-start)
+  }
+  
+  obj = rGenome(gt = gt, loci_table = loci_table, metadata = metadata)
+  
+  return(obj)
+}
+
+## rGenome2vcf----
+rGenome2vcf = function(rGenome_object){
+  
+  loci_table = rGenome_object@loci_table
+  
+  vcf_names1 = c("CHROM", "POS", "ID",  "REF", "ALT",  "QUAL", "FILTER", "INFO", "FORMAT")
+  
+  loci_table$INFO = paste(loci_table$INFO, apply(loci_table[, !(colnames(loci_table) %in% vcf_names1)], 1, function(x){paste(paste(names(x), x, sep = '='), collapse = ';')}), sep = ';')
+  
+  loci_table$FORMAT = 'GT:AD'
+  
+  loci_table = loci_table[,vcf_names1]
+  
+  colnames(loci_table) = c("#CHROM", "POS", "ID",  "REF", "ALT",  "QUAL", "FILTER", "INFO", "FORMAT")
+  
+  gt = rGenome_object@gt
+  
+  ad = matrix(gsub('\\d+:', '', gt), nrow = nrow(gt), ncol = ncol(gt),
+              dimnames = list(rownames(gt), colnames(gt)))
+  
+  ad = gsub('/', ',', ad)
+  
+  ad[is.na(ad)] = 0
+  
+  gt = matrix(gsub(':\\d+', '', gt), nrow = nrow(gt), ncol = ncol(gt),
+              dimnames = list(rownames(gt), colnames(gt)))
+  
+  
+  gt1 = gsub('/\\d+', '', gt)
+  gt2 = gsub('\\d+/', '', gt)
+  
+  gt3 = matrix(paste(gt1, gt2 , sep = '/'), nrow = nrow(gt), ncol = ncol(gt),
+               dimnames = list(rownames(gt), colnames(gt)))
+  
+  gt3 = gsub('NA', '.', gt3)
+  
+  final_gt = matrix(paste(gt3, ad , sep = ':'), nrow = nrow(gt), ncol = ncol(gt),
+                    dimnames = list(rownames(gt), colnames(gt)))
+  
+  final_vcf = cbind(loci_table, final_gt)
+  
+  return(final_vcf)
+  
+}
+
+
+get_GTAD_matrix = function(vcf, w = 1, n = 100, threshold = 5){
+  start = Sys.time()
+  s = round(seq(1,nrow(vcf)+1, length.out=n+1))
+  low = s[w]
+  high = s[w+1]-1
+  
+  w_gt_table = vcf[low:high,-1:-9]
+  
+  gt_temp = gsub(':.+', '', as.matrix(w_gt_table))
+  ad_temp = gsub(':.+', '', gsub('^\\d+(/|\\|)\\d+:', '', as.matrix(w_gt_table)))
+  
+  if(!is.null(dim(w_gt_table))){
+    
+    gt = t(sapply(1:nrow(gt_temp), function(variant) {
+      sapply(1:ncol(gt_temp), function(sample){
+        gt = strsplit(as.character(gt_temp[variant, sample]), '/|\\|')[[1]]
+        ad = strsplit(as.character(ad_temp[variant, sample]), ',')[[1]]
+        
+        if(gt[1] != '.'){
+          ad = ad[as.numeric(gt) + 1]
+          gt_df = data.frame(gt = gt, ad = as.numeric(ad))
+          gt_df = gt_df[order(gt_df$ad, decreasing = T),]
+          gt_df = gt_df[gt_df$ad >= threshold,]
+          gt = paste(gt_df$gt, gt_df$ad, sep = ':')
+          gt = unique(gt)
+          
+          if(length(gt) > 0){
+            gt = paste(gt, collapse = '/')
+          }else{
+            gt = NA
+          }
+          
+        }else{
+          gt = NA
+        }
+        
+      })
+    }))
+    
+  }else{
+    
+    gt = matrix(sapply(1:nrow(gt_temp), function(variant) {
+      sapply(1:ncol(gt_temp), function(sample){
+        gt = strsplit(as.character(gt_temp[variant, sample]), '/|\\|')[[1]]
+        ad = strsplit(as.character(ad_temp[variant, sample]), ',')[[1]]
+        
+        if(gt[1] != '.'){
+          ad = ad[as.numeric(gt) + 1]
+          gt_df = data.frame(gt = gt, ad = as.numeric(ad))
+          gt_df = gt_df[order(gt_df$ad, decreasing = T),]
+          gt_df = gt_df[gt_df$ad >= threshold,]
+          gt = paste(gt_df$gt, gt_df$ad, sep = ':')
+          gt = unique(gt)
+          
+          if(length(gt) > 0){
+            gt = paste(gt, collapse = '/')
+          }else{
+            gt = NA
+          }
+          
+        }else{
+          gt = NA
+        }
+        
+      })
+    }), ncol = 1)
+    
+  }
+  
+  
+  
+  end = Sys.time()
+  end - start
+  
+  rownames(gt) = vcf[low:high,1:2] %>% mutate(Locus = paste(CHROM, POS, sep = '_')) %>% dplyr::select(Locus) %>% unlist
+  colnames(gt) = colnames(vcf)[-1:-9]
+  
+  return(gt)
+  
+}
+
+## get_ampseq_limit_of_detection----
+
+get_ampseq_limit_of_detection = function(ampseq_object,
+                                         read_depth_thresholds,
+                                         AmpRate_Thresholds,
+                                         sample_concentration,
+                                         by,
+                                         #method,
+                                         digits = 6,
+                                         x_lable = 'DNA parasite concentration by qPCR',
+                                         y_lable = 'Fraction of amplified loci',
+                                         color_lable = 'Amp. Rate\nThreshold'
+){
+  
+  registerDoMC(detectCores())
+  
+  coverage_by_marker_by_sample = get_ReadDepth_coverage(ampseq_object, variable = by, plot = FALSE)[[1]]
+  
+  coverage_by_marker_by_sample = left_join(coverage_by_marker_by_sample, ampseq_object@metadata[,c('Sample_id', sample_concentration)], by = 'Sample_id')
+  
+  coverage_by_marker_by_sample %<>% dplyr::rename('Concentration' = all_of(sample_concentration))
+  
+  coverage_by_marker_by_sample %<>%
+    mutate(Read_depth = case_when(
+      is.na(Read_depth) ~ 0,
+      !is.na(Read_depth) ~ Read_depth
+    ))
+  
+  
+  # Performance across markers
+  markers_performance = NULL
+  
+  for(threshold in read_depth_thresholds){
+    
+    markers_performance = rbind(markers_performance,
+                                coverage_by_marker_by_sample %>%
+                                  mutate(RD_Threshold = threshold,
+                                         AmpSuccess = as.integer(Read_depth >= threshold)))
+    
+    # for(marker in unique(coverage_by_marker_by_sample$Markers)){
+    #   
+    #   markers_performance = rbind(markers_performance,
+    #                               coverage_by_marker_by_sample %>%
+    #                                 filter(Markers == marker) %>%
+    #                                 mutate(RD_Threshold = threshold,
+    #                                        median_RD = median(Read_depth),
+    #                                        mean_RD = mean(Read_depth),
+    #                                        Total_RD = sum(Read_depth),
+    #                                        AmpRate = sum(Read_depth >= threshold)/n(),
+    #                                        AmpSuccess = as.integer(Read_depth >= threshold)))
+    #   
+    # }
+    
+  }
+  
+  # Defining logistic model accross markers
+  
+  marker_predicted_model = 
+    foreach(Pop = unique(markers_performance$Population),
+            .combine = rbind) %do% {
+              foreach(RD_Thres = read_depth_thresholds,
+                      .combine = rbind)%do%{
+                        foreach(marker = ampseq_object@markers$amplicon,
+                                .combine = rbind)%dopar% {
+                                  
+                                  # Fit the model and get coeficients
+                                  
+                                  
+                                  glm_model = glm(AmpSuccess ~ Concentration, family = quasibinomial, data = markers_performance %>% filter(RD_Threshold == RD_Thres, Population == Pop, Markers == marker))
+                                  
+                                  newdata = data.frame(Concentration = seq(0, max(markers_performance$Concentration, na.rm = T), length.out=100))
+                                  
+                                  preddat = predict(glm_model, newdata = newdata,  se.fit=TRUE)
+                                  
+                                  coefs = data.frame(t(coefficients(glm_model)))
+                                  
+                                  data.frame(
+                                    Marker = marker,
+                                    Concentration = seq(0, max(markers_performance$Concentration, na.rm = T), length.out=100),
+                                    AmpSuccess = exp(preddat$fit) / (1 + exp(preddat$fit)),
+                                    lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
+                                    upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
+                                    RD_Threshold = RD_Thres,
+                                    Population = Pop,
+                                    Coef_Intercept = coefs$X.Intercept.,
+                                    Coef_Concentration = coefs$Concentration
+                                    
+                                  )
+                                  
+                                }
+                      }
+            }
+  
+  # Calculating LOD and confidence intervals
+  marker_LOD_Values = foreach(
+    Pop = unique(markers_performance$Population), 
+    .combine = rbind
+  ) %do% {
+    foreach(
+      RD_Thres = read_depth_thresholds,
+      .combine = rbind
+    )%do%{
+      foreach(
+        AmpRate = AmpRate_Thresholds,
+        .combine = rbind
+      )%do%{
+        foreach(
+          marker = ampseq_object@markers$amplicon,
+          .combine = rbind
+        )%dopar%{
+          
+          marker_summary = markers_performance %>% 
+            filter(RD_Threshold == RD_Thres, Population == Pop, Markers == marker) %>%
+            summarise(AmpRate = sum(AmpSuccess)/n(),
+                      Median = median(Read_depth),
+                      Mean = mean(Read_depth),
+                      Total_RD = sum(Read_depth),
+                      q25 = quantile(Read_depth, .25),
+                      q75 = quantile(Read_depth, .75),
+                      sd = sd(Read_depth),
+                      IQR = IQR(Read_depth))
+          
+          temp_marker_predicted_model = marker_predicted_model %>% 
+            filter(Population == Pop,
+                   RD_Threshold == RD_Thres,
+                   Marker == marker)
+          
+          Intercept = temp_marker_predicted_model %>% 
+            filter(Population == Pop,
+                   RD_Threshold == RD_Thres,
+                   Marker == marker) %>%
+            select(Coef_Intercept) %>% unlist()
+          
+          Intercept = mean(Intercept, na.rm = TRUE)
+          
+          Concentration = temp_marker_predicted_model %>%
+            filter(Population == Pop,
+                   RD_Threshold == RD_Thres,
+                   Marker == marker) %>%
+            select(Coef_Concentration) %>% unlist
+          
+          Concentration = mean(Concentration, na.rm = T)
+          
+          # Get LOD
+          
+          LOD = ((log(AmpRate / (1 - AmpRate)) - Intercept) / Concentration)
+          
+          
+          
+          if(LOD > 0.001 & LOD < 10000 & Concentration > 0){
+            
+            glm_model = glm(AmpSuccess ~ Concentration, family = quasibinomial, data = markers_performance %>% filter(RD_Threshold == RD_Thres, Population == Pop, Markers == marker))
+            
+            # Get the lower limit of the LOD Value
+            
+            LowerLim_LOD = ceiling(LOD)
+            
+            predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
+            LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+            
+            if(min(temp_marker_predicted_model$upper, na.rm = T) < AmpRate){
+              
+              for(presision in 10^(-(0:digits))){
+                
+                while(LowerLim_AmpRate >= AmpRate & LowerLim_LOD > 0){
+                  LowerLim_LOD = LowerLim_LOD - presision
+                  predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
+                  LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                  
+                }
+                
+                LowerLim_LOD = LowerLim_LOD + presision
+                
+                predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
+                LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                
+              }
+              
+            }else{
+              
+              LowerLim_LOD = NA
+              
+            }
+            
+            # Get the upper limit of the LOD Value
+            
+            UpperLim_LOD = ceiling(LOD)
+            
+            predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
+            UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+            
+            
+            if(max(temp_marker_predicted_model$lower, na.rm = T) > AmpRate){
+              
+              for(presision in 10^(-(0:digits))){
+                
+                while(UpperLim_AmpRate <= AmpRate){
+                  UpperLim_LOD = UpperLim_LOD + presision
+                  predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
+                  UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                  
+                }
+                
+                UpperLim_LOD = UpperLim_LOD - presision
+                
+                predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
+                UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                
+              }
+              
+            }else{
+              
+              UpperLim_LOD = NA
+              
+            }
+            
+            
+          }else{
+            
+            LOD = NA
+            LowerLim_LOD = NA
+            UpperLim_LOD = NA
+            
+          }
+          
+          # Store LOD values
+          
+          data.frame(
+            Marker = marker,
+            Population = Pop,
+            RD_Threshold = RD_Thres,
+            AmpRate_Threshold = AmpRate,
+            LOD = LOD,
+            LowerLim_LOD = LowerLim_LOD,
+            UpperLim_LOD = UpperLim_LOD,
+            AmpRate = marker_summary$AmpRate,
+            Median = marker_summary$Median,
+            Mean = marker_summary$Mean,
+            Total_RD = marker_summary$Total_RD,
+            q25 = marker_summary$q25,
+            q75 = marker_summary$q75,
+            sd = marker_summary$sd,
+            IQR = marker_summary$IQR
+          )
+          
+        }
+      }}}
+  
+  # Plotting LOD across markers
+  
+  plot_LOD_by_marker = marker_LOD_Values %>%
+    ggplot(aes(x = factor(RD_Threshold), y = log2(LOD), size = Median)) +
+    geom_jitter(aes(color = factor(RD_Threshold)), width = .1, alpha = .25) +
+    geom_line(aes(group = Marker), linetype = 2, alpha = 0.025)+
+    geom_hline(yintercept = log2(c(1, 10, 100, 500, 1000))) +
+    scale_y_continuous(breaks = log2(c(1, 10, 100, 500, 1000)), labels = c(1, 10, 100, 500, 1000))+
+    theme_minimal()+
+    theme(legend.position = 'none')+
+    facet_grid(AmpRate_Threshold ~ Population)
+  
+  # Performance across samples
+  
+  sample_performance = NULL
+  
+  for(threshold in read_depth_thresholds){
+    
+    sample_performance = rbind(sample_performance,
+                               coverage_by_marker_by_sample %>%
+                                 dplyr::summarise(RD_Threshold = threshold,
+                                                  Population = unique(.[.[['Sample_id']] == Sample_id,][[by]]),
+                                                  Concentration = unique(Concentration),
+                                                  median_RD = median(Read_depth),
+                                                  AmpRate = sum(Read_depth >= threshold) / nrow(ampseq_object@markers),
+                                                  .by = Sample_id))
+    
+  }
+  
+  sample_performance %<>% 
+    filter(!is.na(Concentration))%>%
+    mutate(
+      log_Concentration = log2(Concentration),
+      log_OR_AmplRate = log2((AmpRate + 1 / nrow(ampseq_object@markers)) / (1 - (AmpRate + 1 / nrow(ampseq_object@markers))))
+    )
+  
+  predicted_model = NULL
+  LOD_Values = NULL
+  
+  
+  for(Pop in unique(sample_performance$Population)){
+    for(RD_Thres in read_depth_thresholds){
+      
+      # Fit the model and get coeficients
+      
+      lm_model = lm(log_OR_AmplRate~log_Concentration, data = sample_performance %>% filter(RD_Threshold == RD_Thres, Population == Pop))
+      
+      newdata = data.frame(log_Concentration = seq(1, max(sample_performance$log_Concentration), 0.1))
+      
+      preddat = predict(lm_model, newdata = newdata,  se.fit=TRUE)
+      
+      coefs = data.frame(t(coefficients(lm_model)))
+      
+      predicted_model = rbind(predicted_model, 
+                              data.frame(log_Concentration = seq(1, max(sample_performance$log_Concentration), 0.1),
+                                         AmpRate = exp(preddat$fit) / (1 + exp(preddat$fit)),
+                                         lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
+                                         upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
+                                         RD_Threshold = RD_Thres,
+                                         Population = Pop
+                              ))
+      
+      # Get LOD values and cofident intervals 
+      
+      for(AmpRate in AmpRate_Thresholds){
+        
+        # Get LOD
+        
+        LOD = 2^((log(AmpRate / (1 - AmpRate)) - coefs$X.Intercept.)/coefs$log_Concentration)
+        
+        
+        if(LOD > 0.001 & LOD < 10000 & coefs$log_Concentration > 0.1){
+          
+          # Get the lower limit of the LOD Value
+          
+          LowerLim_LOD = ceiling(LOD)
+          
+          predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
+          LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+          
+          for(presision in 10^(-(0:digits))){
+            
+            while(LowerLim_AmpRate >= AmpRate & LowerLim_LOD > 0){
+              LowerLim_LOD = LowerLim_LOD - presision
+              predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
+              LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+              
+            }
+            
+            LowerLim_LOD = LowerLim_LOD + presision
+            
+            predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
+            LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+            
+          }
+          
+          # Get the upper limit of the LOD Value
+          
+          UpperLim_LOD = ceiling(LOD)
+          
+          predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
+          UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+          
+          
+          for(presision in 10^(-(0:digits))){
+            
+            while(UpperLim_AmpRate <= AmpRate){
+              UpperLim_LOD = UpperLim_LOD + presision
+              predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
+              UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+              
+            }
+            
+            UpperLim_LOD = UpperLim_LOD - presision
+            
+            predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
+            UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+            
+          }
+          
+          # Store LOD values
+          
+          LOD_Values = rbind(LOD_Values,
+                             data.frame(
+                               Population =  Pop,
+                               RD_Threshold = RD_Thres,
+                               AmpRate_Threshold = AmpRate,
+                               LOD = LOD,
+                               LowerLim_LOD = LowerLim_LOD,
+                               UpperLim_LOD = UpperLim_LOD
+                             )
+          )
+          
+        }else{
+          
+          LOD_Values = rbind(LOD_Values,
+                             data.frame(
+                               Population =  Pop,
+                               RD_Threshold = RD_Thres,
+                               AmpRate_Threshold = AmpRate,
+                               LOD = NA,
+                               LowerLim_LOD = NA,
+                               UpperLim_LOD = NA
+                             )
+          )
+          
+        }
+        
+      }
+      
+      
+    }
+  }
+  
+  # Plot LOD
+  
+  plot_LOD = sample_performance %>%
+    filter(RD_Threshold %in% read_depth_thresholds) %>%
+    ggplot(aes(x = log2(Concentration), y = AmpRate)) +
+    geom_point() +
+    geom_line(data = predicted_model, aes(x = log_Concentration, y = AmpRate)) +
+    geom_ribbon(data = predicted_model, aes(x = log_Concentration, ymin = lower, ymax = upper), 
+                linetype = 2, color = 'firebrick3', fill = 'firebrick3', alpha = .3) +
+    geom_vline(data = LOD_Values, aes(xintercept = log2(LOD), color = as.character(AmpRate_Threshold)))+
+    facet_grid(Population ~ RD_Threshold) +
+    theme_bw() +
+    scale_x_continuous(breaks = log2(c(1, 10, 100, 1000)), labels = c(1, 10, 100, 1000)) +
+    labs(x = x_lable,
+         y = y_lable,
+         color = color_lable)
+  
+  return(list(
+    markers_performance = markers_performance,
+    marker_LOD_Values = marker_LOD_Values,
+    marker_predicted_model,
+    plot_LOD_by_marker = plot_LOD_by_marker,
+    sample_performance = sample_performance,
+    predicted_model = predicted_model,
+    LOD_Values = LOD_Values,
+    plot_LOD = plot_LOD))
+  
+  
+  
+}
+
+
+## detect_erroneuns_cigars----
+detect_erroneuns_cigars = function(ampseq_object){
+  
+  erroneuns_cigars = NULL
+  
+  for(mhap in colnames(ampseq_object@gt)){
+    
+    mhap_gt = ampseq_object@gt[,mhap]
+    
+    nclones = sapply(str_extract_all(mhap_gt, '_'), function(x){
+      if(length(x) == 0){ 0 }else if(sum(is.na(x)) > 0){ 0 }else{ length(x) }
+    }, simplify = T) + 1
+    
+    max_nalleles = max(nclones)
+    
+    for(clone in 1:max_nalleles){
+      
+      duplicated_positions = sapply(str_extract_all(gsub(':\\d+', '',gsub('_.+', '',mhap_gt)), '\\d+'),
+                                    function(x){
+                                      sum(duplicated(x))
+                                    }, simplify = T)
+      
+      if(sum(duplicated_positions) > 0){
+        
+        erroneuns_cigars = rbind(erroneuns_cigars, data.frame(Amplicon = mhap,
+                                                              Sample_id = names(mhap_gt[duplicated_positions >= 1]),
+                                                              Genotype = mhap_gt[duplicated_positions >= 1]))
+        
+        mhap_gt[nclones == clone] = NA
+        
+      }
+      
+    } 
+    
+  }
+  
+  if(is.null(erroneuns_cigars)){
+    print('There are no erroneous cigars in gt matrix')
+  }else{
+    
+    cat('Erroneous cigars are:\n')
+    
+    return(erroneuns_cigars)
+    
+  }
+  
+}
+
+
+
+
+are_alleles_in_asv_table = function(obj, allele_table){
+  
+  missalleles = NULL
+  
+  for(mhap in unique(allele_table$MHap)){
+    
+    mhap_alleles_1 = unique(allele_table[allele_table$MHap == mhap,][['Allele']])
+    
+    mhap_alleles_2 = obj@asv_table[obj@asv_table$Amplicon == mhap,][['CIGAR_masked']]
+    
+    if(sum(!(mhap_alleles_1 %in% mhap_alleles_2)) > 0){
+      
+      missalleles = rbind(missalleles,
+                          data.frame(
+                            Mhap = mhap,
+                            Allele = mhap_alleles_1[!(mhap_alleles_1 %in% mhap_alleles_2)]
+                          ))
+      
+    }
+    
+  }
+  
+  if(is.null(missalleles)){
+    print('All alleles are in ASV table')
+  }else{
+    return(missalleles)
+  }
+  
+}
+
+
+## remove_filtered_asvs----
+setGeneric("remove_filtered_asvs", function(obj = NULL
+) standardGeneric("remove_filtered_asvs"))
+
+setMethod("remove_filtered_asvs", signature(obj = "ampseq"),
+          
+          function(obj = NULL){
+            
+            gt = obj@gt
+            
+            mhaps = obj@markers
+            
+            asv_table = obj@asv_table
+            
+            
+            alt = sapply(colnames(gt), function(mhap){
+              alt = unique(unlist(strsplit(gsub(':\\d+', '', gt[,mhap]), '_')))
+              
+              alt = paste(alt[!is.na(alt)], collapse = ',')
+            })
+            
+            for(mhap in names(alt)){
+              
+              # if(mhap == 'ApiAP2_1'){
+              #   stop('error')
+              # }
+              
+              alleles_in_asv_table = asv_table[asv_table[['Amplicon']] == mhap, ][['CIGAR_masked']]
+              alleles_in_gt = unlist(strsplit(alt[[mhap]], ','))
+              
+              if(sum(!(alleles_in_asv_table %in% alleles_in_gt)) > 0){
+                
+                missing_alleles = alleles_in_asv_table[!(alleles_in_asv_table %in% alleles_in_gt)]
+                
+                asv_table[asv_table[['Amplicon']] == mhap &
+                            asv_table[['CIGAR_masked']] %in% 
+                            missing_alleles &
+                            !is.na(asv_table[['CIGAR_masked']]), ][['CIGAR_masked']] = NA
+                
+              }
+              
+            }
+              
+            obj@asv_table = asv_table
+            
+            return(obj)
+            
+          }
+)
+
+
+
+## cigar_strings2fasta ----
+
+cigar_strings2fasta = function(obj, ref_fasta, cigar_string_col = 'CIGAR', amplicon_col = 'Amplicon'){
+  
+  ref_fasta_seqs = Biostrings::readDNAStringSet(ref_fasta)
+  
+  
+  if(sum(grepl('(/|-|:)', names(ref_fasta_seqs))) > 0){
+    
+    names(ref_fasta_seqs) = gsub('(/|-|:)', '_', names(ref_fasta_seqs))
+    print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the cigar table.')
+    
+  }
+  
+  cigar_string2fasta = function(cigar_string, ref_fasta_seq){
+    
+    if(cigar_string == '.'){ # Sequence of interest is equal to the reference
+      seq_of_interest = ref_fasta_seq
+    }else{ # Sequence of interest is different to the reference
+      
+      positions = unlist(str_extract_all(cigar_string, '\\d+')) # collect all polymorphic positions from the cigar string
+      
+      if(sum(duplicated(positions)) > 0){
+        
+        print(cigar_string)
+        stop('Wrong cigar string pattern, a position is duplicated')
+      }
+      
+      variants = unlist(strsplit(cigar_string, '\\d+'))[-1] # collect all variants from cigar string
+      
+      seq_of_interest = unlist(strsplit(ref_fasta_seq, ''))
+      
+      for(position in positions){
+        
+        if(!grepl('^D', variants[which(positions == position)])){ # If polymorphism is a SNV or an Insertion
+          
+          if(position == '0'){ # Insertion at position 0
+            
+            seq_of_interest[1] = paste0(gsub('^I=', '', variants[which(positions == position)]),
+                                        seq_of_interest[1])
+            
+          }else if(position == '1' & '0' %in% positions){ # SNV at position 1 after an Insertion at position 0
+            
+            substr(seq_of_interest[1], 
+                   start = nchar(seq_of_interest[1]),
+                   stop = nchar(seq_of_interest[1])) = gsub('^I=', '', variants[which(positions == position)])
+            
+          }else{ # SNVs or Insertions at other positions
+            
+            seq_of_interest[as.integer(position)] = gsub('^I=', '', variants[which(positions == position)])
+            
+          }
+          
+        }else{ # If polymorphism is a Deletion
+          
+          if(position == '1' & '0' %in% positions){ # If deletion is at position 1 after an insertion at position 0
+            
+            #stop("Del")
+            seq_of_interest[1] = gsub('.$', '', seq_of_interest[1])
+            
+            if(nchar(variants[which(positions == position)]) - 3 > 0){
+              deletion_starts = as.integer(position) + 1
+              deletion_ends = as.integer(position) + nchar(variants[which(positions == position)]) - 3 # 2 for the "D" and "=" and 1 because is already included at the start
+              seq_of_interest[deletion_starts:deletion_ends] = ''
+            }
+            
+            
+          }else{ # Deletions at other positions
+            
+            deletion_starts = as.integer(position)
+            deletion_ends = as.integer(position) + nchar(variants[which(positions == position)]) - 3 # 2 for the "D" and "=" and 1 because is already included at the start
+            seq_of_interest[deletion_starts:deletion_ends] = ''
+            
+          }
+          
+        }
+        
+      }
+      
+      seq_of_interest = paste(seq_of_interest, collapse = '')
+      
+    }
+    
+    return(seq_of_interest)
+    
+  }
+  
+  fasta_seqs = NULL
+  
+  for(i in 1:nrow(obj)){
+    
+    cigar_string = obj[[cigar_string_col]][i]
+    Amplicon = obj[[amplicon_col]][i]
+    ref_fasta_seq = as.character(ref_fasta_seqs[[Amplicon]])
+    
+    fasta_seq = cigar_string2fasta(cigar_string, ref_fasta_seq)
+    
+    if(length(fasta_seq) == 0){
+      stop(paste0('CIGAR string ', cigar_string, ' in Amplicon ', Amplicon, ' do not produced a Fasta sequence'))
+    }
+    
+    fasta_seqs =
+      rbind(fasta_seqs, data.frame(Amplicon = Amplicon, CIGAR = cigar_string, fasta = fasta_seq))
+
+  }
+  
+  return(fasta_seqs)
+  
+}
+
+
 
 pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha = 0.05, method = 'exact'){
   library(parallel)
@@ -8368,8 +11246,8 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
   library(svMisc)
   
   
-  if(class(obj) == 'list'){
-    gt  = obj$loci_table
+  if(class(obj) == 'loci'){
+    gt  = obj@loci_table
     
   }else if(class(obj) == 'ampseq'){
     loci_object = ampseq2loci(ampseq_object)
@@ -8395,13 +11273,13 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
     dist_x_y = x != y
     
     estimate = binconf(sum(dist_x_y, na.rm = T),
-                       sum(!is.na(dist_x_y)), 
-                       alpha = alpha,
-                       method = method, 
-                       include.x = T, 
-                       include.n = T, 
-                       return.df = T
-    )
+              sum(!is.na(dist_x_y)), 
+              alpha = alpha,
+              method = method, 
+              include.x = T, 
+              include.n = T, 
+              return.df = T
+      )
     
     return(estimate)
   }
@@ -8440,8 +11318,8 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
           
           estimate = rbind(estimate,
                            get_euclidean_dist(Yi[haplotype_i,],
-                                              Yj[haplotype_j,]
-                           ))
+                             Yj[haplotype_j,]
+                             ))
           
           
         }
@@ -8473,7 +11351,7 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
       Yj_id = pairs[pair, 2]
       
       
-      Yi = split_clones(gt[Yi_id,], Yi_id)
+      Yi = split_clones(genotype = gt[Yi_id,], genotype_name = Yi_id)
       
       Yi = matrix(as.integer(Yi), 
                   nrow = nrow(Yi),
@@ -8531,4 +11409,178 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
   
 }
 
+
+
+
+split_clones = function(genotype, genotype_name = NULL){
+  
+  if(is.null(genotype_name)){
+    genotype_name = 'Yi'
+  }
+  
+  max_nAlleles = ifelse(sum(grepl("_",genotype)) == 0,
+                        1,
+                        max(unlist(sapply(
+                          sapply(
+                            genotype[which(grepl("_",genotype))], function(x){strsplit(x, "_")}),
+                          function(x) length(x)))))
+  
+  splited_genotype = matrix(NA,
+                            nrow = max_nAlleles,
+                            ncol = length(genotype),
+                            dimnames = list(
+                              paste0(genotype_name, '_C', 1:max_nAlleles),
+                              names(genotype)
+                            ))
+  for(clone in 1:max_nAlleles){
+    splited_genotype[clone, ] = gsub("_.+", "", genotype)
+    
+    genotype = gsub("^\\d+", "", genotype)
+    genotype = gsub("^_", "", genotype)
+    
+    if(clone > 1){
+      
+      splited_genotype[clone, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] = splited_genotype[1, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] 
+      
+    }
+    
+  }
+  
+  return(splited_genotype)
+  
+}
+
+get_cigar_alleles = function(ampseq_object, 
+                             from = 'gt', # 'asv_table'
+                             as = 'vector', # 'table', 'list'
+                             col = 'CIGAR_masked' # 'CIGAR'
+){
+  
+  if(from == 'gt'){
+    gt = ampseq_object@gt
+    
+    alleles = sapply(colnames(gt), function(mhap){
+      alleles = unique(unlist(strsplit(gsub(':\\d+', '',gt[,mhap]), '_')))
+      
+      alleles = alleles[!is.na(alleles)]
+    })
+    
+    nalleles = sapply(alleles, function(allele){length(allele)})
+    alleles = alleles[nalleles > 0]
+    
+    if(as == 'table'){
+      
+      result = NULL
+      
+      for(Amplicon in names(alleles)){
+        
+        result = rbind(result,
+                       data.frame(Amplicon = Amplicon,
+                                  Allele = alleles[[Amplicon]]))
+      }
+      
+    }else if(as == 'vector'){
+      
+      result = NULL
+      
+      for(Amplicon in names(alleles)){
+        
+        result = c(result,
+                   paste0(Amplicon,
+                          ';',
+                          alleles[[Amplicon]]))
+      }
+      
+    }else if(as == 'list'){
+      
+      result = alleles
+      
+    }
+    
+  }else if(from == 'asv_table'){
+    
+    asv_table = ampseq_object@asv_table
+    
+    alleles = asv_table[,c('Amplicon', col)]
+    names(alleles) = c('Amplicon', 'Allele')
+    
+    alleles = alleles[!is.na(alleles[['Allele']]),]
+    
+    if(as == 'table'){
+      
+      result = alleles %>% arrange(Amplicon)
+      
+    }else if(as == 'vector'){
+      
+      result = sort(paste0(alleles[['Amplicon']], ';', alleles[['Allele']]))
+      
+    }else if(as == 'list'){
+      
+      result = NULL
+      
+      for(Amplicon in sort(unique(alleles[['Amplicon']]))){
+        
+        result[[Amplicon]] = alleles[alleles[['Amplicon']] == Amplicon, ][['Allele']]
+        
+      }
+      
+    }
+    
+  }
+  
+  
+  return(result)
+  
+  
+  
+}
+
+
+consistency_between_gt_and_asvtab = function(ampseq_object){
+  
+  cigars_gt = get_cigar_alleles(ampseq_object, 
+                                    from = 'gt',
+                                    as = 'vector')
+  
+  cigars_asvtab = get_cigar_alleles(ampseq_object, 
+                                        from = 'asv_table',
+                                        as = 'vector',
+                                        col = 'CIGAR_masked')
+  
+  if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
+     sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+    
+    
+    
+    cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                 paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                 '\n\n',
+                 'Cigar strings in asv_table that are not present in gt matrix are:\n',
+                 paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                 '\n'
+    ))
+    
+    stop('There are cigar strings that are different in the gt and the asv_table')
+    
+  }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
+    
+    cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
+                 paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
+                 '\n'))
+    
+    stop('There are cigar strings in the gt that are not present in the asv_table')
+    
+  }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
+    
+    cat(paste0('Cigar strings in asv_table that are not present in gt matrix are:\n',
+                 paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
+                 '\n'))
+    
+    stop('There are cigar strings in the asv_table that are not present in the gt')
+    
+  }else{
+    print('cigar strings are consistent between gt and asv_table')
+  }
+  
+}
 
