@@ -74,8 +74,14 @@ load(params$RData_image)
 
 ## PCA 
 
-PCA plot summarizing the genetic relatedness
-between samples are constructed.
+PCA reduces high-dimensional data into a few principal components (PCs) that
+capture the most variance in the dataset. PC1 (first principal component)
+explains the largest variation, followed by PC2, PC3, and so on. Samples that
+cluster together in a PCA plot share similar patterns, while those farther apart
+are more distinct. Eigenvalues indicate the proportion of variance each PC
+explains, and loadings show how individual variables contribute to each PC. PCA
+is useful for identifying population structure, batch effects, or hidden
+patterns in genomic, epidemiological, or multi-omics datasets
 
 ```{r, fig.width=6, fig.height=4.5, fig.cap="**Figure 1:** Principal coordinate analysis (PCoA) based on the inverse of genetic relatedness (1 - IBD). Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
 IBD_PCA

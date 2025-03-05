@@ -1,5 +1,5 @@
 ---
-title: "*MHap Analysis Report*: PCoA of Genetic Relatedness (IBS)"
+title: "*MHap Analysis Report*: PCA of Genetic Relatedness (IBS)"
 author: "Neafsey Lab"
 output:
   html_document:
@@ -15,37 +15,31 @@ params:
   RData_image: ""
 ---
 
-The genetic relatedness between individual parasite haplotypes and among
-parasite populations has several practical uses in the study of malaria.
-For example, relatedness information can help determine the geographic
-origin of imported infections, define the extent to which parasites are
-dispersing or are contained within landscapes, and identify whether
-specific strains are being selected for over time. Relatedness
-information is also very helpful in understanding longitudinal
-(within-individual) infection dynamics. In the case of *P. vivax*, for
-example, it can distinguish whether infection represents newly acquired
-parasites, recrudescence after treatment, or relapse from longer-lasting
-hypnozoite reservoirs. Relatedness information can also help resolve
-polyclonality signals, i.e., clarify the number of different haplotypes
-co-infecting individual patients.
+The genetic similarity between individual parasite haplotypes and among parasite
+populations provides valuable insights for malaria research and surveillance. 
+Identity by State (IBS) measures how often alleles at a given locus are 
+identical between two individuals, regardless of whether they were inherited 
+from a common ancestor. This metric is particularly useful for tracking genetic 
+variation, detecting population structure, and identifying clusters of 
+genetically similar infections.
 
-Relatedness is defined as the probability that, at any locus in the
-genome, the alleles sampled from two different individuals are identical
-by descent ($IBD$). Genetic markers used for this purpose include SNPs,
-microsatellites, and (increasingly) amplicon micro-haplotypes (MHAP).
-Relatedness can be estimated using a Hidden Markov Model approach
-implemented in the [R package
-paneljudge](https://github.com/aimeertaylor/paneljudge/tree/master) (see
-mathematical framework in [AR Taylor et al.
-2019](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6707449/)). In this
-package, relatedness ($r$) is estimated as a function of the haplotype
-of the two sampled parasites ($Y^{(i)}$ and $Y^{(j)}$, where $i$ and $j$
-denote two different sampled genotypes from the population), the
-frequency of the alleles in the population ($f_t(g)$, where $t$ denotes
-locus), the physical distance ($d_t$, in base-pairs) between
-successively analyzed loci ($t-1$ and $t$), the recombination rate
-($\rho$), a switching rate of the Markov chain ($k$), and a constant
-genotyping error rate ($\varepsilon$).
+IBS-based analyses can help determine the geographic origin of imported 
+infections, assess the degree of genetic similarity between circulating parasite
+populations, and identify genetic shifts in response to drug pressure or other 
+selection forces. IBS is also helpful in longitudinal infection studies, 
+distinguishing between genetically similar versus highly distinct infections, 
+which can provide insights into reinfection dynamics, recrudescence, or relapse 
+in species like P. vivax. Additionally, IBS is useful for detecting polyclonal 
+infections, identifying whether multiple haplotypes are co-infecting an 
+individual.
+
+IBS is estimated using genome-wide genetic markers, including SNPs, 
+microsatellites, and amplicon micro-haplotypes (MHAPs). It is typically computed
+as a pairwise similarity score across multiple loci, without requiring pedigree 
+or transmission history. Unlike Identity by Descent (IBD), which tracks 
+inherited segments from a common ancestor, IBS purely reflects genotypic 
+similarity and can be influenced by factors such as homoplasy, convergent 
+evolution, and sequencing errors.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, include = TRUE)
@@ -74,21 +68,62 @@ load(params$RData_image)
 
 ## PCA 
 
-PCA plot summarizing the genetic relatedness
-between samples are constructed.
+PCA reduces high-dimensional data into a few principal components (PCs) that 
+capture the most variance in the dataset. PC1 (first principal component) 
+explains the largest variation, followed by PC2, PC3, and so on. Samples that 
+cluster together in a PCA plot share similar patterns, while those farther apart
+are more distinct. Eigenvalues indicate the proportion of variance each PC 
+explains, and loadings show how individual variables contribute to each PC. PCA 
+is useful for identifying population structure, batch effects, or hidden 
+patterns in genomic, epidemiological, or multi-omics datasets.
 
-```{r, fig.width=6, fig.height=4.5, fig.cap="**Figure 1:** Principal coordinate analysis (PCoA) based on the inverse of genetic relatedness (1 - IBD). Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
-IBD_PCA
+```{r, fig.width=6, fig.height=4.5, fig.cap="**Figure 1:** Principal Component analysis (PCA) based on the IBS. Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
+IBS_PCA
 ```
 
-```{r, fig.cap = "**Table 1:** Pairwise ibs table"}
+## Genetic Distance Table
+
+In a PCA (Principal Component Analysis) using Euclidean distance, several 
+key elements quantify genetic differences between sample pairs:
+
+- Yi and Yj – A pair of samples being compared in the dataset.  
+- nDif – The number of different loci between samples Yi and Yj, measuring 
+genetic divergence at specific genomic positions.  
+- nLoci – The total number of loci compared between the two samples, providing a
+denominator to normalize nDif for relative comparisons.  
+- euDist (Euclidean Distance) – The genetic distance between Yi and Yj, 
+calculated using the Euclidean formula. It represents the overall genetic 
+difference between the two samples in multidimensional space.  
+- Lower_euDist – The lower bound of the confidence interval for Euclidean 
+distance, accounting for variability or uncertainty in the data.  
+- Upper_euDist – The upper bound of the confidence interval for Euclidean 
+distance, indicating the range within which the true distance likely falls.  
+
+```{r, fig.cap = "**Table 1:** Pairwise IBS table"}
 pairwise_ibs %>%
   DT::datatable(extensions = 'Buttons',
                 options = list(dom = 'Blfrtip',
                                buttons = c('csv', 'excel')))
 ```
 
-```{r, fig.cap = "**Table 1:** Coi by sample"}
+## COI
+
+In malaria epidemiology, the term polyclonality represents the co-occurrence of 
+two or more different parasite clones (e.g., haplotypes) within an infected 
+individual. Polyclonality may occur due to the concurrent transmission of 
+multiple parasite haplotypes from the same mosquito bite (co-infection) or the 
+acquisition of different haplotypes through independent bites (super-infection).
+Both processes are related to the intensity of transmission. In low transmission
+settings, there are few infective bites and therefore little chance for 
+super-infections or co-infections to occur. Most infections are therefore 
+monoclonal. On the other hand, when conditions favor an increase in mosquito 
+prevalence and human-mosquito interaction, super-infections and co-infections 
+become more likely, generating an increase in the prevalence of polyclonal 
+infections. Polyclonality rate is therefore generally considered a positive 
+correlate of malaria transmission intensity (although other features such as 
+case importation or relapse behavior in *P. vivax* may modify this relationship).
+
+```{r, fig.cap = "**Table 1:** COI by sample"}
 coi_by_Sample %>%
   DT::datatable(extensions = 'Buttons',
                 options = list(dom = 'Blfrtip',

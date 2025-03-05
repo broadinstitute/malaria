@@ -157,10 +157,8 @@ amplicon_fasta <- NULL
 pairwise_relatedness_table <- NULL
 ampseq_excelfile = "/Users/jar4142/Desktop/WDL_AMPSEQ_TESTER_REPO/PCA/Colombia_Data_Development_minimal"
 #ampseq_excelfile = "/Users/jar4142/Desktop/WDL_AMPSEQ_TESTER_REPO/PCA/Colombia_AMPLSeq_Development/"
-
 }
 
-print("WATERMARK1")
 # PATHs to references and functions----
 
 code_environment = gsub("/$", "", args$environment)
@@ -304,7 +302,6 @@ if(!is.null(selected_checkboxes)){
     var_filter = strsplit(var_filter, '/')[[1]]
   }
 }
-print("WATERMARK2")
 
 print('var_filter: ')
 print(var_filter)
@@ -482,7 +479,6 @@ col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_co
 print("starting to upload genotypic data")
 
 print("Uploading genotypic data in ampseq format from Excel file(s)")
-print("WATERMARK3")
 
 # Check if ampseq_excelfile is a directory
 if (dir.exists(ampseq_excelfile)) {
@@ -529,7 +525,6 @@ if(!is.null(samples_to_keep)) {
 
 # if locus_ampl_rate was provided
 print('Measuring amplification rate by locus')
-print("WATERMARK4")
 if(!is.null(locus_ampl_rate)){
 
   if(!is.null(Variable1)){
@@ -596,7 +591,7 @@ for(w in 1:nchunks){
 }
  
 evectors_IBS = GRM_evectors(ibs_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = 'Country')
-IBD_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))+
+IBS_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))+
   geom_point(alpha = .7, size = 2) +
   stat_ellipse(level = .6)+
   scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
@@ -604,8 +599,6 @@ IBD_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))
   labs(#x = paste0('1st PCo (', round(evectors_IBS$contrib[1],1), '%)'),
        #y = paste0('2nd PCo (', round(evectors_IBS$contrib[2],1), '%)'),
        color = 'Countries')
-
-print("WATERMARK get_polygenomic")
 
 test2 = get_polygenomic(ampseq_object, strata = NULL, update_popsummary = F)
 
@@ -659,7 +652,6 @@ if(tolower(code_environment) == 'local'){
 
 #GENETIC RELATEDNESS - IBD
 if(!is.null(ibd_thres)){
- print("WATERMARK5")
  print(ampseq_object@gt)
  print(ampseq_object@metadata)
  # call hmmIBD and PCA functions from Rcpp
@@ -701,7 +693,6 @@ if(!is.null(ibd_thres)){
    pairwise_relatedness = read.csv(pairwise_relatedness_table)
 
  }
- print("WATERMARK6")
  if(!is.null(Variable2)){
    plot_frac_highly_related_overtime_between = plot_frac_highly_related_over_time(
      pairwise_relatedness = pairwise_relatedness,
@@ -714,7 +705,6 @@ if(!is.null(ibd_thres)){
      pop_levels = NULL)
  }
 
- print("WATERMARK7")
  ## Population subdivision----
  evectors_IBD = IBD_evectors(ampseq_object = ampseq_object,
                              relatedness_table = pairwise_relatedness,
@@ -737,7 +727,6 @@ if(!is.null(ibd_thres)){
 
 
  print('Generation of plots and tables for IBD and Connectivity report done')
- print("WATERMARK8")
  IBD_Connectivity_Report_expected_outputs = c(#'plot_relatedness_distribution_between',
                                               'plot_frac_highly_related_between',
                                               'plot_frac_highly_related_overtime_between',
@@ -752,7 +741,6 @@ if(!is.null(ibd_thres)){
                                               'Variable2')
 
  IBD_Connectivity_Report_outputs = IBD_Connectivity_Report_expected_outputs[IBD_Connectivity_Report_expected_outputs %in% ls()]
- print("WATERMARK9")
  if(tolower(code_environment) == 'local'){
    imagename = file.path(wd,paste0(output, '_IBD_Connectivity_Report.RData'))
 
@@ -778,7 +766,6 @@ if(!is.null(ibd_thres)){
      output_dir = 'Results')
  }
  print("Leaving render script")
- print("WATERMARK10")
  plot_frac_highly_related_within = plot_frac_highly_related(
    pairwise_relatedness = pairwise_relatedness,
    metadata = ampseq_object@metadata,

@@ -7729,7 +7729,6 @@ estimate_r_and_k <- function(fs, ds, Ys, epsilon = 0.001, rho = 7.4 * 10 ^ (-7),
 
 ### pairwise_hmmIBD----
 
-
 pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
   library(parallel)
   library(doMC)
@@ -7811,7 +7810,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
-      
+
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
       
       Yi = matrix(as.integer(Yi), 
@@ -7836,6 +7835,7 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       estimate = NULL
       
       for(haplotype_i in 1:nrow(Yi)){
+
         for(haplotype_j in 1:nrow(Yj)){
           
           if(sum(is.na(Yi[haplotype_i,] - Yj[haplotype_j,]))/length(Yi[haplotype_i,]) < 1){
@@ -7874,11 +7874,9 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
-      
-      print(Yi_id)
-      
+            
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
-      
+            
       Yi = matrix(as.integer(Yi), 
                   nrow = nrow(Yi),
                   ncol = ncol(Yi),

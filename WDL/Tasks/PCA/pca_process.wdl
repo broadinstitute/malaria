@@ -86,8 +86,8 @@ task pca {
 	}
 
 	runtime { 
-		cpu: 16 
-		memory: "40 GiB" 
+		cpu: 32
+		memory: "80 GiB" 
 		disks: "local-disk 10 HDD" 
 		bootDiskSizeGb: 10 
 		preemptible: 3 
