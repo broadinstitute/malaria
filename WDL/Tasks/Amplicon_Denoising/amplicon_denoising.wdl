@@ -152,12 +152,12 @@ task amplicon_denoising {
 
     output {
         File ASVBimeras_o = "Results/ASVBimeras.txt"
+        File ReadAttrition_o = "Results/reads_summary.txt"
         File ASVTable_o = "Results/ASVTable.txt"
         File ASVSeqs_o = "Results/ASVSeqs.fasta"
         File CIGARVariants_Bfilter_o = "Results/CIGARVariants_Bfilter.out.tsv"
         File ASV_to_CIGAR_o = "Results/ASV_to_CIGAR.out.txt"
         File ZeroReadsSampleList_o = "Results/ZeroReadsSampleList.txt"
-        File ReadAttrition_o = "Results/reads_summary.txt"
     }
 
     runtime {

@@ -102,7 +102,7 @@ def main():
 	ac.run_muscle(bins, outdir=path_to_alignments)
 
 	print("INFO: Parsing alignments to CIGAR strings")
-	cigars = ac.parse_alignments(bins, mask=mask, min_homopolymer_length=polyN, outdir=path_to_alignments, verbose=False)
+	cigars = ac.parse_alignments(bins, mask=mask, min_homopolymer_length=polyN, outdir=path_to_alignments)
 	if not cigars:
 		print("ERROR: could not determine CIGAR strings")
 		sys.exit(1)

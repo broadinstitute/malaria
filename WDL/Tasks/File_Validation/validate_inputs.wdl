@@ -4,7 +4,7 @@ task validate_fastqs {
     input {
         File fastq1
         File fastq2
-        Boolean? use_validated_fastqs = false
+        Boolean? use_validated_fastqs = true
     }
 
     String fq1_prefix = basename(sub(fastq1, "\.fq", "\.fastq"), ".fastq.gz")

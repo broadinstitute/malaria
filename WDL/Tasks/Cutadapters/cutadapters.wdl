@@ -6,7 +6,7 @@ task cutadapters {
         File fastq2
         Int trim_galore_qvalue = 5
         Int trim_galore_length = 20
-        Int downsample_fraction = 0
+        Int downsample_fraction = 40000
     }
     # Get the basename of the fastq files without any fastq extensions:
     # CORRECT THIS: ALL BASENAMES GET THE R1 VALUE, EVEN THE REVERSE READS FILES
