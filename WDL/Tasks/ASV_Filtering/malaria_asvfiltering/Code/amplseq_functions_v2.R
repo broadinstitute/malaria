@@ -147,7 +147,6 @@ read_cigar_tables = function(paths = NULL,
   }else if(is.null(paths)&!is.null(cigar_files)){
     print("Iterating through cigar_files...")
     
-    
     for(file in 1:length(cigar_files)){
       cigar_run = read.table(cigar_files[file], header = T, check.names = FALSE
       )
@@ -525,7 +524,6 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
       print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the column amplicon of the markers table.')
       
     }
-    
     ampseq_loci_vector = markers[["amplicon"]]
     
   }else if(!is.null(markers_pattern)){
@@ -534,13 +532,8 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
     ampseq_loci_vector = unique(gsub(all_alleles, '',colnames(cigar_table)))
     
   }else if(is.null(markers) & is.null(markers_pattern)){
-    ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
+    ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1])) # With cigar table and no marker information, this is unsorted
     markers = data.frame(amplicon = ampseq_loci_vector, length=NA)
-  }
-
-  # Check - If cigar_table and ampseq_loci_vector are not equal, recorrect ampseq_loci_vector to prevent errors propagated by different markersTable information
-  if(!setequal(unique(colnames(cigar_table)), unique(ampseq_loci_vector))){
-    ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
   }
 
   ampseq_loci_abd_table = matrix(NA, nrow = nrow(cigar_table), ncol = length(ampseq_loci_vector), dimnames = list(rownames(cigar_table), ampseq_loci_vector))
@@ -594,7 +587,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
                                   markers = markers,
                                   loci_performance = NULL,
                                   pop_summary = NULL)
-    print(ampseq_object@gt)
+    # print(ampseq_object@gt)
     return(ampseq_object)
     
   }else{
@@ -2782,7 +2775,7 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
   print("Calculating loci performance...")
   loci_performance = data.frame(loci = colnames(ampseq_loci_abd_table),
                                 loci_ampl_rate_Total = apply(ampseq_loci_abd_table, 2, function(x) 1 - sum(is.na(x))/length(x)))
-  print(loci_performance)
+  # print(loci_performance)
   print("Finished calculating loci performance!") 
   if(!is.null(strata)){
     
@@ -2939,7 +2932,7 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       # markers[["distance"]] = Inf
         
       #Per-chromosome calculation of distance
-      print(markers)
+      # print(markers)
       for(chromosome in levels(as.factor(markers[["chromosome"]]))){
         chr_markers = markers[markers[["chromosome"]] == chromosome, , drop=FALSE]
         if (nrow(chr_markers) > 1 && all(!is.na(chr_markers[["pos"]]))) {
@@ -3043,23 +3036,23 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold , ,][["Sample_id"]]]
     number_of_kept_samples = length(name_of_kept_samples)
     
-    print("Table with discarded samples")
-    print(ampseq_loci_abd_table[name_of_discarded_samples,])
+    # print("Table with discarded samples")
+    # print(ampseq_loci_abd_table[name_of_discarded_samples,])
     
     ampseq_loci_abd_table_discarded_samples = matrix(ampseq_loci_abd_table[name_of_discarded_samples,], 
                                                      nrow = number_of_discarded_samples, 
                                                      ncol = ncol(ampseq_loci_abd_table),
                                                      dimnames = list(name_of_discarded_samples,
                                                                      colnames(ampseq_loci_abd_table)))
-    print("Printing ampseq_loci_abd_table_discarded_samples...")
-    print(name_of_discarded_samples)
+    # print("Printing ampseq_loci_abd_table_discarded_samples...")
+    # print(name_of_discarded_samples)
     ampseq_loci_abd_table = matrix(ampseq_loci_abd_table[name_of_kept_samples,],
                                    nrow = number_of_kept_samples,
                                    ncol = ncol(ampseq_loci_abd_table),
                                    dimnames = list(name_of_kept_samples,
                                                    colnames(ampseq_loci_abd_table)))
-    print("Printing ampseq_loci_abd_table...")
-    print(rownames(ampseq_loci_abd_table))
+    # print("Printing ampseq_loci_abd_table...")
+    # print(rownames(ampseq_loci_abd_table))
     metadata_complete = metadata
     metadata = metadata[metadata[["sample_ampl_rate"]] > threshold ,]
     metadata_discarded = metadata_complete[metadata_complete[["sample_ampl_rate"]] <= threshold ,]
@@ -3604,7 +3597,6 @@ haplotypes_respect_to_reference = function(ampseq_object,
     # Filter the genes attributes of the CDS
     temp_gff = reference_gff[grepl(gene, reference_gff$attributes, ignore.case = TRUE) &
                                reference_gff$type == 'CDS',]
-    
     # start counting from 0 taking into account the CDSs (exons) where the drugR marker is located
     start_cds_pos = 0
     
@@ -3956,7 +3948,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
               }
               codons = data.frame(alleles = gsub('[0-9]','',alleles), cds_position = cds_position)
             
-              print(codons)
+              # print(codons)
               
               # Identify nucleotide in the reference strain
               codons$ref_variant = sapply(1:nrow(codons), function(x){
@@ -5214,7 +5206,7 @@ drug_resistant_haplotypes = function(ampseq_object,
   
   genotype_phenotype_match = genotype_phenotype_match[!duplicated(genotype_phenotype_match$Genotype),]
   
-  print("Handeling polyclonal samples for haplotype count")
+  print("Handling polyclonal samples for haplotype count")
   
   mon_aacigar_table = aacigar_table[(apply(aacigar_table, 1, function(i){sum(grepl("\\|",i))}) == 0),]
   

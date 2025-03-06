@@ -105,7 +105,7 @@ task prepare_reference_files {
 
 			# Create reverse primer fasta from panel_info
 			sed 's/\r//' ~{panel_info} | awk -F"\t" '{print $1 "\t" $5 "\t" $3 "\t\t\t-"}' | tail -n +2 > primers_rv.bed
-			bedtools getfasta -fo primers_rv.fasta -fi ~{reference_genome} -bed primers_rv.bed
+			bedtools getfasta -s -fo primers_rv.fasta -fi ~{reference_genome} -bed primers_rv.bed #Reverse complement
 			
 			echo "Created reverse primers file."
 			rm primers_rv.bed

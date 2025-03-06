@@ -3956,19 +3956,19 @@ haplotypes_respect_to_reference = function(ampseq_object,
               amplicon_start_cds = markers_of_interest[markers_of_interest$amplicon == amplicon,'start_cds']
               for (i in seq_along(alleles)) {
                 allele = alleles[i]
-                print(paste0("Allele ", i, ":", allele))
+                # print(paste0("Allele ", i, ":", allele))
 
                 cds_position[i] = NA
                 if (!is.na(allele) && nzchar(allele)){
                   # Extract mhap_position
                   mhap_position = as.integer(str_extract(allele, '\\d+'))
-                  print(paste0("MHap Position: ", mhap_position))
+                  # print(paste0("MHap Position: ", mhap_position))
                   cds_position[i] = amplicon_start_cds + mhap_position - 1
                 }
               }
               codons = data.frame(alleles = gsub('[0-9]','',alleles), cds_position = cds_position)
             
-              print(codons)
+              # print(codons)
               
               # Identify nucleotide in the reference strain
               codons$ref_variant = sapply(1:nrow(codons), function(x){
@@ -6024,7 +6024,6 @@ drug_resistant_haplotypes = function(ampseq_object,
          color = 'Phenotype')
   
 
-  
   print("Estimating frequency for drug resistant phenotypes")
   
   if(!is.null(Longitude) & !is.null(Latitude)){
@@ -6034,12 +6033,10 @@ drug_resistant_haplotypes = function(ampseq_object,
                 Latitude = mean(Latitude),
                 count = sum(count), .by = c(Drug, Phenotype, var1))
     
-
     drug_phenotype_summary_sdf$ssize = NA
     drug_phenotype_summary_sdf$freq = NA
     drug_phenotype_summary_sdf$freq_lower = NA
     drug_phenotype_summary_sdf$freq_upper = NA
-    
     
     for(drug in levels(as.factor(drug_phenotype_summary_sdf$Drug))){
       for(Pop in levels(as.factor(drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug,][['var1']]))){
@@ -6067,16 +6064,13 @@ drug_resistant_haplotypes = function(ampseq_object,
         
         
       }
-    }
-    
-    
+    }    
     drug_phenotype_summary_sdf %<>% filter(!is.na(Longitude), !is.na(Latitude))
     
     drug_phenotype_summary_sdf %<>% mutate(logssize = log(ssize, 1.3))
     
     drug_phenotype_summary_sdf %<>% filter(Phenotype == "Mutation(s) associated with a resistant phenotype")
-    
-    
+        
     print("Transforming data to spatial points")
     drug_phenotype_summary_sdf = SpatialPointsDataFrame(coords = drug_phenotype_summary_sdf[,c("Longitude", "Latitude")],
                                                         data = drug_phenotype_summary_sdf,
