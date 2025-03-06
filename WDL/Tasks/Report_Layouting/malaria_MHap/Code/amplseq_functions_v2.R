@@ -622,8 +622,8 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[names(ampseq_object@asv_seqs) %in%
                                                           ampseq_object@asv_table$hapid]
         
-        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
         
       }
       
@@ -733,7 +733,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
   asv_seqs = NULL
   metadata = NULL
   markers = NULL
-  
+
   for(obj in 1:length(ampseq_obj_list)){
     
     obj = ampseq_obj_list[[obj]]
@@ -2133,7 +2133,7 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
 ## filter_samples----
 
 filter_samples = function(obj, v, update_cigars = TRUE){
-  
+
   if(class(obj) == 'ampseq'){
     obj2 = obj
     obj2@gt = obj@gt[v,]
@@ -2177,8 +2177,8 @@ filter_samples = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
 
-          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
-          names(obj2@asv_seqs) = obj2@asv_table$hapid
+          #obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
+          #names(obj2@asv_seqs) = obj2@asv_table$hapid
 
         }
 
@@ -2210,8 +2210,8 @@ filter_samples = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
           
-          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
-          names(obj2@asv_seqs) = obj2@asv_table$hapid
+          #obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
+          #names(obj2@asv_seqs) = obj2@asv_table$hapid
           
         }
         
@@ -2316,8 +2316,8 @@ filter_loci = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
 
-          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
-          names(obj2@asv_seqs) = obj2@asv_table$hapid
+          #obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
+          #names(obj2@asv_seqs) = obj2@asv_table$hapid
 
         }
 
@@ -2350,8 +2350,8 @@ filter_loci = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
           
-          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
-          names(obj2@asv_seqs) = obj2@asv_table$hapid
+          #obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
+          #names(obj2@asv_seqs) = obj2@asv_table$hapid
           
         }
         
@@ -3586,7 +3586,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
   #                   2271494,
   #                   2925236,
   #                   3291936)
-  
   ampseq_loci_abd_table = ampseq_object@gt
   
   print("Calculating loci performance...")
@@ -3604,7 +3603,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     ))
     
     for(pop in unique(ampseq_object@metadata[['Strata']])){
-      
       temp_ampseq_object = filter_samples(ampseq_object,
                                           v = (ampseq_object@metadata[['Strata']] == pop)
       )
@@ -3763,8 +3761,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
         }        
         
@@ -3796,8 +3794,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
           
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
           
         }
         
@@ -3893,8 +3891,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
         }
 
@@ -3926,8 +3924,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
           
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
           
         }
         
@@ -4100,8 +4098,8 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[
           names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
-        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
       }
 
@@ -4134,8 +4132,8 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[
           names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
         
-        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
         
       }
       
@@ -9030,10 +9028,9 @@ GRM_evectors = function(gt = NULL, dist_table = NULL, k = nrow(gt), metadata, Po
 
 ### IBD_evectors----
 IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Population', q = 2,
-                        method = 'primcomp', # fastGRM
+                        method = 'princomp', # fastGRM
                         cor = T
                         ){
-  
   metadata = ampseq_object@metadata
   
   
@@ -9110,6 +9107,8 @@ IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Popul
     
     ibd_pca = list(eigenvector=ibd_evector, eigenvalues = ibd_evalues, contrib = ibd_contrib)
     
+  }else{
+    print("No MEthod detected")
   }
 
   
@@ -9523,8 +9522,8 @@ remove_replicates = function(ampseq_object, v){
         names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
 
-      ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-      names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+      #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
     }
 
@@ -9558,8 +9557,8 @@ remove_replicates = function(ampseq_object, v){
         names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
       
       
-      ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-      names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+      #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
       
     }
     

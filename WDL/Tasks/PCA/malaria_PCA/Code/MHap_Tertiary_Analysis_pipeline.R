@@ -577,7 +577,7 @@ if(nchunks > (nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2) {
   
 loci_object = ampseq2loci(ampseq_object)
   
-nrow(loci_object$loci_table)
+nrow(loci_object@loci_table)
   
 for(w in 1:nchunks){
     
@@ -590,7 +590,7 @@ for(w in 1:nchunks){
     
 }
  
-evectors_IBS = GRM_evectors(ibs_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = 'Country')
+evectors_IBS = GRM_evectors(dist_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = 'Country')
 IBS_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))+
   geom_point(alpha = .7, size = 2) +
   stat_ellipse(level = .6)+

@@ -47,6 +47,6 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
 RUN curl https://sdk.cloud.google.com | bash
 ENV PATH=/root/google-cloud-sdk/bin/:${PATH}
 
-RUN apt-get install -y gcc python3-dev python3-setuptools && pip3 uninstall -y crcmod && pip3 install --no-cache-dir -U crcmod
+RUN apt-get update && apt-get install -y gcc python3-dev python3-setuptools && pip3 uninstall -y crcmod && pip3 install --no-cache-dir -U crcmod
 
-Copy Code Code
+COPY Code Code

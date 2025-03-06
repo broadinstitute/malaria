@@ -881,6 +881,7 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
   # Check if markers is not null
   if(!is.null(markers)){
       markers = read.csv(markers)
+      markers %<>% arrange(chromosome, start) #Sort markers to ensure consistency
   }
   
   # Load data for performance report
@@ -914,9 +915,9 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
     # add discarded loci
     ampseq_object@markers = rbind(ampseq_object@markers,
                                   ampseq_object@discarded_loci$markers)
-    
+
     ampseq_object@markers %<>% arrange(chromosome, start)
-    
+
     # update distance
     ampseq_object@markers[["distance"]] = Inf
     
@@ -926,14 +927,14 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
           ampseq_object@markers[ampseq_object@markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - ampseq_object@markers[ampseq_object@markers[["chromosome"]] == chromosome,][amplicon, "pos"]
       }
     }
-    
+
     ampseq_object@gt = ampseq_object@gt[rownames(ampseq_object@discarded_loci$gt),]
-    
+
     ampseq_object@gt = cbind(ampseq_object@gt,
                              ampseq_object@discarded_loci$gt)
-    
+
     ampseq_object@gt = ampseq_object@gt[,ampseq_object@markers$amplicon]
-    
+
     ampseq_object@metadata = ampseq_object@metadata[rownames(ampseq_object@gt),]
     
     ampseq_object@loci_performance = NULL
@@ -986,7 +987,7 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
   }
   
 }else if(!is.null(ampseq_csvfolder)){ 
-  print("Uploading genotipic data in ampseq format from excel file")
+  print("Uploading genotypic data in ampseq format from CSV folder")
   ampseq_object = read_ampseq(file = ampseq_csvfolder, format = 'csv')
     
   # add discarded samples
