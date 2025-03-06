@@ -2153,7 +2153,7 @@ filter_samples = function(obj, v, update_cigars = TRUE){
       if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
          sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
-        wraning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
+        warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
 
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
@@ -2184,7 +2184,7 @@ filter_samples = function(obj, v, update_cigars = TRUE){
         
       }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
         
-        wraning('There are cigar strings in the gt that are not present in the asv_table')
+        warning('There are cigar strings in the gt that are not present in the asv_table')
 
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
@@ -8370,7 +8370,7 @@ plot_frac_highly_related_over_time = function(pairwise_relatedness = pairwise_re
   pairwise_relatedness_l %<>% filter(Yi %in% metadata$Sample_id,
                                      Yj %in% metadata$Sample_id)
   
-  # Giving wraning message, otherwise it is faster
+  # Giving warning message, otherwise it is faster
   # pairwise_relatedness_l %<>% mutate(
   #   Population_Yi = metadata[grepl(Yi, metadata[['samples']]),][[Population[1]]],
   #   Population_Yj = metadata[grepl(Yj, metadata[['samples']]),][[Population[1]]],
