@@ -2,7 +2,9 @@
 # Functions to create, upload, joint, write or convert formats that store genetic data ----
 
 ## cigar S4class and create_cigar----
+
 ## cigar S4 class
+
 setClass('cigar', slots = c(
   cigar_table = "ANY",
   metadata = "ANY",
@@ -26,6 +28,7 @@ create_cigar = function(cigar_table = NULL,
 }
 
 ## read_cigar_tables----
+
 read_cigar_tables = function(paths = NULL,
                              cigar_files = NULL,
                              asv_table_files = NULL,
@@ -66,6 +69,7 @@ read_cigar_tables = function(paths = NULL,
           print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the cigar table.')
           
         }
+        
       }else{
         print(paste0('Cigar file ', file.path(paths, Run, "dada2/run_dada2/CIGARVariants_Bfilter.out.tsv"), ' not found'))
       }
@@ -74,6 +78,7 @@ read_cigar_tables = function(paths = NULL,
         asv2cigar_run = read.table(file.path(paths, Run, "dada2/run_dada2/ASV_to_CIGAR.out.txt"),
                                    header = T,
                                    check.names = FALSE)
+        
       }else{
         print(paste0('asv2cigar file ', file.path(paths, Run, "dada2/run_dada2/ASVTable.txt"), ' not found'))
       }
@@ -84,10 +89,12 @@ read_cigar_tables = function(paths = NULL,
                                    check.names = FALSE)
         asv_table_run = left_join(asv_table_run, asv2cigar_run, by = join_by(hapid == ASV))
         
+        
         if(sum(grepl('(/|-|:)', asv_table_run[['Amplicon']])) > 0){
           
           asv_table_run[['Amplicon']] = gsub('(/|-|:)', '_', asv_table_run[['Amplicon']])
           print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the column Amplicon of the ASV table.')
+          
         }
         
       }else{
@@ -145,7 +152,6 @@ read_cigar_tables = function(paths = NULL,
       
     }
   }else if(is.null(paths)&!is.null(cigar_files)){
-    print("Iterating through cigar_files...")
     
     
     for(file in 1:length(cigar_files)){
@@ -268,14 +274,12 @@ read_cigar_tables = function(paths = NULL,
         temp_asv_table2 = temp_asv_table1[as.character(temp_asv_seqs1) %in% as.character(asv_seqs),]
         temp_asv_seqs2 = temp_asv_seqs1[as.character(temp_asv_seqs1) %in% as.character(asv_seqs)]
         rownames(temp_asv_table2) = as.character(temp_asv_seqs2)
-        # temp_asv_table2$asvs = as.character(temp_asv_seqs2)
-        # 
-        # temp_asv_table2 = temp_asv_table2[order(temp_asv_table2$asvs),]
         
         # asvs in the previous data set present in the new data set
         temp_asv_table3 = asv_table[as.character(asv_seqs) %in% as.character(temp_asv_seqs1),]
         temp_asv_seqs3 = asv_seqs[as.character(asv_seqs) %in% as.character(temp_asv_seqs1)]
         rownames(temp_asv_table3) = as.character(temp_asv_seqs3)
+        
         
         # Update the unique identifier of the asv (hapid)
         temp_asv_table2 = temp_asv_table2[rownames(temp_asv_table3),]
@@ -287,14 +291,14 @@ read_cigar_tables = function(paths = NULL,
         temp_asv_table3[['bimera']] = temp_asv_table3[['bimera']] | temp_asv_table2[['bimera']]
         
         # Impute the inconsistent cigar_strings in the cigar_table
-        
         unconsitent_cigar_strings = data.frame(temp_asv_table2[temp_asv_table2$CIGAR != temp_asv_table3$CIGAR,], 
                                                CIGAR2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']])
+        
         for(allele in unconsitent_cigar_strings$CIGAR){
           
           cigar_table[
             cigar_table$alleles == 
-          paste(unconsitent_cigar_strings[unconsitent_cigar_strings$CIGAR == allele, c('Amplicon', 'CIGAR')], collapse = ','),][['alleles']] = 
+              paste(unconsitent_cigar_strings[unconsitent_cigar_strings$CIGAR == allele, c('Amplicon', 'CIGAR')], collapse = ','),][['alleles']] = 
             paste(unconsitent_cigar_strings[unconsitent_cigar_strings$CIGAR == allele, c('Amplicon', 'CIGAR2')], collapse = ',')
           
         }
@@ -544,16 +548,19 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
   if(!setequal(unique(colnames(cigar_table)), unique(ampseq_loci_vector))){
     ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
   }
-
+  
   ampseq_loci_abd_table = matrix(NA, nrow = nrow(cigar_table), ncol = length(ampseq_loci_vector), dimnames = list(rownames(cigar_table), ampseq_loci_vector))
+  
   for(sample in rownames(ampseq_loci_abd_table)){
     for(locus in colnames(ampseq_loci_abd_table)){
       alleles = cigar_table[sample, grepl(paste0("^",locus,',|\\.)'), colnames(cigar_table))]
+      
       if(length(alleles) == 1){
         names(alleles) <- colnames(cigar_table)[grepl(paste0("^",locus,',|\\.)'), colnames(cigar_table))]
       }
       
-      if(length(alleles[which(alleles >= min_abd)]) == 1){ 
+      if(length(alleles[which(alleles >= min_abd)]) == 1){
+        
         if(!is.null(markers_pattern)){
           ampseq_loci_abd_table[sample, locus] = paste(gsub(locus,'',names(alleles[which(alleles >= min_abd)]), ","), alleles[which(alleles >= min_abd)], sep = ":")
         }else{
@@ -596,7 +603,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
                                   markers = markers,
                                   loci_performance = NULL,
                                   pop_summary = NULL)
-
+    
     cigars_in_gt = get_cigar_alleles(ampseq_object, 
                                            from = 'gt',
                                            as = 'vector')
@@ -615,6 +622,10 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
         Amplicon = gsub(';.+$', '', allele)
         CIGAR_masked = gsub('^.+;', '', allele)
         
+        # ampseq_object@asv_table[ampseq_object@asv_table[['Amplicon']] == Amplicon &
+        #                           ampseq_object@asv_table[['CIGAR_masked']] == CIGAR_masked &
+        #                           !is.na(ampseq_object@asv_table[['CIGAR_masked']]),
+        # ][['CIGAR_masked']] = NA
         
         ampseq_object@asv_table = ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
                                                               ampseq_object@asv_table[['CIGAR_masked']] == CIGAR_masked),]
@@ -628,6 +639,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
       }
       
     }
+    
     return(ampseq_object)
     
   }else{
@@ -641,6 +653,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
                                   markers = markers,
                                   loci_performance = NULL,
                                   pop_summary = NULL)
+    
     cigars_in_gt = get_cigar_alleles(ampseq_object, 
                                      from = 'gt',
                                      as = 'vector')
@@ -659,6 +672,11 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
         Amplicon = gsub(';.+$', '', allele)
         CIGAR_masked = gsub('^.+;', '', allele)
         
+        # ampseq_object@asv_table[ampseq_object@asv_table[['Amplicon']] == Amplicon &
+        #                           ampseq_object@asv_table[['CIGAR_masked']] == CIGAR_masked &
+        #                           !is.na(ampseq_object@asv_table[['CIGAR_masked']]),
+        # ][['CIGAR_masked']] = NA
+        
         ampseq_object@asv_table = ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
                                   ampseq_object@asv_table[['CIGAR_masked']] == CIGAR_masked),]
         
@@ -668,6 +686,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
       }
       
     }
+    
     return(ampseq_object)
     
   }
@@ -734,10 +753,11 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
   metadata = NULL
   markers = NULL
   
-  for(obj in 1:length(ampseq_obj_list)){
+  for(obj in (1:length(ampseq_obj_list))){
+    
+    #if(obj == 3){stop()}
     
     obj = ampseq_obj_list[[obj]]
-    colnames(obj@asv_table) <- gsub("(?<=refid_)\\w+|(?<=snv_dist_from_)\\w+|(?<=indel_dist_from_)\\w+", "3D7", colnames(obj@asv_table), perl = TRUE)
     
     if(is.null(gt)){ # for the first object
       
@@ -779,16 +799,16 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
         temp_asv_table3[['total_samples']] = temp_asv_table3[['total_samples']] + temp_asv_table2[['total_samples']]
         temp_asv_table3[['bimera']] = temp_asv_table3[['bimera']] | temp_asv_table2[['bimera']]
         
-        # Impute the inconsistent cigar_strings in the cigar_table        
+        # Impute the inconsistent cigar_strings in the cigar_table
+
         unconsitent_cigar_strings = data.frame(temp_asv_table2[temp_asv_table2$CIGAR != temp_asv_table3$CIGAR,], 
                                                CIGAR2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']],
-                                               CIGAR_masked2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']])
+                                               CIGAR_masked2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR_masked']])
         
         if(nrow(unconsitent_cigar_strings) > 0){
+          
           for(pos in 1:nrow(unconsitent_cigar_strings)){
             
-            # cigar_string_replacment = unconsitent_cigar_strings[pos, ][['CIGAR2']]
-            # cigar_string_pattern = unconsitent_cigar_strings[pos, ][['CIGAR']]
             cigar_string_masked_replacment = unconsitent_cigar_strings[pos, ][['CIGAR_masked2']]
             cigar_string_masked_pattern = unconsitent_cigar_strings[pos, ][['CIGAR_masked']]
             
@@ -816,7 +836,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
                 cigar_string_masked_replacment_in_samp = gsub(ifelse(cigar_string_masked_pattern == '.', '\\.', cigar_string_masked_pattern),
                                                               cigar_string_masked_replacment,
                                                               ifelse(cigar_string_masked_pattern_in_samp == "\\.:", '.:', cigar_string_masked_pattern_in_samp))
-               
+                
                 cigar_sample_replacement = gsub('\\^', '',gsub(cigar_string_masked_pattern_in_samp,
                                             cigar_string_masked_replacment_in_samp, 
                                             temp_gt1[samp, mhap]))
@@ -944,8 +964,8 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
     rm(list = c('obj'))
     
   }
-   
-   # Remove duplicates
+  
+  # Remove duplicates
   if(remove_replicates){
     
     duplicated_samples = metadata[duplicated(metadata$Sample_id),][['Sample_id']]
@@ -978,7 +998,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
     }
     
   }
-  ## ADD VERIFICATION STEP OF "gt", "asv_table" AND "asv_seqs slots"
+## ADD VERIFICATION STEP OF "gt", "asv_table" AND "asv_seqs slots"
   
   ampseq_object = create_ampseq(gt = gt,
                                 asv_table = asv_table,
@@ -992,7 +1012,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
 
 ## write_ampseq----
 
-write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name = 'wb.xlsx'){
+write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json', 'tsv'), name = 'wb.xlsx', sep = '\t'){
   
   if(format == 'excel'){
     
@@ -1020,9 +1040,9 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
                                 as.data.frame(slot(ampseq_object, temp_slot)))
         } else {
           temp_sheet = NULL
-        }     
+        } 
       }else if(temp_slot == 'asv_seqs'){
-        print("Printing asv_seqs slot...")      
+        print("Printing asv_seqs slot...")
         if(!is.null(slot(ampseq_object, temp_slot))){
           
           temp_sheet = data.frame(asv_id = names(slot(ampseq_object, temp_slot)),
@@ -1046,7 +1066,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
         
       }else if(temp_slot == 'discarded_loci'){
         print("Printing discarded_loci slots...")
-
+        
         temp_sheet = NULL
         
         if(!is.null(slot(ampseq_object, temp_slot))){
@@ -1068,7 +1088,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
           # write markers
           
           temp_discarded_loci_markers = as.data.frame(temp_discarded_loci[['markers']])
-
+          
           # Before setting values to NA, check if any infinite values exist
           if(sum(is.infinite(temp_discarded_loci_markers[['distance']])) > 0){
             temp_discarded_loci_markers[is.infinite(temp_discarded_loci_markers[['distance']]),][['distance']] = NA
@@ -1247,7 +1267,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
           } else {
             temp_discarded_loci_gt = data.frame(Sample_id = NULL)
           }
-
+          
           write.csv(temp_discarded_loci_gt,
                     file.path(name, 'discarded_loci_gt.csv'), 
                     quote = F, row.names = F)
@@ -1348,6 +1368,171 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
     }
     
     
+  }else if(format == 'tsv'){
+    
+    if(file.exists(name)){
+      system(paste0('rm -r ', name))
+    }
+    
+    system(paste0('mkdir ', name))
+    
+    for(temp_slot in c('gt', 
+                       'metadata', 
+                       'markers', 
+                       'loci_performance', 
+                       'asv_table', 
+                       'asv_seqs', 
+                       'discarded_loci',
+                       'discarded_samples',
+                       'controls')){
+      
+      if(temp_slot == 'gt'){
+        
+        temp_sheet = data.frame(Sample_id = rownames(slot(ampseq_object, temp_slot)),
+                                as.data.frame(slot(ampseq_object, temp_slot)))
+        
+      }else if(temp_slot == 'asv_seqs'){
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_sheet = data.frame(asv_id = names(slot(ampseq_object, temp_slot)),
+                                  asv_seq = as.character(slot(ampseq_object, temp_slot)))
+          
+        }else{
+          temp_sheet = NULL
+        }
+        
+      }else if(temp_slot == 'markers'){
+        
+        temp_sheet = as.data.frame(slot(ampseq_object, temp_slot))
+        
+        if(sum(is.infinite(temp_sheet[['distance']])) > 0){
+          temp_sheet[is.infinite(temp_sheet[['distance']]),][['distance']] = NA
+        }
+        
+        
+      }else if(temp_slot == 'discarded_loci'){
+        
+        temp_sheet = NULL
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_discarded_loci = slot(ampseq_object, temp_slot)
+          
+          # write gt
+          
+          if(!is.null(nrow(temp_discarded_loci[['gt']]))){
+            temp_discarded_loci_gt = data.frame(Sample_id = rownames(temp_discarded_loci[['gt']]),
+                                                as.data.frame(temp_discarded_loci[['gt']]))
+          }else{
+            
+            temp_discarded_loci_gt = data.frame(Sample_id = names(temp_discarded_loci[['gt']]),
+                                                as.data.frame(temp_discarded_loci[['gt']]))
+            
+          }
+          
+          
+          
+          write.table(temp_discarded_loci_gt,
+                    file.path(name, 'discarded_loci_gt.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write markers
+          
+          temp_discarded_loci_markers = as.data.frame(temp_discarded_loci[['markers']])
+          
+          if(sum(is.infinite(temp_discarded_loci_markers[['distance']])) > 0){
+            temp_discarded_loci_markers[is.infinite(temp_discarded_loci_markers[['distance']]),][['distance']] = NA  
+          }
+          
+          write.table(temp_discarded_loci_markers,
+                    file.path(name, 'discarded_loci_markers.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write loci_performance
+          
+          temp_discarded_loci_loci_performance = as.data.frame(temp_discarded_loci[['loci_performance']])
+          
+          write.table(temp_discarded_loci_loci_performance,
+                    file.path(name, 'discarded_loci_loci_performance.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+        }
+        
+        
+      }else if(temp_slot == 'discarded_samples'){
+        
+        temp_sheet = NULL
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_discarded_samples = slot(ampseq_object, temp_slot)
+          
+          # write gt
+          
+          temp_discarded_samples_gt = data.frame(Sample_id = rownames(temp_discarded_samples[['gt']]),
+                                              as.data.frame(temp_discarded_samples[['gt']]))
+          
+          write.table(temp_discarded_samples_gt,
+                    file.path(name, 'discarded_samples_gt.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write metadata
+          
+          temp_discarded_samples_metadata = as.data.frame(temp_discarded_samples[['metadata']])
+          
+          write.table(temp_discarded_samples_metadata,
+                    file.path(name, 'discarded_samples_metadata.tsv'),
+                    quote = F, row.names = F, sep = sep)
+        }
+        
+      }else if(temp_slot == 'controls'){
+        
+        temp_sheet = NULL
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_controls = slot(ampseq_object, temp_slot)
+          
+          # write gt
+          
+          temp_controls_gt = data.frame(Sample_id = rownames(temp_controls[['gt']]),
+                                        as.data.frame(temp_controls[['gt']]))
+          
+          write.table(temp_controls_gt,
+                    file.path(name, 'controls_gt.csv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write metadata
+          
+          temp_controls_metadata = as.data.frame(temp_controls[['metadata']])
+          
+          write.table(temp_controls_metadata,
+                    file.path(name, 'controls_metadata.csv'),
+                    quote = F, row.names = F, sep = sep)
+        }
+        
+      }else{
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          temp_sheet = as.data.frame(slot(ampseq_object, temp_slot))
+        }else{
+          temp_sheet = NULL
+        }
+        
+        
+      }
+      
+      if(!is.null(temp_sheet)){
+        
+        write.table(temp_sheet, paste0(file.path(name, temp_slot), '.tsv'), quote = F, row.names = F, sep = sep)
+        
+      }
+      
+      
+    }
+    
+    
   }else if(format == 'json'){
     # In development
     
@@ -1368,7 +1553,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
 
 ## write_cigar----
 
-write_cigar = function(cigar_object, format = c('excel', 'csv', 'json'), name = 'wb.xlsx'){
+write_cigar = function(cigar_object, format = c('excel', 'csv', 'json', 'tsv'), name = 'wb.xlsx', sep = '\t'){
   
   if(format == 'excel'){
     
@@ -1474,6 +1659,56 @@ write_cigar = function(cigar_object, format = c('excel', 'csv', 'json'), name = 
     }
     
     
+  }else if(format == 'tsv'){
+    
+    if(file.exists(name)){
+      system(paste0('rm -r ', name))
+    }
+    
+    system(paste0('mkdir ', name))
+    
+    for(temp_slot in c('cigar_table', 
+                       'metadata',
+                       'asv_table', 
+                       'asv_seqs')){
+      
+      if(temp_slot == 'cigar_table'){
+        
+        temp_sheet = data.frame(Sample_id = rownames(slot(cigar_object, temp_slot)),
+                                as.data.frame(slot(cigar_object, temp_slot)))
+        
+      }else if(temp_slot == 'asv_seqs'){
+        
+        if(!is.null(slot(cigar_object, temp_slot))){
+          
+          temp_sheet = data.frame(asv_id = names(slot(cigar_object, temp_slot)),
+                                  asv_seq = as.character(slot(cigar_object, temp_slot)))
+          
+        }else{
+          temp_sheet = NULL
+        }
+        
+      }else{
+        
+        if(!is.null(slot(cigar_object, temp_slot))){
+          temp_sheet = as.data.frame(slot(cigar_object, temp_slot))
+        }else{
+          temp_sheet = NULL
+        }
+        
+        
+      }
+      
+      if(!is.null(temp_sheet)){
+        
+        write.table(temp_sheet, paste0(file.path(name, temp_slot), '.tsv'), quote = F, row.names = F, sep = sep)
+        
+      }
+      
+      
+    }
+    
+    
   }else if(format == 'json'){
     # In development
     
@@ -1494,7 +1729,7 @@ write_cigar = function(cigar_object, format = c('excel', 'csv', 'json'), name = 
 
 ## read_ampseq----
 
-read_ampseq = function(file = NULL, format = 'excel'){
+read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
   
   ampseq_object = create_ampseq()
   
@@ -1505,6 +1740,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
     for(sheet in getSheets(temp_wb)){
       print(paste0("Loading sheet ", sheet))
       if(sheet == 'gt'){
+        
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_rownames = temp_sheet[,1]
         temp_sheet = as.matrix(temp_sheet[,-1])
@@ -1513,6 +1749,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
       }else if(sheet == 'asv_seqs'){
+        
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_names = temp_sheet[[1]]
         temp_sheet = DNAStringSet(temp_sheet[[2]])
@@ -1521,6 +1758,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
       }else if(sheet %in% c('metadata', 'loci_performance')){
+        
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_rownames = temp_sheet[,1]
         rownames(temp_sheet) = temp_sheet_rownames
@@ -1528,6 +1766,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
       }else if(sheet == 'markers'){
+        
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         if (any(is.na(temp_sheet[['distance']]))){
           temp_sheet[['distance']][is.na(temp_sheet[['distance']])] = Inf 
@@ -1535,6 +1774,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
       }else if(grepl('discarded_loci', sheet)){
+        
         if(sheet == 'discarded_loci_gt'){
           temp_sheet = readWorksheet(temp_wb, sheet = sheet)
           temp_sheet_rownames = temp_sheet[,1]
@@ -1544,6 +1784,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
           ampseq_object@discarded_loci[['gt']] = temp_sheet
           
         }else if(sheet == 'discarded_loci_markers'){
+          
           temp_sheet = readWorksheet(temp_wb, sheet = sheet)
           if (any(is.na(temp_sheet[['distance']]))){
             temp_sheet[['distance']][is.na(temp_sheet[['distance']])] = Inf 
@@ -1551,6 +1792,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
           ampseq_object@discarded_loci[['markers']] = temp_sheet
           
         }else if(sheet == 'discarded_loci_loci_performance'){
+          
           temp_sheet = readWorksheet(temp_wb, sheet = sheet)
           temp_sheet_rownames = temp_sheet[,1]
           rownames(temp_sheet) = temp_sheet_rownames
@@ -1559,6 +1801,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         }
         
       }else if(grepl('discarded_samples', sheet)){
+        
         if(sheet == 'discarded_samples_gt'){
           temp_sheet = readWorksheet(temp_wb, sheet = sheet)
           temp_sheet_rownames = temp_sheet[,1]
@@ -1568,6 +1811,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
           ampseq_object@discarded_samples[['gt']] = temp_sheet
           
         }else if(sheet == 'discarded_samples_metadata'){
+          
           temp_sheet = readWorksheet(temp_wb, sheet = sheet)
           temp_sheet_rownames = temp_sheet[,1]
           rownames(temp_sheet) = temp_sheet_rownames
@@ -1576,6 +1820,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         }
         
       }else if(grepl('controls', sheet)){
+        
         if(sheet == 'controls_gt'){
           temp_sheet = readWorksheet(temp_wb, sheet = sheet)
           temp_sheet_rownames = temp_sheet[,1]
@@ -1636,6 +1881,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         if(sum(is.na(temp_sheet[['distance']]))>0){
           temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf  
         }
+        
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
         
       }else if(grepl('discarded_loci', sheet)){
@@ -1654,6 +1900,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
           if(sum(is.na(temp_sheet[['distance']]))>0){
             temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
           }
+          
           ampseq_object@discarded_loci[['markers']] = temp_sheet
           
         }else if(sheet == 'discarded_loci_loci_performance.csv'){
@@ -1711,6 +1958,119 @@ read_ampseq = function(file = NULL, format = 'excel'){
       }
     }
     
+  }else if(format == 'tsv'){
+    
+    for(sheet in list.files(file)){
+      if(sheet == 'gt.tsv'){
+        
+        temp_sheet = read.table(file.path(file, sheet), sep = sep, header = T)
+        temp_sheet_rownames = temp_sheet[,1]
+        temp_sheet = as.matrix(temp_sheet[,-1])
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(sheet == 'asv_seqs.tsv'){
+        
+        temp_sheet = read.table(file.path(file, sheet), sep = sep, header = T)
+        temp_sheet_names = temp_sheet[[1]]
+        temp_sheet = DNAStringSet(temp_sheet[[2]])
+        names(temp_sheet) = temp_sheet_names
+        
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(sheet %in% c('metadata.tsv', 'loci_performance.tsv')){
+        
+        temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+        temp_sheet_rownames = temp_sheet[,1]
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(sheet == 'markers.tsv'){
+        
+        temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+        
+        if(sum(is.na(temp_sheet[['distance']])) > 0){
+          temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+        }
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(grepl('discarded_loci', sheet)){
+        
+        if(sheet == 'discarded_loci_gt.tsv'){
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          temp_sheet = as.matrix(temp_sheet[,-1])
+          rownames(temp_sheet) = temp_sheet_rownames
+          
+          ampseq_object@discarded_loci[['gt']] = temp_sheet
+          
+        }else if(sheet == 'discarded_loci_markers.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          
+          if(sum(is.na(temp_sheet[['distance']])) > 0){
+            temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+          }
+          
+          ampseq_object@discarded_loci[['markers']] = temp_sheet
+          
+        }else if(sheet == 'discarded_loci_loci_performance.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          rownames(temp_sheet) = temp_sheet_rownames
+          ampseq_object@discarded_loci[['loci_performance']] = temp_sheet
+          
+        }
+        
+      }else if(grepl('discarded_samples', sheet)){
+        
+        if(sheet == 'discarded_samples_gt.tsv'){
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          temp_sheet = as.matrix(temp_sheet[,-1])
+          rownames(temp_sheet) = temp_sheet_rownames
+          
+          ampseq_object@discarded_samples[['gt']] = temp_sheet
+          
+        }else if(sheet == 'discarded_samples_metadata.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          rownames(temp_sheet) = temp_sheet_rownames
+          ampseq_object@discarded_samples[['metadata']] = temp_sheet
+          
+        }
+        
+      }else if(grepl('controls', sheet)){
+        
+        if(sheet == 'controls_gt.tsv'){
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          temp_sheet = as.matrix(temp_sheet[,-1])
+          rownames(temp_sheet) = temp_sheet_rownames
+          
+          ampseq_object@controls[['gt']] = temp_sheet
+          
+        }else if(sheet == 'controls_metadata.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          rownames(temp_sheet) = temp_sheet_rownames
+          ampseq_object@controls[['metadata']] = temp_sheet
+          
+        }
+        
+      }else{
+        
+        temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }
+    }
+    
   }else if(format == 'json'){
     # In development
   }
@@ -1718,6 +2078,8 @@ read_ampseq = function(file = NULL, format = 'excel'){
   return(ampseq_object)
   
 }
+
+
 
 ## loci S4class and create_loci----
 
@@ -1798,6 +2160,7 @@ ampseq2loci = function(ampseq_object){
   return(loci_object)
   
 }
+
 
 ## ampseq2vcf----
 
@@ -2153,8 +2516,6 @@ filter_samples = function(obj, v, update_cigars = TRUE){
       if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
          sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
-        warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
-
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                    '\n\n',
@@ -2162,33 +2523,16 @@ filter_samples = function(obj, v, update_cigars = TRUE){
                    paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
                    '\n'
         ))
-
-        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
-          
-          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
-          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
-          
-          obj2@asv_table = 
-            obj2@asv_table[!(obj2@asv_table[['Amplicon']] == Amplicon &
-                               obj2@asv_table[['CIGAR_masked']] == CIGAR),]
-          
-          obj2@asv_seqs = obj2@asv_seqs[
-            names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
-          
-          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
-          names(obj2@asv_seqs) = obj2@asv_table$hapid
-          
-        }
+        stop('There are cigar strings that are different in the gt and the asv_table')
         
       }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
         
-        warning('There are cigar strings in the gt that are not present in the asv_table')
-
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                    '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
         
       }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
@@ -2291,8 +2635,6 @@ filter_loci = function(obj, v, update_cigars = TRUE){
       
       if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
          sum(!(cigars_asvtab %in% cigars_gt)) > 0){
-
-        warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
         
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
@@ -2301,26 +2643,8 @@ filter_loci = function(obj, v, update_cigars = TRUE){
                    paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
                    '\n'
         ))
-
-        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
-          
-          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
-          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
-          
-          obj2@asv_table = 
-            obj2@asv_table[!(obj2@asv_table[['Amplicon']] == Amplicon &
-                               obj2@asv_table[['CIGAR_masked']] == CIGAR),]
-          
-          obj2@asv_seqs = obj2@asv_seqs[
-            names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
-          
-          obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
-          names(obj2@asv_seqs) = obj2@asv_table$hapid
-          
-        }
-
+        stop('There are cigar strings that are different in the gt and the asv_table')
         
       }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
         
@@ -2328,7 +2652,7 @@ filter_loci = function(obj, v, update_cigars = TRUE){
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                    '\n'))
         
-        warning('There are cigar strings in the gt that are not present in the asv_table')
+        stop('There are cigar strings in the gt that are not present in the asv_table')
         
       }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
@@ -2394,7 +2718,8 @@ filter_loci = function(obj, v, update_cigars = TRUE){
   
   return(obj2)
 }
-# Mask alternative alleles----
+
+## Mask alternative alleles----
 setGeneric("mask_alt_alleles", function(obj = NULL, ref_fasta = NULL, mask_formula = "dVSITES_ij > 0.3", homopolymer_length = 5) standardGeneric("mask_alt_alleles"))
 
 setMethod("mask_alt_alleles", signature(obj = "ampseq"),
@@ -2425,7 +2750,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
               
               homopolymers = unlist(str_extract_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern))
               
-              if(length(homopolymers) > 0 ){
+              if(length(homopolymers) > 0){
                 
                 homopolymers_location = str_locate_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern)
                 
@@ -2458,6 +2783,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   homopolymer_anchors = paste0(homopolymers_location[[1]][,'start'] - 1, anchor_position)
                   mhaps[mhaps$amplicon == mhap, ][['homopolymer_anchors']] = paste(homopolymer_anchors, collapse = ',')  
                 }
+                
               }
               
               
@@ -2697,7 +3023,12 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
               stop("Execution halted, revise mask_filter argument.\nPossible filters are:\nh_ij, h_ijminor, p_ij, P_ij, H_ij, H_ijminor, nVSITES_ij, dVSITES_ij, nSNVs_ij, dSNVs_ij, nINDELs_ij, dINDELs_ij, flanking_INDEL, SNV_in_homopolymer, INDEL_in_homopolymer, bimera")
             }
             
+            #mhap = which(colnames(gt) == 'CCR4_3')
+            
             for(mhap in 1:ncol(gt)){
+              
+              #if(colnames(gt)[mhap] == 'pvmdr1_4'){stop('1')}
+              
               temp_gts = gt[,mhap] # genotypes observed in that site
               alleles = strsplit(alt[mhap], ',')[[1]] # alternative alleles observed in that site
               
@@ -2765,8 +3096,8 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                   }else{
                                     SNV_in_homopolymer = FALSE
                                   }
-
-                                  # CODE NEEDED FOR MASKING SNVs THAT ARE INSIDE OF INDELs, THIS PART IS STILL IN DEVELOPMENT
+                                  
+                                  # CODE NEEDED FOR MASKING SNVs THAT ARE INSIDE OF INDELs
                                   # if('Insertion' %in% type_polymorphism & !is.na(mhaps[mhap,][['homopolymer_regions']])){
                                   #   snv_in_insertion_positions = positions[type_polymorphism == 'Insertion']
                                   #   snv_in_insertion_polymorphisms = polymorphisms[type_polymorphism == 'Insertion']
@@ -2960,7 +3291,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     }
                                     
                                     flanking_INDEL_pattern = allele
-
+                                    
                                   }else{
                                     
                                     flanking_INDEL_pattern = NA
@@ -3023,6 +3354,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                 
                 
                 ASVs_attributes_table_temp = as.data.frame(cbind(alleles, h_ij))
+                
                 names(ASVs_attributes_table_temp) = c('Allele',
                                                       'P_ij',
                                                       'H_ij',
@@ -3105,6 +3437,16 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
+                    # mask_formula2 = str_extract(mask_formula,
+                    #                             "ASVs_attributes_table_temp\\[\\['SNV_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
+                    # 
+                    # replaced_alleles = ASVs_attributes_table_temp[
+                    #   eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_pattern']]
+                    # 
+                    # 
+                    # replacement_alleles = ASVs_attributes_table_temp[
+                    #   eval(parse(text = mask_formula2)),][['SNV_in_homopolymer_replacement']]
+                    
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['SNV_in_homopolymer_replacement']]
                     
@@ -3121,15 +3463,28 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                       
                       for(sample in 1:nrow(gt_masked)){
                         
+                        # which(grepl(paste0('_',temp_replaced_allele, ':'), gt_masked[,mhap]))
+                        # 
+                        # if(grepl(paste0('(^|_)',temp_replaced_allele, ':'), gt_masked[sample,mhap])){
+                        #   stop('Pattern in sample')
+                        # }
+                        
                         replaced_pattern = str_extract(gt_masked[sample,mhap], paste0('(^|_)',temp_replaced_allele, ':'))
                         
                         if(!is.na(replaced_pattern)){
-                          
+                          #stop('Sample with pattern')
                           replacement_pattern = gsub(temp_replaced_allele, temp_replacement_allele, replaced_pattern)
+                          
+                          # if(grepl('30C62A', gsub(replaced_pattern, replacement_pattern, gt_masked[sample,mhap]))){
+                          #   stop('Sample with pattern')
+                          # }
                           
                           gt_masked[sample,mhap] = gsub(ifelse(grepl('_',replaced_pattern), replaced_pattern, paste0('^', replaced_pattern)), 
                                                         replacement_pattern, 
                                                         gt_masked[sample,mhap])
+                          
+                          
+                          # gt_masked[,mhap][grepl('40I=TGGGGG\\.',gt_masked[,mhap])]
                           
                         }
                         
@@ -3159,6 +3514,9 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                       
                     }
                     
+                    # sum(grepl(paste0('(^|_)',temp_replaced_allele, ':'), gt_masked[,mhap]))
+                    # gt_masked[,mhap][grepl(paste0('(^|_)',temp_replaced_allele, ':'), gt_masked[,mhap])]
+                    
                   }
                   
                   
@@ -3169,6 +3527,15 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(replaced_alleles) > 0){
                     
+                    # mask_formula2 = str_extract(mask_formula,
+                    #                             "ASVs_attributes_table_temp\\[\\['INDEL_in_homopolymer'\\]\\] (=|!)+ (TRUE|FALSE)")
+                    # 
+                    # replaced_alleles = ASVs_attributes_table_temp[
+                    #   eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_pattern']]
+                    # 
+                    # 
+                    # replacement_alleles = ASVs_attributes_table_temp[
+                    #   eval(parse(text = mask_formula2)),][['INDEL_in_homopolymer_replacement']]
                     
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['INDEL_in_homopolymer_replacement']]
@@ -3231,10 +3598,20 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                     eval(parse(text = mask_formula)),][['flanking_INDEL_pattern']]
                   
                   if(length(replaced_alleles) > 0){
-
+                    
+                    # mask_formula2 = str_extract(mask_formula,
+                    #                             "ASVs_attributes_table_temp\\[\\['flanking_INDEL'\\]\\] (=|!)+ (TRUE|FALSE)")
+                    # 
+                    # replaced_alleles = ASVs_attributes_table_temp[
+                    #   eval(parse(text = mask_formula2)),][['flanking_INDEL_pattern']]
+                    # 
+                    # 
+                    # replacement_alleles = ASVs_attributes_table_temp[
+                    #   eval(parse(text = mask_formula2)),][['flanking_INDEL_replacement']]
+                    
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['flanking_INDEL_replacement']]
-                                
+                    
                     replacement_alleles = replacement_alleles[!duplicated(replaced_alleles)]
                     replaced_alleles = replaced_alleles[!duplicated(replaced_alleles)]
                     
@@ -3242,7 +3619,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                       
                       temp_replaced_allele = unlist(strsplit(replaced_alleles[replaced_allele], '\\|\\|'))
                       temp_replacement_allele = unlist(strsplit(replacement_alleles[replaced_allele], '\\|\\|'))
-
+                      
                       
                       for(i in 1:length(temp_replaced_allele)){
                         
@@ -3267,10 +3644,10 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                             sample_replacement_pattern = gsub(replaced_pattern, temp_replacement_allele[i], sample_replaced_pattern)
                             
                             gt_masked[sample,mhap] = gsub(sample_replaced_pattern, sample_replacement_pattern, gt_masked[sample,mhap])
-
-                          }    
-
-
+                            
+                          }
+                          
+                          
                         }
                         
                       }
@@ -3360,7 +3737,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                       asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
                                   !is.na(asv_table[['Amplicon']]) &
                                   asv_table[['CIGAR_masked']] %in% removed_alleles
-                                ,][['CIGAR_masked']] = NA # CHANGE TO REMOVE THESE LINES IN asv_table IN NEXT IMPLEMENTATION
+                                ,][['CIGAR_masked']] = NA
                       
                     }
                     
@@ -3436,7 +3813,9 @@ sample_ReadDepth = function(ampseq_object, stat = c('sum', 'mean', 'median', 'sd
     
     
   }
+  
   return(output)
+  
 }
 
 ## get_ReadDepth_coverage----
@@ -3565,6 +3944,7 @@ get_ReadDepth_coverage = function(ampseq_object, variable = NULL, plot = TRUE){
                 coverage_by_sample = coverage_by_sample))
     
   }
+  
 }
 
 
@@ -3594,6 +3974,7 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                 loci_ampl_rate_Total = apply(ampseq_loci_abd_table, 2, function(x) 1 - sum(is.na(x))/length(x)))
   print(loci_performance)
   print("Finished calculating loci performance!") 
+  
   if(!is.null(strata)){
     
     ampseq_object@metadata[['Strata']] = ampseq_object@metadata[[strata]]
@@ -3657,7 +4038,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     geom_vline(xintercept = threshold) +
     theme_bw()
   
-   if(!is.null(chr_lengths)){
+  
+  if(!is.null(chr_lengths)){
     amplification_rate_per_locus = ggplot()+
       geom_segment(data = data.frame(x = 0, y = 1:14, xend =chr_lengths, yend = 1:14),
                    aes(x=x, y=y, xend=xend, yend=yend, size = 2), alpha = .5)+
@@ -3680,6 +4062,7 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     amplification_rate_per_locus = NULL
   }
   print("Updating loci based on locus amplification rate...")
+  
   if(update_loci){
     
     if(!is.null(strata) & based_on_strata){
@@ -3688,37 +4071,46 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                               1,
                                               function(x){
                                                 sum(x >= threshold) == 0
-                                              }), , drop=FALSE][["loci"]]
+                                              }),][["loci"]]
       keeped_loci = loci_performance[apply(loci_performance[, grepl('loci_ampl_rate', colnames(loci_performance))], 
                                            1,
                                            function(x){
                                              sum(x >= threshold) > 0
-                                           }), , drop=FALSE][["loci"]]
+                                           }),][["loci"]]
       
       ampseq_loci_abd_table_discarded_loci =
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci, drop=FALSE]
+        matrix(ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci],
+               nrow = nrow(ampseq_loci_abd_table),
+               ncol = sum(colnames(ampseq_loci_abd_table) %in% discarded_loci),
+               dimnames = list(rownames(ampseq_loci_abd_table),
+                               colnames(ampseq_loci_abd_table)[colnames(ampseq_loci_abd_table) %in% discarded_loci])
+               )
       
       ampseq_loci_abd_table = 
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci, drop=FALSE]
+        matrix(ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci],
+               nrow = nrow(ampseq_loci_abd_table),
+               ncol = sum(colnames(ampseq_loci_abd_table) %in% keeped_loci),
+               dimnames = list(rownames(ampseq_loci_abd_table),
+                               colnames(ampseq_loci_abd_table)[colnames(ampseq_loci_abd_table) %in% keeped_loci]))
       
       markers = ampseq_object@markers
       
-      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
-      markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
+      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci,]
+      markers = markers[markers[['amplicon']] %in% keeped_loci,]
       
       markers[["distance"]] = Inf
       
       for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-        for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome, ,drop=FALSE])-1)){
+        for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome,])-1)){
           markers[
-            markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon, "distance"] = 
-            markers[markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon + 1, "pos"] - 
-            markers[markers[["chromosome"]] == chromosome, , drop=FALSE][amplicon, "pos"]
+            markers[["chromosome"]] == chromosome,][amplicon, "distance"] = 
+            markers[markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
+            markers[markers[["chromosome"]] == chromosome,][amplicon, "pos"]
         }
       }
       
       loci_performance_complete = loci_performance
-      loci_performance = loci_performance[keeped_loci, , drop=FALSE]
+      loci_performance = loci_performance[keeped_loci,]
       
       ampseq_object@gt = ampseq_loci_abd_table
       ampseq_object@markers = markers
@@ -3727,6 +4119,9 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                           loci_performance = loci_performance_complete,
                                           markers = discarded_markers)
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
+      #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
+      
+      
       cigars_gt = get_cigar_alleles(ampseq_object, 
                                     from = 'gt',
                                     as = 'vector')
@@ -3738,8 +4133,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       
       if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
           sum(!(cigars_asvtab %in% cigars_gt)) > 0){
-
-        warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
         
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
@@ -3749,32 +4142,15 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                    '\n'
         ))
         
-        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
-        
-        for(cigar_string_to_remove in cigar_strings_to_remove){
-          
-          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
-          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
-          
-          ampseq_object@asv_table = 
-            ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
-                               ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
-          
-          ampseq_object@asv_seqs = ampseq_object@asv_seqs[
-            names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
-          
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
-          
-        }
+        stop('There are cigar strings that are different in the gt and the asv_table')
         
       }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
-
-        warning('There are cigar strings in the gt that are not present in the asv_table')
         
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                    '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
         
       }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
@@ -3808,55 +4184,66 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       
       consistency_between_gt_and_asvtab(ampseq_object)
       
+      
       return(ampseq_object)
       
     }else if((is.null(strata) | !based_on_strata)){
-      print("Deciding which loci to keep/discard...")
-
-      discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold, , drop=FALSE][["loci"]]
-      keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold, , drop=FALSE][["loci"]]
       
-      # Ensure that these stay as dataframes
-
-      ampseq_loci_abd_table_discarded_loci =
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci, drop=FALSE]
-      ampseq_loci_abd_table = 
-        ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci, drop=FALSE]
+      discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold,][["loci"]]
       
-      print("Finished deciding loci to keep/discard!")
-
-      markers = ampseq_object@markers      
-      discarded_markers = markers[markers[['amplicon']] %in% discarded_loci, , drop=FALSE]
-      markers = markers[markers[['amplicon']] %in% keeped_loci, , drop=FALSE]
-      
-      print("Calculating marker distance...")
-      # markers[["distance"]] = Inf
+      if(length(discarded_loci) > 0){
         
-      #Per-chromosome calculation of distance
-      print(markers)
-      for(chromosome in levels(as.factor(markers[["chromosome"]]))){
-        chr_markers = markers[markers[["chromosome"]] == chromosome, , drop=FALSE]
-        if (nrow(chr_markers) > 1 && all(!is.na(chr_markers[["pos"]]))) {
-          chr_markers[["distance"]] = c(diff(chr_markers[["pos"]], lag=1), NA)
-        } else {
-          chr_markers[["distance"]] = NA
+        keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold,][["loci"]]
+        
+        
+        ampseq_loci_abd_table_discarded_loci =
+          matrix(ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% discarded_loci],
+                 nrow = nrow(ampseq_loci_abd_table),
+                 ncol = sum(colnames(ampseq_loci_abd_table) %in% discarded_loci),
+                 dimnames = list(rownames(ampseq_loci_abd_table),
+                                 colnames(ampseq_loci_abd_table)[colnames(ampseq_loci_abd_table) %in% discarded_loci])
+          )
+        
+        ampseq_loci_abd_table = 
+          matrix(ampseq_loci_abd_table[, colnames(ampseq_loci_abd_table) %in% keeped_loci],
+                 nrow = nrow(ampseq_loci_abd_table),
+                 ncol = sum(colnames(ampseq_loci_abd_table) %in% keeped_loci),
+                 dimnames = list(rownames(ampseq_loci_abd_table),
+                                 colnames(ampseq_loci_abd_table)[colnames(ampseq_loci_abd_table) %in% keeped_loci]))
+        
+        
+        markers = ampseq_object@markers
+        
+        discarded_markers = markers[markers[['amplicon']] %in% discarded_loci,]
+        markers = markers[markers[['amplicon']] %in% keeped_loci,]
+        
+        markers[["distance"]] = Inf
+        
+        for(chromosome in levels(as.factor(markers[["chromosome"]]))){
+          for(amplicon in 1:(nrow(markers[markers[["chromosome"]] == chromosome,])-1)){
+            markers[markers[["chromosome"]] == chromosome,][amplicon, "distance"] = 
+              markers[markers[["chromosome"]] == chromosome,][amplicon + 1, "pos"] - 
+              markers[markers[["chromosome"]] == chromosome,][amplicon, "pos"]
+          }
         }
-      }
-
-      print("Finished calculating marker distance!")
- 
-      loci_performance_complete = loci_performance
-      loci_performance = loci_performance[keeped_loci,]
         
-      ampseq_object@gt = ampseq_loci_abd_table
-      ampseq_object@markers = markers
-      ampseq_object@loci_performance = loci_performance
-      ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
-                                          loci_performance = loci_performance_complete,
-                                          markers = discarded_markers)
+        loci_performance_complete = loci_performance
+        loci_performance = loci_performance[keeped_loci,]
+        
+        ampseq_object@gt = ampseq_loci_abd_table
+        ampseq_object@markers = markers
+        ampseq_object@loci_performance = loci_performance
+        ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
+                                            loci_performance = loci_performance_complete,
+                                            markers = discarded_markers)
+        
+      }
+      
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
       #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
-
+      
+      
+      
       cigars_gt = get_cigar_alleles(ampseq_object, 
                                     from = 'gt',
                                     as = 'vector')
@@ -3869,8 +4256,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
          sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
-        warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
-
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                    '\n\n',
@@ -3878,33 +4263,16 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                    paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
                    '\n'
         ))
-
-        cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
-          
-          Amplicon = gsub(';.+$', '', cigar_string_to_remove)
-          CIGAR = gsub('^.+;', '', cigar_string_to_remove)
-          
-          ampseq_object@asv_table = 
-            ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
-                                        ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
-          
-          ampseq_object@asv_seqs = ampseq_object@asv_seqs[
-            names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
-          
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
-          
-        }
+        stop('There are cigar strings that are different in the gt and the asv_table')
         
       }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
-
-        warning('There are cigar strings in the gt that are not present in the asv_table')
         
         cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                    paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                    '\n'))
+        
+        stop('There are cigar strings in the gt that are not present in the asv_table')
         
       }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
         
@@ -3947,26 +4315,13 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     
   }else{
     
-    return(all_loci_performance_plot)
+    return(list(all_loci_performance_plot = all_loci_performance_plot,
+                amplification_rate_per_locus = amplification_rate_per_locus))
     
   }
   
   
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## sample_amplification_rate----
 
@@ -3975,14 +4330,15 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
   metadata = ampseq_object@metadata
   ampseq_loci_abd_table = ampseq_object@gt
   loci_performance = ampseq_object@loci_performance
-  
- # Check if ampseq_object is a vector with one locus due to locus performance dropout
+
+   # Check if ampseq_object is a vector with one locus due to locus performance dropout
   if(is.vector(ampseq_object@gt) && nrow(loci_performance) == 1) {
     locus_name <- rownames(loci_performance)
     ampseq_loci_abd_table = matrix(ampseq_object@gt, nrow=length(ampseq_object@gt), ncol=1, dimnames=list(names(ampseq_object@gt), locus_name))
   }
-
+  
   metadata[["sample_ampl_rate"]] = apply(ampseq_loci_abd_table, 1, function(x) 1 - sum(is.na(x))/length(x))
+  
   if(!is.null(strata)){
     
     
@@ -4018,11 +4374,8 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     name_of_discarded_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] <= threshold ,][["Sample_id"]]]
     number_of_discarded_samples = length(name_of_discarded_samples)
     
-    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold , ,][["Sample_id"]]]
+    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold ,][["Sample_id"]]]
     number_of_kept_samples = length(name_of_kept_samples)
-    
-    print("Table with discarded samples")
-    print(ampseq_loci_abd_table[name_of_discarded_samples,])
     
     ampseq_loci_abd_table_discarded_samples = matrix(ampseq_loci_abd_table[name_of_discarded_samples,], 
                                                      nrow = number_of_discarded_samples, 
@@ -4064,6 +4417,7 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     # ampseq_object@plots[["loci_amplification_rate"]] = loci_performance_plot
     ampseq_object@plots[["samples_amplification_rate"]] = all_samples_performance_plot
     
+    
     cigars_gt = get_cigar_alleles(ampseq_object, 
                                   from = 'gt',
                                   as = 'vector')
@@ -4075,8 +4429,6 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     
     if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
        sum(!(cigars_asvtab %in% cigars_gt)) > 0){
-
-      warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
       
       cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                  paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
@@ -4085,34 +4437,16 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
                  paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
                  '\n'
       ))
-
-      cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
       
-      for(cigar_string_to_remove in cigar_strings_to_remove){
-        
-        Amplicon = gsub(';.+$', '', cigar_string_to_remove)
-        CIGAR = gsub('^.+;', '', cigar_string_to_remove)
-        
-        ampseq_object@asv_table = 
-          ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
-                                      ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
-        
-        ampseq_object@asv_seqs = ampseq_object@asv_seqs[
-          names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
-        
-        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
-        
-      }
-
+      stop('There are cigar strings that are different in the gt and the asv_table')
       
     }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
-
-      warning('There are cigar strings in the gt that are not present in the asv_table')
       
       cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                  paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                  '\n'))
+      
+      stop('There are cigar strings in the gt that are not present in the asv_table')
       
     }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
       
@@ -4198,7 +4532,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
               
               homopolymers = unlist(str_extract_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern))
               
-              if(length(homopolymers) > 0 ){
+              if(length(homopolymers) > 0){
                 
                 homopolymers_location = str_locate_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern)
                 
@@ -4231,6 +4565,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                   homopolymer_anchors = paste0(homopolymers_location[[1]][,'start'] - 1, anchor_position)
                   mhaps[mhaps$amplicon == mhap, ][['homopolymer_anchors']] = paste(homopolymer_anchors, collapse = ',')  
                 }
+                
               }
               
               
@@ -4250,6 +4585,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             
             ASVs_attributes_table = NULL
             
+            #mhap = which(colnames(gt) == 'PIGO')
+            
             for(mhap in 1:ncol(gt)){
               temp_gts = gt[,mhap] # genotypes observed in that site
               alleles = strsplit(alt[mhap], ',')[[1]] # alternative alleles observed in that site
@@ -4257,7 +4594,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
               if(length(alleles) != 0){
                 
                 # Vector of presence or absence of each alternative allele
-                h_ij = t(sapply(alleles, function(allele){
+                h_ij = t(sapply(alleles,
+                                function(allele){
                                   P_ij = grepl(allele, temp_gts)
                                   
                                   H_ijminor = grepl(paste0('_',allele), temp_gts)
@@ -4281,6 +4619,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   
                                   dSNVs_ij = nSNVs_ij/mhaps[mhap,][['length']]
                                   dINDELs_ij = nINDELs_ij/mhaps[mhap,][['length']]
+                                  
                                   # SNV or INDELs in homopolymer regions
                                   
                                   positions = as.integer(unlist(strsplit(allele, '(\\.|[ATCG]+|(I|D)=[ATCG]+)')))
@@ -4292,6 +4631,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                       }else if(grepl('D', polymorphism)){
                                         'Deletion'
                                       }
+                                    
                                   })
                                   
                                   # SNV_in_homopolymer
@@ -4424,6 +4764,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   
                                   
                                   # INDEL_in_homopolymer pattern and replacement
+                                  
                                   INDEL_in_homopolymer = Insertions_in_homopolymer == 1 | Deletions_in_homopolymer == 1
                                   
                                   if(INDEL_in_homopolymer == 1){
@@ -4508,7 +4849,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     }
                                     
                                     flanking_INDEL_pattern = allele
-
+                                    
                                   }else{
                                     
                                     flanking_INDEL_pattern = NA
@@ -4528,7 +4869,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   }else if(length(bimera) == 0){
                                     bimera = FALSE
                                   }
-              c(sum(P_ij, na.rm = T), 
+                                  
+                                  c(sum(P_ij, na.rm = T), 
                                     sum(H_ij, na.rm = T), 
                                     sum(H_ijminor, na.rm = T),
                                     sum(H_ij, na.rm = T)/sum(P_ij, na.rm = T),
@@ -4546,7 +4888,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     
                                     nINDELs_ij,
                                     dINDELs_ij,
-
+                                    
                                     mhaps[mhap,][['homopolymer_anchors']],
                                     mhaps[mhap,][['homopolymer_regions']],
                                     
@@ -4567,8 +4909,9 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   )
                                   
                                 }, simplify = T))
-
+                
                 ASVs_attributes_table_temp = as.data.frame(cbind(alleles, h_ij))
+                
                 names(ASVs_attributes_table_temp) = c('Allele',
                                                       'P_ij',
                                                       'H_ij',
@@ -4594,6 +4937,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                       'flanking_INDEL_pattern',
                                                       'flanking_INDEL_replacement',
                                                       'bimera')
+                
                 ASVs_attributes_table_temp[['P_ij']] = as.integer(ASVs_attributes_table_temp[['P_ij']])
                 ASVs_attributes_table_temp[['H_ij']] = as.integer(ASVs_attributes_table_temp[['H_ij']])
                 ASVs_attributes_table_temp[['H_ijminor']] = as.integer(ASVs_attributes_table_temp[['H_ijminor']])
@@ -4612,6 +4956,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                 
                 ASVs_attributes_table_temp[['SNV_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['SNV_in_homopolymer']])
                 ASVs_attributes_table_temp[['INDEL_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['INDEL_in_homopolymer']])
+                
+                #print(ASVs_attributes_table_temp[['flanking_INDEL']])
                 
                 #ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
                 
@@ -4683,11 +5029,11 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                      flanking_INDEL_pattern,
                                                      flanking_INDEL_replacement,
                                                      bimera)
+            
             return(ASVs_attributes_table)
             
           }
 )
-
 
 
 
@@ -4727,6 +5073,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
   # Call set of MHAPs---
   # Set of amplicon markers, This table contains the list mhap, their chromosome location in the 3D7 strain
   markers = ampseq_object@markers
+  
   ## Filter Drug resistant markers---
   print("Filtering drug resistant markers...")
   if('gene_id' %in% colnames(markers)){
@@ -4739,7 +5086,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
   if(is.null(gene_names)){
     gene_names = gene_ids
   }
-
+  
+  
   # Calculates the start and end position of each drugR marker on the CDS of each gene---
   
   ## Start and end position in 3D7 CDSs---
@@ -4767,7 +5115,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
     
     # check how many CDSs does the gene have
     if(nrow(temp_gff) > 1){ # if the gene has 2 or more CDSs then
-
+      
       # Identify on which CDS(s) the start position of the drugR marker is located
       cds_start = which(temp_gff$start < markers_of_interest[markers_of_interest$amplicon== amplicon,]$start &
                           temp_gff$end > markers_of_interest[markers_of_interest$amplicon== amplicon,]$start)
@@ -4777,7 +5125,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
                         temp_gff$end > markers_of_interest[markers_of_interest$amplicon== amplicon,]$end)
       
       if(length(cds_start) == 0 & length(cds_end) > 0){# if 5' for the amplicon is outside of the exon
-
+        
         for(pre_cds in 1:(cds_end - 1)){ # sum the length of all previous CDSs
           start_cds_pos = start_cds_pos + 
             temp_gff[pre_cds,][['end']] - temp_gff[pre_cds,][['start']] + 1 # length of each previous CDS
@@ -4801,6 +5149,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
         markers_of_interest[markers_of_interest$amplicon== amplicon,][['upstream_no_cds_pos']] = upstream_no_cds_pos
         
       }else if(length(cds_start) > 0 & length(cds_end) == 0){# if 3' for the amplicon is outside of the exon
+        
         for(pre_cds in 1:(cds_start - 1)){ # sum the length of all previous CDSs
           start_cds_pos = start_cds_pos + 
             temp_gff[pre_cds,][['end']] - temp_gff[pre_cds,][['start']] + 1 # length of each previous CDS
@@ -4823,7 +5172,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
         markers_of_interest[markers_of_interest$amplicon== amplicon,][['strand']] = as.character(temp_gff[cds_start,][['strand']])
         markers_of_interest[markers_of_interest$amplicon== amplicon,][['downstream_no_cds_pos']] = downstream_no_cds_pos
         
-      }else if(cds_start != cds_end & length(cds_end) != 0 & length(cds_end) != 0){ # if start and end are in different cds        
+      }else if(cds_start != cds_end & length(cds_end) != 0 & length(cds_end) != 0){ # if start and end are in different cds
+        
         for(pre_cds in 1:(cds_start - 1)){ # sum the length of all previous CDSs
           start_cds_pos = start_cds_pos + 
             temp_gff[pre_cds,][['end']] - temp_gff[pre_cds,][['start']] + 1 # length of each previous CDS
@@ -4903,10 +5253,10 @@ haplotypes_respect_to_reference = function(ampseq_object,
         markers_of_interest[markers_of_interest$amplicon== amplicon,][['start_cds']] = start_cds_pos
         markers_of_interest[markers_of_interest$amplicon== amplicon,][['end_cds']] = end_cds
         markers_of_interest[markers_of_interest$amplicon== amplicon,][['strand']] = as.character(temp_gff[cds_start,][['strand']])
-
-
+        
+        
       }else if(cds_start == cds_end & cds_start == 1){ # if the drugR marker is located in CDS 1
-
+        
         # Take the position on the located CDS
         
         start_cds_pos = start_cds_pos + markers_of_interest[markers_of_interest$amplicon== amplicon,]$start - temp_gff[cds_start,][['start']] + 1
@@ -4919,7 +5269,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
       }
       
     }else{# if the gene has 1 CDS then
-
+      
       # Take the position on the CDS 1
       start_cds_pos = start_cds_pos + markers_of_interest[markers_of_interest$amplicon== amplicon,]$start - temp_gff[['start']] + 1
       end_cds = start_cds_pos + markers_of_interest[markers_of_interest$amplicon== amplicon,]$length - 1
@@ -4927,7 +5277,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
       markers_of_interest[markers_of_interest$amplicon== amplicon,][['start_cds']] = start_cds_pos
       markers_of_interest[markers_of_interest$amplicon== amplicon,][['end_cds']] = end_cds
       markers_of_interest[markers_of_interest$amplicon== amplicon,][['strand']] = as.character(temp_gff[['strand']])
-
+      
     }
   }
   
@@ -4938,8 +5288,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
   # Reference sequences from 3D7---
   ref_seqs = NULL
   
-  for(gene in unique(markers_of_interest$gene_id)){    
-
+  for(gene in unique(markers_of_interest$gene_id)){
+    
     temp_gff = reference_gff[grepl(gene, reference_gff$attributes, ignore.case = T)&
                                reference_gff$type == 'CDS',]
     
@@ -4958,13 +5308,13 @@ haplotypes_respect_to_reference = function(ampseq_object,
     }else{
       temp_refseq = subseq(reference_genome[grep(temp_gff[['seqid']], names(reference_genome))],
                            start = temp_gff[['start']],
-                           end = temp_gff[['end']]) 
-                                
+                           end = temp_gff[['end']])
+      
       ref_seqs = c(ref_seqs, as.character(temp_refseq))
     }
-
-   markers_of_interest[markers_of_interest$gene_id == gene,'ref_length'] = nchar(temp_refseq) 
-
+    
+    markers_of_interest[markers_of_interest$gene_id == gene,'ref_length'] = nchar(temp_refseq)
+    
   }
   
   print("Generating the reference sequences")
@@ -4977,17 +5327,16 @@ haplotypes_respect_to_reference = function(ampseq_object,
   ## Filter drugR markers---
   # markers of interest loci abundance table
   print("Filter drugR markers")
-  # if(length(gene_ids) > 1){
-  #   moi_loci_abd_table = ampseq_object@gt[, markers$gene_id %in% gene_ids]  
-  # }else{
-  #   moi_loci_abd_table = matrix(ampseq_object@gt[, markers$gene_id %in% gene_ids],
-  #                               ncol = 1,
-  #                               dimnames = list(rownames(ampseq_object@gt),
-  #                                               colnames(ampseq_object@gt)[markers$gene_id %in% gene_ids]))
-  # }
-
-  # Filter for markers that were detected in markers_of_interest
-  moi_loci_abd_table = ampseq_object@gt[, colnames(ampseq_object@gt) %in% markers_of_interest$amplicon]
+  if(length(gene_ids) > 1){
+    moi_loci_abd_table = ampseq_object@gt[, markers$gene_id %in% gene_ids]  
+  }else{
+    moi_loci_abd_table = matrix(ampseq_object@gt[, markers$gene_id %in% gene_ids],
+                                ncol = 1,
+                                dimnames = list(rownames(ampseq_object@gt),
+                                                colnames(ampseq_object@gt)[markers$gene_id %in% gene_ids]))
+  }
+  
+  
   ## Remove read abundace---
   print("Removing read abundance...")
   moi_loci_abd_table = gsub(":[0-9]+", "", moi_loci_abd_table)
@@ -4996,7 +5345,6 @@ haplotypes_respect_to_reference = function(ampseq_object,
   moi_loci_aa_table = moi_loci_abd_table
   
   for(amplicon in colnames(moi_loci_abd_table)){ # For each amplicon in columns
-
     for(sample in (1:nrow(moi_loci_abd_table))){ # For each sample in rows
       
       locus = moi_loci_abd_table[sample, amplicon] # Get the genotype in the locus
@@ -5023,6 +5371,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
         }
 
       }
+
+      
       if(is.na(locus)){ # if the locus is NULL complete the cell with NA
         
         moi_loci_dna_table[sample, amplicon] = NA
@@ -5040,8 +5390,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
           alleles = paste0(unlist(str_extract_all(clone, '\\d+')),
                            unlist(strsplit(gsub('^[0-9]+', '', clone), '[0-9]+')))
           
-          subset = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, 'downstream_no_cds_pos']
-          if(length(subset) > 0 && !is.na(subset)){
+          
+          if(!is.na(markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['downstream_no_cds_pos']])){
             downstream_no_cds_pos = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['downstream_no_cds_pos']]
             final_pos = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['length']]
             
@@ -5054,8 +5404,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
             }
             
           }
-          subset = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, 'upstream_no_cds_pos']
-          if(length(subset) > 0 && !is.na(subset)){
+          
+          if(!is.na(markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['upstream_no_cds_pos']])){
             upstream_no_cds_pos = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['upstream_no_cds_pos']]
             final_pos = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['length']]
             
@@ -5078,8 +5428,8 @@ haplotypes_respect_to_reference = function(ampseq_object,
             }
           }
           
-          subset = markers_of_interest[markers_of_interest[['amplicon']] == amplicon, 'intronic_pos']
-          if(length(subset) > 0 && !is.na(subset)){
+          
+          if(!is.na(markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['intronic_pos']])){
             start_intronic_pos = gsub(',\\d+$', '', markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['intronic_pos']])
             end_intronic_pos = gsub('^\\d+,', '', markers_of_interest[markers_of_interest[['amplicon']] == amplicon, ][['intronic_pos']])
             
@@ -5117,23 +5467,21 @@ haplotypes_respect_to_reference = function(ampseq_object,
               codons = "."
               
             }else{
-              cds_position = numeric(length(alleles))
-              amplicon_start_cds = markers_of_interest[markers_of_interest$amplicon == amplicon,'start_cds']
-              for (i in seq_along(alleles)) {
-                allele = alleles[i]
-                print(paste0("Allele ", i, ":", allele))
-
-                cds_position[i] = NA
-                if (!is.na(allele) && nzchar(allele)){
-                  # Extract mhap_position
-                  mhap_position = as.integer(str_extract(allele, '\\d+'))
-                  print(paste0("MHap Position: ", mhap_position))
-                  cds_position[i] = amplicon_start_cds + mhap_position - 1
-                }
-              }
-              codons = data.frame(alleles = gsub('[0-9]','',alleles), cds_position = cds_position)
-            
-              print(codons)
+              
+              codons = data.frame(alleles = gsub('[0-9]','',alleles), cds_position = sapply(alleles, function(allele){
+                
+                # position in the mhap
+                mhap_position = as.integer(str_extract(allele, '\\d+'))
+                
+                # variant or nucleotide found
+                #mhap_variant = gsub('[0-9]+', '', allele)
+                
+                # calculate position in the CDS
+                
+                cds_position = markers_of_interest[markers_of_interest$amplicon == amplicon,'start_cds'] + mhap_position - 1
+                
+              }))
+              
               
               # Identify nucleotide in the reference strain
               codons$ref_variant = sapply(1:nrow(codons), function(x){
@@ -5177,6 +5525,7 @@ haplotypes_respect_to_reference = function(ampseq_object,
           
           
           for(codon in list_of_codons){ # for each allele
+            
             if(codon == "."){ # if allele equals to wild type
               
               dna_alleles = c(dna_alleles, 'c.(=)')
@@ -7188,8 +7537,6 @@ drug_resistant_haplotypes = function(ampseq_object,
          x = 'Date of Collection',
          color = 'Phenotype')
   
-
-  
   print("Estimating frequency for drug resistant phenotypes")
   
   if(!is.null(Longitude) & !is.null(Latitude)){
@@ -7199,7 +7546,6 @@ drug_resistant_haplotypes = function(ampseq_object,
                 Latitude = mean(Latitude),
                 count = sum(count), .by = c(Drug, Phenotype, var1))
     
-
     drug_phenotype_summary_sdf$ssize = NA
     drug_phenotype_summary_sdf$freq = NA
     drug_phenotype_summary_sdf$freq_lower = NA
@@ -7247,6 +7593,7 @@ drug_resistant_haplotypes = function(ampseq_object,
                                                         data = drug_phenotype_summary_sdf,
                                                         proj4string = CRS("+init=epsg:4326"))
     
+    
     tmap_mode('view')
     print('i_drug_map')
     i_drug_map = tm_shape(drug_phenotype_summary_sdf)+
@@ -7290,6 +7637,7 @@ drug_resistant_haplotypes = function(ampseq_object,
 
 
 get_Fws = function(ampseq_object = NULL){
+  
   
   gt = ampseq_object@gt
   
@@ -7335,8 +7683,6 @@ get_Fws = function(ampseq_object = NULL){
 
 
 
-
-########## UNUSED FUNCTIONS?
 ## Functions for Complexity of infection----
 
 ### get_polygenomic----
@@ -7994,8 +8340,6 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
       
-      print(Yi_id)
-      
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
       
       Yi = matrix(as.integer(Yi), 
@@ -8370,7 +8714,7 @@ plot_frac_highly_related_over_time = function(pairwise_relatedness = pairwise_re
   pairwise_relatedness_l %<>% filter(Yi %in% metadata$Sample_id,
                                      Yj %in% metadata$Sample_id)
   
-  # Giving warning message, otherwise it is faster
+  # Giving wraning message, otherwise it is faster
   # pairwise_relatedness_l %<>% mutate(
   #   Population_Yi = metadata[grepl(Yi, metadata[['samples']]),][[Population[1]]],
   #   Population_Yj = metadata[grepl(Yj, metadata[['samples']]),][[Population[1]]],
@@ -9028,9 +9372,12 @@ GRM_evectors = function(gt = NULL, dist_table = NULL, k = nrow(gt), metadata, Po
   
 }
 
+
+
+
 ### IBD_evectors----
 IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Population', q = 2,
-                        method = 'primcomp', # fastGRM
+                        method = 'fastGRM', # primcomp
                         cor = T
                         ){
   
@@ -9371,7 +9718,7 @@ nthroot = function(x,n) {
   (abs(x)^(1/n))*sign(x)
 }
 
-# get_gene_description ----
+## get_gene_description ----
 
 get_gene_description = function(obj = NULL, gff = NULL){
   
@@ -9497,8 +9844,6 @@ remove_replicates = function(ampseq_object, v){
   
   if(sum(!(cigars_gt %in% cigars_asvtab)) > 0 & 
      sum(!(cigars_asvtab %in% cigars_gt)) > 0){
-
-    warning('There are cigar strings that are different in the gt and the asv_table, only discrepancies in gt will be fixed')
     
     cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
@@ -9507,35 +9852,16 @@ remove_replicates = function(ampseq_object, v){
                paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
                '\n'
     ))
-
-    cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
     
-    for(cigar_string_to_remove in cigar_strings_to_remove){
-      
-      Amplicon = gsub(';.+$', '', cigar_string_to_remove)
-      CIGAR = gsub('^.+;', '', cigar_string_to_remove)
-      
-      ampseq_object@asv_table = 
-        ampseq_object@asv_table[!(ampseq_object@asv_table[['Amplicon']] == Amplicon &
-                                ampseq_object@asv_table[['CIGAR_masked']] == CIGAR),]
-      
-      ampseq_object@asv_seqs = ampseq_object@asv_seqs[
-        names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
-      
-      
-      ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-      names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
-      
-    }
+    stop('There are cigar strings that are different in the gt and the asv_table')
     
   }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
-
-    warning('There are cigar strings in the gt that are not present in the asv_table')
     
     cat(paste0('Cigar strings in gt matrix that are not present in asv_table are:\n',
                paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                '\n'))
     
+    stop('There are cigar strings in the gt that are not present in the asv_table')
     
   }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
     
@@ -11700,7 +12026,7 @@ consistency_between_gt_and_asvtab = function(ampseq_object){
                  '\n'
     ))
     
-    warning('There are cigar strings that are different in the gt and the asv_table')
+    stop('There are cigar strings that are different in the gt and the asv_table')
     
   }else if(sum(!(cigars_gt %in% cigars_asvtab)) > 0){
     
@@ -11708,7 +12034,7 @@ consistency_between_gt_and_asvtab = function(ampseq_object){
                  paste(cigars_gt[!(cigars_gt %in% cigars_asvtab)], collapse = '\n'),
                  '\n'))
     
-    warning('There are cigar strings in the gt that are not present in the asv_table')
+    stop('There are cigar strings in the gt that are not present in the asv_table')
     
   }else if(sum(!(cigars_asvtab %in% cigars_gt)) > 0){
     
@@ -11716,7 +12042,7 @@ consistency_between_gt_and_asvtab = function(ampseq_object){
                  paste(cigars_asvtab[!(cigars_asvtab %in% cigars_gt)], collapse = '\n'),
                  '\n'))
     
-    warning('There are cigar strings in the asv_table that are not present in the gt')
+    stop('There are cigar strings in the asv_table that are not present in the gt')
     
   }else{
     print('cigar strings are consistent between gt and asv_table')

@@ -198,7 +198,7 @@ def _get_homopolymer_runs(seq, min_length=5):
 	return runs
 
 # parse muscle alignment
-def parse_alignment(alignment, mask={}, min_homopolymer_length=5, amplicon=None, verbose=False):
+def parse_alignment(alignment, mask={}, min_homopolymer_length=5, amplicon=None):
     """
 	Parse amplicon alignment file, converting ASV to CIGAR string
 	
