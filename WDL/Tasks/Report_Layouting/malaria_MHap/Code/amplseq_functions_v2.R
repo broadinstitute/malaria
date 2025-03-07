@@ -540,10 +540,6 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
     markers = data.frame(amplicon = ampseq_loci_vector, length=NA)
   }
 
-  # Check - If cigar_table and ampseq_loci_vector are not equal, recorrect ampseq_loci_vector to prevent errors propagated by different markersTable information
-  if(!setequal(unique(colnames(cigar_table)), unique(ampseq_loci_vector))){
-    ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
-  }
 
   ampseq_loci_abd_table = matrix(NA, nrow = nrow(cigar_table), ncol = length(ampseq_loci_vector), dimnames = list(rownames(cigar_table), ampseq_loci_vector))
   for(sample in rownames(ampseq_loci_abd_table)){
@@ -780,10 +776,11 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
         temp_asv_table3[['bimera']] = temp_asv_table3[['bimera']] | temp_asv_table2[['bimera']]
         
         # Impute the inconsistent cigar_strings in the cigar_table        
-        unconsitent_cigar_strings = data.frame(temp_asv_table2[temp_asv_table2$CIGAR != temp_asv_table3$CIGAR,], 
-                                               CIGAR2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']],
-                                               CIGAR_masked2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']])
-        
+        unconsitent_cigar_strings = data.frame(temp_asv_table2[temp_asv_table2$CIGAR != temp_asv_table3$CIGAR,], # Information from the new dataset
+                                               Amplicon2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['Amplicon']], # Name of the amplicon in the previous  dataset
+                                               CIGAR2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR']], # Original cigar string in the previous dataset
+                                               CIGAR_masked2 = temp_asv_table3[temp_asv_table3$CIGAR != temp_asv_table2$CIGAR,][['CIGAR_masked']]) # Masked cigar string in the previous dataset
+                
         if(nrow(unconsitent_cigar_strings) > 0){
           for(pos in 1:nrow(unconsitent_cigar_strings)){
             
@@ -821,6 +818,25 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
                                             cigar_string_masked_replacment_in_samp, 
                                             temp_gt1[samp, mhap]))
                 
+                new_alleles = unlist(strsplit(gsub(':\\d+', '', cigar_sample_replacement), '_'))
+                
+                if(sum(duplicated(new_alleles))){
+                  
+                  new_allele_reads = as.integer(gsub(':', '', unlist(str_extract_all(cigar_sample_replacement, ':\\d+'))))
+                  
+                  duplicated_new_alleles = new_alleles[duplicated(new_alleles)]
+                  
+                  unique_new_alleles = new_alleles[!duplicated(new_alleles)]
+                  unique_new_allele_reads = new_allele_reads[!duplicated(new_alleles)]
+                  
+                  for(duplicated_new_allele in duplicated_new_alleles){
+                    
+                    unique_new_allele_reads[which(unique_new_alleles %in% duplicated_new_allele)] = sum(new_allele_reads[which(new_alleles %in% duplicated_new_allele)])
+                  }
+                  
+                  cigar_sample_replacement = paste(paste(unique_new_alleles, unique_new_allele_reads, sep = ':'), collapse = '_')
+                  
+                }
                 temp_gt1[samp, mhap] = cigar_sample_replacement
                 
                 rm(cigar_string_masked_replacment_in_samp)
@@ -2198,7 +2214,7 @@ filter_samples = function(obj, v, update_cigars = TRUE){
         
         cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
+        for(cigar_string_to_remove in unique(cigar_strings_to_remove)){
           
           Amplicon = gsub(';.+$', '', cigar_string_to_remove)
           CIGAR = gsub('^.+;', '', cigar_string_to_remove)
@@ -3357,10 +3373,13 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                         asv_table[['CIGAR_masked']] %in% removed_alleles
                                         ,][['CIGAR_masked']]) > 0){
                       
-                      asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
+                      asv_table =
+                        asv_table[!(asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
                                   !is.na(asv_table[['Amplicon']]) &
-                                  asv_table[['CIGAR_masked']] %in% removed_alleles
-                                ,][['CIGAR_masked']] = NA # CHANGE TO REMOVE THESE LINES IN asv_table IN NEXT IMPLEMENTATION
+                                  asv_table[['CIGAR_masked']] %in% removed_alleles)
+                                ,]
+                      
+                      obj@asv_seqs = obj@asv_seqs[names(obj@asv_seqs) %in% asv_table[['hapid']]]
                       
                     }
                     
@@ -3954,18 +3973,6 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
   
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## sample_amplification_rate----
@@ -6558,7 +6565,11 @@ drug_resistant_haplotypes = function(ampseq_object,
   
   haplotype_counts$compact_haplotype = NA
   
-  for(haplo in unique(haplotype_counts$haplotype)){
+ unique_haplotypes = unique(haplotype_counts$haplotype)
+  
+  unique_haplotypes = unique_haplotypes[!is.na(unique_haplotypes)]
+  
+  for(haplo in unique_haplotypes){
     
     compact_haplo = unlist(strsplit(haplo, ' '))
     
@@ -6573,7 +6584,8 @@ drug_resistant_haplotypes = function(ampseq_object,
     
     compact_haplo = paste(compact_haplo, collapse = ' ')
     
-    haplotype_counts[haplotype_counts[['haplotype']] == haplo, ][['compact_haplotype']] = compact_haplo
+    haplotype_counts[haplotype_counts[['haplotype']] == haplo &
+                       !is.na(haplotype_counts[['haplotype']]), ][['compact_haplotype']] = compact_haplo
     
   }
   
@@ -6583,8 +6595,12 @@ drug_resistant_haplotypes = function(ampseq_object,
   haplotype_counts$phenotype = NA
   
   for(haplotype in haplotype_counts$haplotype){
-    haplotype_counts[haplotype_counts$haplotype == haplotype, ][['phenotype']] =
-      genotype_phenotype_match[genotype_phenotype_match$Genotype == haplotype, ][['Phenotype']]
+    
+    if(!is.na(haplotype)){
+      haplotype_counts[haplotype_counts$haplotype == haplotype & !is.na(haplotype_counts$haplotype), ][['phenotype']] =
+        genotype_phenotype_match[genotype_phenotype_match$Genotype == haplotype & !is.na(genotype_phenotype_match$Genotype), ][['Phenotype']]
+    }
+    
   }
   
   if(hap_color_palette == 'auto'){
@@ -6730,7 +6746,11 @@ drug_resistant_haplotypes = function(ampseq_object,
   
   genotype_phenotype_match_sorted$compact_haplotype = NA
   
-  for(haplo in unique(genotype_phenotype_match_sorted$Genotype)){
+  unique_genotpyes = unique(genotype_phenotype_match_sorted$Genotype)
+  
+  unique_genotpyes = unique_genotpyes[!is.na(unique_genotpyes)]
+  
+  for(haplo in unique_genotpyes){
     
     compact_haplo = unlist(strsplit(haplo, ' '))
     
@@ -6745,7 +6765,8 @@ drug_resistant_haplotypes = function(ampseq_object,
     
     compact_haplo = paste(compact_haplo, collapse = ' ')
     
-    genotype_phenotype_match_sorted[genotype_phenotype_match_sorted[['Genotype']] == haplo, ][['compact_haplotype']] = compact_haplo
+    genotype_phenotype_match_sorted[genotype_phenotype_match_sorted[['Genotype']] == haplo &
+                                      !is.na(genotype_phenotype_match_sorted[['Genotype']]), ][['compact_haplotype']] = compact_haplo
     
   }
   
@@ -7994,7 +8015,6 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
       
-      print(Yi_id)
       
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
       
@@ -9545,7 +9565,7 @@ remove_replicates = function(ampseq_object, v){
     
     cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
     
-    for(cigar_string_to_remove in cigar_strings_to_remove){
+    for(cigar_string_to_remove in unique(cigar_strings_to_remove)){
       
       Amplicon = gsub(';.+$', '', cigar_string_to_remove)
       CIGAR = gsub('^.+;', '', cigar_string_to_remove)
@@ -11721,6 +11741,40 @@ consistency_between_gt_and_asvtab = function(ampseq_object){
   }else{
     print('cigar strings are consistent between gt and asv_table')
   }
+  
+}
+
+consistency_between_seqs_and_cigars = function(obj, ref_fasta){
+  
+  test_fasta = cigar_strings2fasta(obj@asv_table, 
+                                   ref_fasta = '~/Documents/Github/MHap-Analysis/docs/reference/Pviv_P01/PvGTSeq249_refseqs.fasta'
+  )
+  cigars_not_in_fastas = which(!(test_fasta$fasta %in% as.character(obj@asv_seqs)))
+  fastas_not_in_cigars = which(!(as.character(obj@asv_seqs) %in% test_fasta$fasta))
+  
+  if(length(fastas_not_in_cigars) == 0 & length(cigars_not_in_fastas) == 0){
+    
+    print('There is consistency between the fasta sequences and theri cigar strings')
+    
+  }else{
+    
+    if(length(fastas_not_in_cigars) > 0){
+      
+      cat(paste0('There are fasta sequences not found in the cigar strings:\n',
+                 paste(names(obj@asv_seqs)[fastas_not_in_cigars]), collapse = ', '))
+      
+    }
+    
+    if(length(cigars_not_in_fastas) > 0){
+      
+      cat(paste0('There are cigar strings not found in the fasta sequences:\n',
+                 paste(paste(test_fasta$Amplicon[cigars_not_in_fastas], test_fasta$CIGAR[cigars_not_in_fastas], sep = ','), collapse = '; ')
+      ))
+      
+    }
+    
+  }
+  
   
 }
 
