@@ -28,11 +28,11 @@ task asv_filtering {
 		String sample_id_pat = '.'
 		Int? min_abd = 10                                                                        # Minimum read depth to accept an ASV
 		Float? min_ratio = 0.1                                                                   # Minimum ratio between major and minor alleles to accept a minor allele
-		String? off_target_formula = "dVSITES_ij>=0.3"											 # Formula used to identify and remove off-target PCR products
-		String? flanking_INDEL_formula = "flanking_INDEL==TRUE\&h_ij>=0.66"						 # Formula to mask INDELs in the 3' and 5' ends of the ASVs
+		String? off_target_formula = "dVSITES_ij>=0.2"											 # Formula used to identify and remove off-target PCR products
+		String? flanking_INDEL_formula = "flanking_INDEL==TRUE"						 # Formula to mask INDELs in the 3' and 5' ends of the ASVs
 		Int? homopolymer_length = 5															     # Minimum number of single nucleotide tandem repeats to define homopolymeric regions in an ASV
-		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE\&h_ij>=0.66"              # Formula to mask SNVs in the homopolymeric regions of ASVs
-		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE\&h_ij>=0.66"          # Formula to mask INDELs in the homopolymeric regions of ASVs   
+		String? SNV_in_homopolymer_formula = "SNV_in_homopolymer==TRUE"              # Formula to mask SNVs in the homopolymeric regions of ASVs
+		String? INDEL_in_homopolymer_formula = "INDEL_in_homopolymer==TRUE"          # Formula to mask INDELs in the homopolymeric regions of ASVs   
 		String? bimera_formula = "bimera==TRUE\&h_ij>=0.66"                                       # Formula to detect bimeras
 		String? PCR_errors_formula = "h_ij>=0.66\&h_ijminor>=0.66\&p_ij>=0.05"                   # Formula to detect other kinds of PCR errors
 		
