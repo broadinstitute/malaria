@@ -546,11 +546,6 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
     markers = data.frame(amplicon = ampseq_loci_vector, length=NA)
   }
 
-  # Check - If cigar_table and ampseq_loci_vector are not equal, recorrect ampseq_loci_vector to prevent errors propagated by different markersTable information
-  if(!setequal(unique(colnames(cigar_table)), unique(ampseq_loci_vector))){
-    ampseq_loci_vector = unique(sapply(strsplit(colnames(cigar_table), ","), function(x) x[1]))
-  }
-
   ampseq_loci_abd_table = matrix(NA, nrow = nrow(cigar_table), ncol = length(ampseq_loci_vector), dimnames = list(rownames(cigar_table), ampseq_loci_vector))
   for(sample in rownames(ampseq_loci_abd_table)){
     for(locus in colnames(ampseq_loci_abd_table)){
