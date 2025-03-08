@@ -19,7 +19,7 @@ workflow report_layouting {
 		Boolean na_var_rm = true
 		Boolean na_hap_rm = true
 		String drugs = "Artemisinin,Chloroquine,Pyrimethamine,Sulfadoxine,Lumefantrine,Mefloquine"
-		Boolean include_all_drug_markers = true
+		Boolean include_all_drug_markers = false
 
 		String ibd_thres = "null"
 		Boolean parallel = true

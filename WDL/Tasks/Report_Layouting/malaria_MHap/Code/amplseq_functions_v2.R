@@ -618,8 +618,8 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[names(ampseq_object@asv_seqs) %in%
                                                           ampseq_object@asv_table$hapid]
         
-        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
         
       }
       
@@ -3780,8 +3780,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
         }        
         
@@ -3813,8 +3813,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
           
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
           
         }
         
@@ -3910,8 +3910,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
         }
 
@@ -3943,8 +3943,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
           
-          ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-          names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+          #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
           
         }
         
@@ -4104,8 +4104,8 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[
           names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
-        ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-        names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+        #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
       }
 
@@ -5701,7 +5701,6 @@ drug_resistant_haplotypes = function(ampseq_object,
                                      na.hap.rm = TRUE,
                                      hap_color_palette = 'random'){
   
-  
   # Call reference alleles
   print("Uploading Resistant and Sensitive Alleles")
   drugR_reference_alleles = read.csv(reference_alleles)
@@ -6412,15 +6411,20 @@ drug_resistant_haplotypes = function(ampseq_object,
   extended_aacigar_table = data.frame(Sample_id = rownames(extended_aacigar_table), extended_aacigar_table)
   
   print("Adding metadata to haplotype counts")
-  
   if(!is.null(Longitude) & !is.null(Latitude)){
     metadata = ampseq_object@metadata[,c(variables, Longitude, Latitude)]
     names(metadata) = c('Sample_id', 'var1', 'var2', 'Longitude', 'Latitude')
+    metadata$Longitude = as.numeric(metadata$Longitude)
+    metadata$Latitude = as.numeric(metadata$Latitude)
+    metadata$Longitude[!is.na(metadata$Longitude)] = 0.0
+    metadata$Latitude[!is.na(metadata$Latitude)] = 0.0
     
   }else{
     metadata = ampseq_object@metadata[,c(variables)]
     names(metadata) = c('Sample_id', 'var1', 'var2')
   }
+  
+  
   
   metadata[['var1']] = as.factor(metadata[['var1']])
   metadata[['var2']] = as.factor(metadata[['var2']])
@@ -6599,7 +6603,7 @@ drug_resistant_haplotypes = function(ampseq_object,
     }
    
   }
-  
+
   if(hap_color_palette == 'auto'){
     
     print('Assigning colors to haplotypes based on their phenotype')
@@ -6635,6 +6639,8 @@ drug_resistant_haplotypes = function(ampseq_object,
       }else if(grepl("^Amplicon.+amplify(; .+)?$", Phenotype)){
         'gray70'
       }else if(grepl('Gene .+ did not amplify', Phenotype)){
+        'gray30'
+      }else{
         'gray30'
       }
       
@@ -6676,7 +6682,6 @@ drug_resistant_haplotypes = function(ampseq_object,
     col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
     #pie(rep(1,n), col=sample(col_vector, n))
     
-    
     genotype_phenotype_match$haplo_order = unlist(sapply(genotype_phenotype_match$Phenotype, function(Phenotype){
       
       if(grepl('Delayed clearance', Phenotype)){
@@ -6705,6 +6710,8 @@ drug_resistant_haplotypes = function(ampseq_object,
       }else if(grepl("^Amplicon.+amplify(; .+)?$", Phenotype)){
         9
       }else if(grepl('Gene .+ did not amplify', Phenotype)){
+        10
+      }else{
         10
       }
       
@@ -7099,11 +7106,16 @@ drug_resistant_haplotypes = function(ampseq_object,
   #   summarise(count = nlevels(as.factor(Sample_id)), .by = c(var1, var2)) 
   
   if(!is.null(Longitude) & !is.null(Latitude)){
+    print(drug_phenotype_summary)
+    drug_phenotype_summary$Longitude = as.numeric(drug_phenotype_summary$Longitude)
+    drug_phenotype_summary$Latitude = as.numeric(drug_phenotype_summary$Latitude)
+    drug_phenotype_summary$Longitude[is.na(drug_phenotype_summary$Longitude) | drug_phenotype_summary$Longitude == ''] = 0.0
+    drug_phenotype_summary$Latitude[is.na(drug_phenotype_summary$Latitude) | drug_phenotype_summary$Latitude == ''] = 0.0
     
     drug_phenotype_summary = drug_phenotype_summary %>%
       summarise(count = n(),
-                Longitude = mean(Longitude),
-                Latitude = mean(Latitude),
+                Longitude = mean(Longitude, na.rm=TRUE),
+                Latitude = mean(Latitude, na.rm=TRUE),
                 .by = c(Drug, var1, var2, Phenotype))
     
   }else{
@@ -7215,9 +7227,17 @@ drug_resistant_haplotypes = function(ampseq_object,
   
   if(!is.null(Longitude) & !is.null(Latitude)){
     
+    drug_phenotype_summary$Longitude = as.numeric(drug_phenotype_summary$Longitude)
+    drug_phenotype_summary$Latitude = as.numeric(drug_phenotype_summary$Latitude)
+    drug_phenotype_summary$Longitude[is.na(drug_phenotype_summary$Longitude) | drug_phenotype_summary$Longitude == ''] = 0.0
+    drug_phenotype_summary$Latitude[is.na(drug_phenotype_summary$Latitude) | drug_phenotype_summary$Latitude == ''] = 0.0
+    
+    print("drug_phenotype_summary - With imputed points")
+    print(drug_phenotype_summary)
+    
     drug_phenotype_summary_sdf = drug_phenotype_summary %>% 
-      summarise(Longitude = mean(Longitude),
-                Latitude = mean(Latitude),
+      summarise(Longitude = mean(Longitude, na.rm = T),
+                Latitude = mean(Latitude, na.rm = T),
                 count = sum(count), .by = c(Drug, Phenotype, var1))
     
 
@@ -7254,7 +7274,6 @@ drug_resistant_haplotypes = function(ampseq_object,
         
       }
     }
-    
     
     drug_phenotype_summary_sdf %<>% filter(!is.na(Longitude), !is.na(Latitude))
     
@@ -9545,8 +9564,8 @@ remove_replicates = function(ampseq_object, v){
         names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
 
-      ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-      names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+      #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
 
     }
 
