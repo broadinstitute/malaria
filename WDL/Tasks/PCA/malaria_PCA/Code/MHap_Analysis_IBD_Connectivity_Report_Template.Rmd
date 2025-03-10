@@ -86,3 +86,12 @@ patterns in genomic, epidemiological, or multi-omics datasets
 ```{r, fig.width=6, fig.height=4.5, fig.cap="**Figure 1:** Principal coordinate analysis (PCoA) based on the inverse of genetic relatedness (1 - IBD). Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
 IBD_PCA
 ```
+
+## VCF output
+
+```{r}
+vcf_object %>%
+  DT::datatable(extensions = 'Buttons',
+                options = list(dom = 'Blfrtip',
+                               buttons = c('csv', 'excel')))
+```

@@ -487,8 +487,12 @@ if (dir.exists(ampseq_excelfile)) {
   
   # If multiple Excel files exist, read and merge them
   if (length(excel_files) > 1) {
-    ampseq_list <- lapply(excel_files, function(file) read_ampseq(file = file, format = 'excel'))
-    ampseq_object <- join_ampseq(ampseq_list)
+    ampseq_list <- lapply(excel_files, function(file) {
+      obj = read_ampseq(file = file, format = 'excel')
+      obj@metadata[['Dataset']] = gsub('^.+/', '', gsub('\\.xlsx$', '', file))
+      return(obj)
+    })
+    ampseq_object <- join_ampseq(ampseq_obj_list = ampseq_list)
     print(paste("Merged", length(excel_files), "Excel files into a single ampseq object."))
   } else if (length(excel_files) == 1) {
     ampseq_object <- read_ampseq(file = excel_files[1], format = 'excel')
@@ -520,13 +524,13 @@ if(!is.null(var_filter)){# ADAPT THIS SECTION IN THE SHINY APP
 if(!is.null(samples_to_keep)) {
   samples_keep <- read.table(samples_to_keep, header = FALSE, stringsAsFactors = FALSE)[[1]]
   ampseq_object = filter_samples(ampseq_object, v = ampseq_object@metadata$Sample_id %in% samples_keep)
-
+  
 }
 
 # if locus_ampl_rate was provided
 print('Measuring amplification rate by locus')
 if(!is.null(locus_ampl_rate)){
-
+  
   if(!is.null(Variable1)){
     ampseq_object = locus_amplification_rate(ampseq_object, threshold = locus_ampl_rate, strata = Variable1)
   }else{
@@ -560,7 +564,7 @@ if(!is.null(sample_ampl_rate)){
   }else{
     ampseq_object = sample_amplification_rate(ampseq_object, threshold = 0.80)  
   }
-
+  
 }
 
 # Genetic Variants of interest---
@@ -570,77 +574,95 @@ if(!is.null(sample_ampl_rate)){
 # GENETIC RELATEDNESS - IBS
 sourceCpp(file.path(fd,'Rcpp_functions.cpp'))
 pairwise_ibs = NULL
-  
+
 if(nchunks > (nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2) {
   nchunks = round(((nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2)/3)
 } 
-  
+
 loci_object = ampseq2loci(ampseq_object)
-  
-nrow(loci_object@loci_table)
-  
+
+
 for(w in 1:nchunks){
-    
+  
   start = Sys.time()
   pairwise_ibs = rbind(pairwise_ibs,
-                         pairwise_euclidean(obj = loci_object, parallel = FALSE, w = w, n = nchunks))
+                       pairwise_euclidean(obj = loci_object, parallel = FALSE, w = w, n = nchunks))
   time_diff = Sys.time() - start
-    
+  
   print(paste0('step ', w, ' done in ', time_diff, ' secs'))
-    
+  
 }
- 
-evectors_IBS = GRM_evectors(dist_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = Variable1)
-IBS_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))+
+
+variables = NULL
+
+if(!is.null(Variable1)){
+  variables = c(variables, Variable1)
+}
+
+if(!is.null(Variable2)){
+  variables = c(variables, Variable2)
+}
+
+if(is.null(variables)){
+  variables = c('Run', 'Run')
+}
+
+evectors_IBS = GRM_evectors(dist_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = variables)
+IBS_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]], shape = .[[Variable2]]))+
   geom_point(alpha = .7, size = 2) +
   stat_ellipse(level = .6) +
   scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]])))) +
   theme_bw() +
   theme(legend.position = "bottom") +
-  guides(color = guide_legend(ncol = 4)) +
-  labs(#x = paste0('1st PCo (', round(evectors_IBS$contrib[1],1), '%)'),
-       #y = paste0('2nd PCo (', round(evectors_IBS$contrib[2],1), '%)'),
-       color = Variable1)
+  guides(color = guide_legend(ncol = 4),
+         shape = guide_legend(ncol = 1)) +
+  labs(x = '1st PCo',
+       y = '2nd PCo',
+       color = Variable1,
+       shape = Variable2)
 
 test2 = get_polygenomic(ampseq_object, strata = NULL, update_popsummary = F)
 
-pairwise_ibs
 
 coi_by_Sample = test2$coi_bySample
 
+
+vcf_object = ampseq2vcf(ampseq_object, ref_fasta = ref_fasta)
+
 IBS_Connectivity_Report_expected_outputs = c('IBS_PCA',
- 'pairwise_ibs',
-  'coi_by_Sample',
-  'ampseq_object',
-  'Variable1',
-  'Variable2')
+                                             'pairwise_ibs',
+                                             'coi_by_Sample',
+                                             'ampseq_object',
+                                             'vcf_object',
+                                             'Variable1',
+                                             'Variable2')
 
 IBS_Connectivity_Report_outputs = IBS_Connectivity_Report_expected_outputs[IBS_Connectivity_Report_expected_outputs %in% ls()]
 
 if(tolower(code_environment) == 'local'){
-   imagename = file.path(wd, paste0(output, '_IBS_Connectivity_Report.RData'))
-
-   save(file = imagename, list = IBS_Connectivity_Report_outputs)
-
-   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd'))))
-
-   # Assign variables based on command-line arguments
-   render(file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd')), params = list(
-     RData_image = imagename),
-     output_dir = wd)
- }else{
-
-   imagename = paste0(output, '_IBS_Connectivity_Report.RData')
-
-   save(file = imagename, list = IBS_Connectivity_Report_outputs)
-
-   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBS_Connectivity_Report.Rmd')))
-
-   # Assign variables based on command-line arguments
-   render(paste0(output, '_IBS_Connectivity_Report.Rmd'), params = list(
-     RData_image = imagename),
-     output_dir = 'Results')
- }
+  imagename = file.path(wd, paste0(output, '_IBS_Connectivity_Report.RData'))
+  
+  save(file = imagename, list = IBS_Connectivity_Report_outputs)
+  
+  system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd'))))
+  
+  # Assign variables based on command-line arguments
+  render(file.path(wd, paste0(output, '_IBS_Connectivity_Report.Rmd')), params = list(
+    RData_image = imagename),
+    output_dir = wd)
+}else{
+  
+  imagename = paste0(output, '_IBS_Connectivity_Report.RData')
+  
+  save(file = imagename, list = IBS_Connectivity_Report_outputs)
+  
+  system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBS_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBS_Connectivity_Report.Rmd')))
+  
+  # Assign variables based on command-line arguments
+  render(paste0(output, '_IBS_Connectivity_Report.Rmd'), params = list(
+    RData_image = imagename),
+    output_dir = 'Results')
+}
 
 #save(file = imagename, list = IBS_Connectivity_Report_outputs)
 
@@ -654,177 +676,187 @@ if(tolower(code_environment) == 'local'){
 
 #GENETIC RELATEDNESS - IBD
 if(!is.null(ibd_thres)){
- print(ampseq_object@gt)
- print(ampseq_object@metadata)
- # call hmmIBD and PCA functions from Rcpp
- sourceCpp(file.path(fd,'hmmloglikelihood.cpp'))
-
- if(is.null(pairwise_relatedness_table)){
-   pairwise_relatedness = NULL
-
-   if(nchunks > (nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2) {
-     nchunks = round(((nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2)/3)
-   }
-
-   for(w in 1:nchunks){
-
-     start = Sys.time()
-     pairwise_relatedness = rbind(pairwise_relatedness,
-                                  pairwise_hmmIBD(obj = ampseq_object, parallel = parallel, w = w, n = nchunks))
-     time_diff = Sys.time() - start
-
-     print(paste0('step ', w, ' done in ', time_diff, ' secs'))
-
-   }
-
-   if(tolower(code_environment) == 'local'){
-     write.csv(pairwise_relatedness,
-               file.path(wd, paste0(output, '_pairwise_ibd', '.csv')),
-               quote = FALSE,
-               row.names = FALSE)
-   }else{
-
-     write.csv(pairwise_relatedness,
-               paste0(output, '_pairwise_ibd', '.csv'),
-               quote = FALSE,
-               row.names = FALSE)
-   }
-
- }else{
-
-   pairwise_relatedness = read.csv(pairwise_relatedness_table)
-
- }
- if(!is.null(Variable2)){
-   plot_frac_highly_related_overtime_between = plot_frac_highly_related_over_time(
-     pairwise_relatedness = pairwise_relatedness,
-     metadata = ampseq_object@metadata,
-     Population = c(Variable1, Variable2),
-     fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))*(length(unique(ampseq_object@metadata[[Variable1]]))-1)/2),
-     threshold = ibd_thres,
-     type_pop_comparison = 'between',
-     ncol = 3,
-     pop_levels = NULL)
- }
-
- ## Population subdivision----
- evectors_IBD = IBD_evectors(ampseq_object = ampseq_object,
-                             relatedness_table = pairwise_relatedness,
-                             k = length(unique(ampseq_object@metadata$Sample_id)),
-                             Pop = Variable1, q = 2)
-
- names(evectors_IBD$eigenvector)[3] = 'Variable1'
-
- set.seed(1)
-
- IBD_PCA = evectors_IBD$eigenvector %>% ggplot(aes(x = PC1, y = PC2, color = Variable1))+
-   geom_point(alpha = .7, size = 2) +
-   stat_ellipse(level = .6)+
-   scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
-   theme_bw()+
-   labs(x = paste0('1st PCo (', round(evectors_IBD$contrib[1],1), '%)'),
-        y = paste0('2nd PCo (', round(evectors_IBD$contrib[2],1), '%)'),
-        color = Variable1)
-
-
-
- print('Generation of plots and tables for IBD and Connectivity report done')
- IBD_Connectivity_Report_expected_outputs = c(#'plot_relatedness_distribution_between',
-                                              'plot_frac_highly_related_between',
-                                              'plot_frac_highly_related_overtime_between',
-                                              'evectors_IBD',
-                                              'IBD_PCA',
-                                              'pairwise_relatedness',
-                                              'ibd_thres',
-                                              'ampseq_object',
-                                              'plot_network',
-                                              'create_ampseq',
-                                              'Variable1',
-                                              'Variable2')
-
- IBD_Connectivity_Report_outputs = IBD_Connectivity_Report_expected_outputs[IBD_Connectivity_Report_expected_outputs %in% ls()]
- if(tolower(code_environment) == 'local'){
-   imagename = file.path(wd,paste0(output, '_IBD_Connectivity_Report.RData'))
-
-   save(file = imagename, list = IBD_Connectivity_Report_outputs)
-
-   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd'))))
-
-   # Assign variables based on command-line arguments
-   render(file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd')), params = list(
-     RData_image = imagename),
-     output_dir = wd)
- }else{
-
-   imagename = paste0(output, '_IBD_Connectivity_Report.RData')
-
-   save(file = imagename, list = IBD_Connectivity_Report_outputs)
-
-   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Connectivity_Report.Rmd')))
-
-   # Assign variables based on command-line arguments
-   render(paste0(output, '_IBD_Connectivity_Report.Rmd'), params = list(
-     RData_image = imagename),
-     output_dir = 'Results')
- }
- print("Leaving render script")
- plot_frac_highly_related_within = plot_frac_highly_related(
-   pairwise_relatedness = pairwise_relatedness,
-   metadata = ampseq_object@metadata,
-   Population = Variable1,
-   fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
-   threshold = ibd_thres,
-   type_pop_comparison = 'within',
-   pop_levels = NULL)
-
- if(!is.null(Variable2)){
-   plot_frac_highly_related_overtime_within = plot_frac_highly_related_over_time(
-     pairwise_relatedness = pairwise_relatedness,
-     metadata = ampseq_object@metadata,
-     Population = c(Variable1, Variable2),
-     fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
-     threshold = ibd_thres,
-     type_pop_comparison = 'within',
-     ncol = 3,
-     pop_levels = NULL)
- }
-
- # print('Generation of plots and tables for IBD and Transmission report done')
- # 
- # IBD_Transmission_Report_expected_outputs = c(#'plot_relatedness_distribution_within',
- #                                              'plot_frac_highly_related_within',
- #                                              'plot_frac_highly_related_overtime_within',
- #                                              'Variable2')
- # print("WATERMARK11")
- # IBD_Transmission_Report_outputs = IBD_Transmission_Report_expected_outputs[IBD_Transmission_Report_expected_outputs %in% ls()]
- # 
- # if(tolower(code_environment) == 'local'){
- #   imagename = file.path(wd,paste0(output, '_IBD_Transmission_Report.RData'))
- # 
- #   save(file = imagename, list = IBD_Transmission_Report_outputs)
- # 
- #   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd'))))
- # 
- #   # Assign variables based on command-line arguments
- #   render(file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd')), params = list(
- #     RData_image = imagename),
- #     output_dir = wd)
- # }else{
- # 
- #   imagename = paste0(output, '_IBD_Transmission_Report.RData')
- # 
- #   save(file = imagename, list = IBD_Transmission_Report_outputs)
- # 
- #   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Transmission_Report.Rmd')))
- # 
- #   # Assign variables based on command-line arguments
- #   render(paste0(output, '_IBD_Transmission_Report.Rmd'), params = list(
- #     RData_image = imagename),
- #     output_dir = 'Results')
- # }
-
- print("Leaving render script")
-
+  print(ampseq_object@gt)
+  print(ampseq_object@metadata)
+  # call hmmIBD and PCA functions from Rcpp
+  sourceCpp(file.path(fd,'hmmloglikelihood.cpp'))
+  
+  if(is.null(pairwise_relatedness_table)){
+    pairwise_relatedness = NULL
+    
+    if(nchunks > (nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2) {
+      nchunks = round(((nrow(ampseq_object@gt)*nrow(ampseq_object@gt)-1)/2)/3)
+    }
+    
+    for(w in 1:nchunks){
+      
+      start = Sys.time()
+      pairwise_relatedness = rbind(pairwise_relatedness,
+                                   pairwise_hmmIBD(obj = ampseq_object, parallel = parallel, w = w, n = nchunks))
+      time_diff = Sys.time() - start
+      
+      print(paste0('step ', w, ' done in ', time_diff, ' secs'))
+      
+    }
+    
+    if(tolower(code_environment) == 'local'){
+      write.csv(pairwise_relatedness,
+                file.path(wd, paste0(output, '_pairwise_ibd', '.csv')),
+                quote = FALSE,
+                row.names = FALSE)
+    }else{
+      
+      write.csv(pairwise_relatedness,
+                paste0(output, '_pairwise_ibd', '.csv'),
+                quote = FALSE,
+                row.names = FALSE)
+    }
+    
+  }else{
+    
+    pairwise_relatedness = read.csv(pairwise_relatedness_table)
+    
+  }
+  if(!is.null(Variable2)){
+    plot_frac_highly_related_overtime_between = plot_frac_highly_related_over_time(
+      pairwise_relatedness = pairwise_relatedness,
+      metadata = ampseq_object@metadata,
+      Population = c(Variable1, Variable2),
+      fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))*(length(unique(ampseq_object@metadata[[Variable1]]))-1)/2),
+      threshold = ibd_thres,
+      type_pop_comparison = 'between',
+      ncol = 3,
+      pop_levels = NULL)
+  }
+  
+  ## Population subdivision----
+  evectors_IBD = IBD_evectors(ampseq_object = ampseq_object,
+                              relatedness_table = pairwise_relatedness,
+                              k = length(unique(ampseq_object@metadata$Sample_id)),
+                              Pop = Variable1, q = 2)
+  
+  # if(length(variables) == 1){
+  #   names(evectors_IBD$eigenvector)[3] = 'Variable1'
+  # }else if (length(variables) == 2)){
+  #   names(evectors_IBD$eigenvector)[3] = 'Variable1'
+  #   names(evectors_IBD$eigenvector)[4] = 'Variable2'
+  # }
+  
+  
+  set.seed(1)
+  
+  IBD_PCA = evectors_IBD$eigenvector %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]], shape = .[[Variable2]]))+
+    geom_point(alpha = .7, size = 2) +
+    stat_ellipse(level = .6)+
+    scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
+    theme_bw()+
+    theme(legend.position = "bottom") +
+    guides(color = guide_legend(ncol = 4),
+           shape = guide_legend(ncol = 1)) +
+    labs(x = paste0('1st PCo (', round(evectors_IBD$contrib[1],1), '%)'),
+         y = paste0('2nd PCo (', round(evectors_IBD$contrib[2],1), '%)'),
+         color = Variable1,
+         shape = Variable2)
+  
+  
+  print('Generation of plots and tables for IBD and Connectivity report done')
+  IBD_Connectivity_Report_expected_outputs = c(#'plot_relatedness_distribution_between',
+    'plot_frac_highly_related_between',
+    'plot_frac_highly_related_overtime_between',
+    'evectors_IBD',
+    'IBD_PCA',
+    'pairwise_relatedness',
+    'ibd_thres',
+    'ampseq_object',
+    'vcf_object',
+    'plot_network',
+    'create_ampseq',
+    'Variable1',
+    'Variable2')
+  
+  IBD_Connectivity_Report_outputs = IBD_Connectivity_Report_expected_outputs[IBD_Connectivity_Report_expected_outputs %in% ls()]
+  if(tolower(code_environment) == 'local'){
+    imagename = file.path(wd,paste0(output, '_IBD_Connectivity_Report.RData'))
+    
+    save(file = imagename, list = IBD_Connectivity_Report_outputs)
+    
+    system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd'))))
+    
+    # Assign variables based on command-line arguments
+    render(file.path(wd, paste0(output, '_IBD_Connectivity_Report.Rmd')), params = list(
+      RData_image = imagename),
+      output_dir = wd)
+  }else{
+    
+    imagename = paste0(output, '_IBD_Connectivity_Report.RData')
+    
+    save(file = imagename, list = IBD_Connectivity_Report_outputs)
+    
+    system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Connectivity_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Connectivity_Report.Rmd')))
+    
+    # Assign variables based on command-line arguments
+    render(paste0(output, '_IBD_Connectivity_Report.Rmd'), params = list(
+      RData_image = imagename),
+      output_dir = 'Results')
+  }
+  print("Leaving render script")
+  plot_frac_highly_related_within = plot_frac_highly_related(
+    pairwise_relatedness = pairwise_relatedness,
+    metadata = ampseq_object@metadata,
+    Population = Variable1,
+    fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
+    threshold = ibd_thres,
+    type_pop_comparison = 'within',
+    pop_levels = NULL)
+  
+  if(!is.null(Variable2)){
+    plot_frac_highly_related_overtime_within = plot_frac_highly_related_over_time(
+      pairwise_relatedness = pairwise_relatedness,
+      metadata = ampseq_object@metadata,
+      Population = c(Variable1, Variable2),
+      fill_color = rep('gray50', length(unique(ampseq_object@metadata[[Variable1]]))),
+      threshold = ibd_thres,
+      type_pop_comparison = 'within',
+      ncol = 3,
+      pop_levels = NULL)
+  }
+  
+  # print('Generation of plots and tables for IBD and Transmission report done')
+  # 
+  # IBD_Transmission_Report_expected_outputs = c(#'plot_relatedness_distribution_within',
+  #                                              'plot_frac_highly_related_within',
+  #                                              'plot_frac_highly_related_overtime_within',
+  #                                              'Variable2')
+  # print("WATERMARK11")
+  # IBD_Transmission_Report_outputs = IBD_Transmission_Report_expected_outputs[IBD_Transmission_Report_expected_outputs %in% ls()]
+  # 
+  # if(tolower(code_environment) == 'local'){
+  #   imagename = file.path(wd,paste0(output, '_IBD_Transmission_Report.RData'))
+  # 
+  #   save(file = imagename, list = IBD_Transmission_Report_outputs)
+  # 
+  #   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd'))))
+  # 
+  #   # Assign variables based on command-line arguments
+  #   render(file.path(wd, paste0(output, '_IBD_Transmission_Report.Rmd')), params = list(
+  #     RData_image = imagename),
+  #     output_dir = wd)
+  # }else{
+  # 
+  #   imagename = paste0(output, '_IBD_Transmission_Report.RData')
+  # 
+  #   save(file = imagename, list = IBD_Transmission_Report_outputs)
+  # 
+  #   system(paste0('cp ', file.path(fd, 'MHap_Analysis_IBD_Transmission_Report_Template.Rmd'), ' ', paste0(output, '_IBD_Transmission_Report.Rmd')))
+  # 
+  #   # Assign variables based on command-line arguments
+  #   render(paste0(output, '_IBD_Transmission_Report.Rmd'), params = list(
+  #     RData_image = imagename),
+  #     output_dir = 'Results')
+  # }
+  
+  print("Leaving render script")
+  
 }
 
 ## COI----
@@ -968,4 +1000,5 @@ if(!is.null(ibd_thres)){
 #  }
 #  print("Leaving render script")
 #}
+
 

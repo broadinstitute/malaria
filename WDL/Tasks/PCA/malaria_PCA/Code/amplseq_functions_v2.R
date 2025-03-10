@@ -730,6 +730,8 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
   markers = NULL
   
   for(obj in 1:length(ampseq_obj_list)){
+    
+    #print(obj)
     # if(obj == 2) {
     # stop()
     # }
@@ -873,17 +875,22 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       }
       
       temp_asv_table1 = temp_asv_table1[!(as.character(temp_asv_seqs1) %in% as.character(asv_seqs)),]
-      temp_asv_seqs1 = temp_asv_seqs1[!(as.character(temp_asv_seqs1) %in% as.character(asv_seqs))]
       
-      names(temp_asv_seqs1) = paste0('ASV',(1 + length(asv_seqs)):(length(temp_asv_seqs1) + length(asv_seqs)))
-      temp_asv_table1$hapid = names(temp_asv_seqs1)
-      
-      # merging asv_seqs
-      asv_seqs = DNAStringSet(c(as.character(asv_seqs), as.character(temp_asv_seqs1)))
-      
-      # merging asv_table
-      asv_table = rbind(asv_table, temp_asv_table1)
-      asv_table = asv_table[order(as.integer(gsub('ASV','',asv_table$hapid))),]
+      if(nrow(temp_asv_table1) > 0){
+        
+        temp_asv_seqs1 = temp_asv_seqs1[!(as.character(temp_asv_seqs1) %in% as.character(asv_seqs))]
+        
+        names(temp_asv_seqs1) = paste0('ASV',(1 + length(asv_seqs)):(length(temp_asv_seqs1) + length(asv_seqs)))
+        temp_asv_table1$hapid = names(temp_asv_seqs1)
+        
+        # merging asv_seqs
+        asv_seqs = DNAStringSet(c(as.character(asv_seqs), as.character(temp_asv_seqs1)))
+        
+        # merging asv_table
+        asv_table = rbind(asv_table, temp_asv_table1)
+        asv_table = asv_table[order(as.integer(gsub('ASV','',asv_table$hapid))),]
+        
+      }
       
       # merging marker table
       unshared_attributes = names(temp_markers1)[!(names(temp_markers1) %in% names(markers))]
@@ -1868,7 +1875,7 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
   # 
   # which(markers$amplicon == amplicon)
   # 
-  amplicon = markers$amplicon[1]
+  #amplicon = markers$amplicon[1]
   for(amplicon in markers$amplicon){
     
     print(amplicon)
@@ -1921,7 +1928,7 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
           
         }else if(sum(grepl('I', ALT_alleles)) > 0 & sum(grepl('D', ALT_alleles)) == 0){
           
-          REF = as.character(Biostrings::substr(reference_genome[[unique(cigar_position_variants$CHROM)]],
+          REF = as.character(Biostrings::substr(reference_genome[grepl(unique(cigar_position_variants$CHROM), names(reference_genome))],
                                                 start = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]),
                                                 stop = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']])))
           
@@ -1929,7 +1936,7 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
           
         }else if(sum(grepl('I', ALT_alleles)) == 0 & sum(grepl('D', ALT_alleles)) == 0){
           
-          REF = Biostrings::substr(reference_genome[[unique(cigar_position_variants$CHROM)]],
+          REF = Biostrings::substr(reference_genome[grepl(unique(cigar_position_variants$CHROM), names(reference_genome))],
                                    start = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]),
                                    stop = unique(cigar_position_variants[cigar_position_variants$amplicon_POS == position,][['POS']]))
           
@@ -2168,6 +2175,9 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
   loci_table[['FORMAT']] = 'GT:AD:DP'
   
   VCF_object = cbind(loci_table, gt)
+  
+  
+  rownames(VCF_object) = NULL
   
   return(VCF_object)
   
