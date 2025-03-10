@@ -723,15 +723,16 @@ ampseq2cigar = function(ampseq_object){
 ## join_ampseq----
 
 join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
-  
   gt = NULL
   asv_table = NULL
   asv_seqs = NULL
   metadata = NULL
   markers = NULL
-
+  
   for(obj in 1:length(ampseq_obj_list)){
-    
+    # if(obj == 2) {
+    # stop()
+    # }
     obj = ampseq_obj_list[[obj]]
     colnames(obj@asv_table) <- gsub("(?<=refid_)\\w+|(?<=snv_dist_from_)\\w+|(?<=indel_dist_from_)\\w+", "3D7", colnames(obj@asv_table), perl = TRUE)
     
@@ -743,6 +744,9 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       metadata = obj@metadata
       markers = obj@markers
       
+      asv_table$hapid = paste0('ASV', 1:nrow(asv_table))
+      names(asv_seqs) = asv_table$hapid
+      
     }else{# for subsequent objects
       
       temp_gt1 = obj@gt
@@ -750,6 +754,9 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       temp_asv_seqs1 = obj@asv_seqs
       temp_metadata1 = obj@metadata
       temp_markers1 = obj@markers
+      
+      temp_asv_table1$hapid = paste0('ASV', 1:nrow(temp_asv_table1))
+      names(temp_asv_seqs1) = temp_asv_table1$hapid
       
       # if there are shared asvs
       if(sum(as.character(temp_asv_seqs1) %in% as.character(asv_seqs)) > 0){
@@ -853,7 +860,6 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
             
           }
         }
-        
         rm(unconsitent_cigar_strings)
         
         # ASVs in the previous data set not present in the new one
@@ -901,13 +907,36 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       }else if(length(unshared_loci) != 0 &
                length(unshared_attributes) == 0){
         
-        unshared_loci_in_tablen = markers$amplicon[!(markers$amplicon %in% temp_markers1$amplicon)]
-        temp_markers2 = temp_markers1[temp_markers1$amplicon %in% unshared_loci_in_tablen, names(markers)]
+        shared_loci = markers$amplicon[!(markers$amplicon %in% unshared_loci)]
         
-        markers = rbind(markers, temp_markers2)
+        unshared_loci_with_respc_tablen = markers$amplicon[(markers$amplicon %in% unshared_loci)]
+        
+        unshared_loci_in_tablen = temp_markers1$amplicon[(temp_markers1$amplicon %in% unshared_loci)]
+        
+        shared_loci_df = markers[markers$amplicon%in% shared_loci,]
+        
+        unshared_loci_with_tablen_df = markers[markers$amplicon %in% unshared_loci_with_respc_tablen, ]
+        
+        unshared_loci_in_tablen_df = temp_markers1[temp_markers1$amplicon %in% unshared_loci_in_tablen, names(markers)]
+        
+        markers = rbind(shared_loci_df, unshared_loci_with_tablen_df, unshared_loci_in_tablen_df)
         markers %<>% arrange(chromosome, start)
         
-        rm(temp_markers2)
+        rm(list = c('shared_loci_df', 
+                    'unshared_loci_with_tablen_df', 
+                    'unshared_loci_in_tablen_df',
+                    'shared_loci',
+                    'unshared_loci_with_respc_tablen',
+                    'unshared_loci_in_tablen'
+        ))
+        
+        #unshared_loci_in_tablen = markers$amplicon[!(markers$amplicon %in% temp_markers1$amplicon)]
+        #temp_markers2 = temp_markers1[temp_markers1$amplicon %in% unshared_loci_in_tablen, names(markers)]
+        
+        #markers = rbind(markers, temp_markers2)
+        #markers %<>% arrange(chromosome, start)
+        
+        #rm(temp_markers2)
         
       }
       
@@ -932,12 +961,12 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
                         dimnames = list(rownames(temp_gt1),
                                         markers$amplicon)
       )
-      
+
       for(amplicon in colnames(temp_gt1)){
-        
+        #if(amplicon != 'PvP01_05_v1_1077955_1078122') {
         temp_gt3[,amplicon] = temp_gt1[, amplicon]
         rm(amplicon)
-        
+        #}
       }
       
       gt = rbind(temp_gt2, temp_gt3)
@@ -3620,10 +3649,10 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       !is.na(Strata) ~ Strata,
       is.na(Strata) ~ 'Missing data'
     ))
-    
+    #browser()
     for(pop in unique(ampseq_object@metadata[['Strata']])){
       temp_ampseq_object = filter_samples(ampseq_object,
-                                          v = (ampseq_object@metadata[['Strata']] == pop)
+                                          v = (ampseq_object@metadata[['Strata']] == pop), update_cigars = FALSE
       )
       
       if(sum((ampseq_object@metadata[['Strata']] == pop)) == 1){

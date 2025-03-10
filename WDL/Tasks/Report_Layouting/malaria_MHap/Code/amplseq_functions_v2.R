@@ -6416,8 +6416,8 @@ drug_resistant_haplotypes = function(ampseq_object,
     names(metadata) = c('Sample_id', 'var1', 'var2', 'Longitude', 'Latitude')
     metadata$Longitude = as.numeric(metadata$Longitude)
     metadata$Latitude = as.numeric(metadata$Latitude)
-    metadata$Longitude[!is.na(metadata$Longitude)] = 0.0
-    metadata$Latitude[!is.na(metadata$Latitude)] = 0.0
+    metadata$Longitude[is.na(metadata$Longitude)] = 0.0
+    metadata$Latitude[is.na(metadata$Latitude)] = 0.0
     
   }else{
     metadata = ampseq_object@metadata[,c(variables)]

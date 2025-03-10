@@ -77,7 +77,7 @@ explains, and loadings show how individual variables contribute to each PC. PCA
 is useful for identifying population structure, batch effects, or hidden 
 patterns in genomic, epidemiological, or multi-omics datasets.
 
-```{r, fig.width=6, fig.height=4.5, fig.cap="**Figure 1:** Principal Component analysis (PCA) based on the IBS. Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
+```{r, fig.width=8, fig.height=7, fig.cap="**Figure 1:** Principal Component analysis (PCA) based on the IBS. Colors are randomly assigned based on the categories of Variable1. Each dot represents a sample."}
 IBS_PCA
 ```
 

@@ -590,15 +590,17 @@ for(w in 1:nchunks){
     
 }
  
-evectors_IBS = GRM_evectors(dist_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = 'Country')
+evectors_IBS = GRM_evectors(dist_table = pairwise_ibs, k = 2, metadata = ampseq_object@metadata, Pop = Variable1)
 IBS_PCA = evectors_IBS %>% ggplot(aes(x = PC1, y = PC2, color = .[[Variable1]]))+
   geom_point(alpha = .7, size = 2) +
-  stat_ellipse(level = .6)+
-  scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]]))))+
-  theme_bw()+
+  stat_ellipse(level = .6) +
+  scale_color_manual(values = sample(col_vector, nlevels(as.factor(ampseq_object@metadata[[Variable1]])))) +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(ncol = 4)) +
   labs(#x = paste0('1st PCo (', round(evectors_IBS$contrib[1],1), '%)'),
        #y = paste0('2nd PCo (', round(evectors_IBS$contrib[2],1), '%)'),
-       color = 'Countries')
+       color = Variable1)
 
 test2 = get_polygenomic(ampseq_object, strata = NULL, update_popsummary = F)
 
@@ -722,7 +724,7 @@ if(!is.null(ibd_thres)){
    theme_bw()+
    labs(x = paste0('1st PCo (', round(evectors_IBD$contrib[1],1), '%)'),
         y = paste0('2nd PCo (', round(evectors_IBD$contrib[2],1), '%)'),
-        color = 'Countries')
+        color = Variable1)
 
 
 

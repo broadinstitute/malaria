@@ -3,39 +3,38 @@ version 1.0
 task report_layouting_process {
 	input {
 		File ampseq_excelfile
-
-		Boolean PerformanceReport
-
-		Float sample_ampl_rate = 0.2
-		Float locus_ampl_rate = 0.2
-
-		Boolean Drug_Surveillance_Report
-		Boolean Variants_of_Interest_Report
-
 		File ref_gff
 		File ref_fasta
 		File reference_alleles
 		File selected_checkboxes
-	
-		String join_by
-		Boolean na_var_rm
-		Boolean na_hap_rm
-		String drugs
-		Boolean include_all_drug_markers
 
-		String ibd_thres
-		Boolean parallel
-		Int ibd_ncol
-		String? pop_levels
+		Boolean PerformanceReport = true
+		Boolean Drug_Surveillance_Report = true
+		Boolean Variants_of_Interest_Report = false
+
+		Float sample_ampl_rate = 0.2
+		Float locus_ampl_rate = 0.2
+	
+		String join_by = "null"
+		Boolean na_var_rm = true
+		Boolean na_hap_rm = true
+		String drugs = "Artemisinin,Chloroquine,Pyrimethamine,Sulfadoxine,Lumefantrine,Mefloquine"
+		Boolean include_all_drug_markers = false
+
+		String ibd_thres = "null"
+		Boolean parallel = true
+		Int ibd_ncol = 4
+		String? pop_levels = "null"
 		String metadata_variable1_name = 'Country'
 		String metadata_variable2_name = 'Run'
-		String metadata_latitude_name = 'Latitude'
 		String metadata_longitude_name = 'Longitude'
+		String metadata_latitude_name = 'Latitude'
 
-		Int nchunks
-		String hap_color_palette
-		String poly_quantile
-		String poly_formula
+		Int nchunks = 100
+		String hap_color_palette = "random"
+		String poly_quantile = "null"
+		String poly_formula = "null"
+
 	}
 	
 	command <<<
