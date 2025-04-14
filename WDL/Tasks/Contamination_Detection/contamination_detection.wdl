@@ -26,6 +26,8 @@ task contamination_detection {
 	adaptor_rem2s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem2s}")
 	
 	# Detect missing files
+	touch missing_files.tsv
+	touch found_files.tsv
 
 	cut -d, -f1 "~{barcodes_index}" | while read -r sample; do
 		if [ "$sample" == "sample_id" ]; then

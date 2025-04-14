@@ -123,6 +123,32 @@ task prepare_reference_files {
 	#####################################################################
 	# Enforce the same amplicon name across all files                   #
 	#####################################################################
+	# Before running in the next step, handle the special case where the 
+	# files contain CI primers.
+	# Function to extract the first 6 sequences with headers matching >KELT_
+	extract_kelt_sequences() {
+		local input_file=$1
+		local output_file=$2
+		local backup_file=$3
+
+		# Backup original file
+		cp "${input_file}" "${backup_file}"
+
+		# Extract the first 6 sequences in the file (regardless of header)
+		awk '
+		BEGIN { RS=">"; ORS="" }
+		NR > 1 { print ">" $0; count++ }
+		count == 6 { exit }
+		' "${input_file}" > "${output_file}"
+	}
+
+	# Run function in the forward and reverse primer files
+	if grep -q ">KELT_" "~{forward_primers_file}"; then
+		echo "CI tags detected"
+		extract_kelt_sequences "~{forward_primers_file}" primers_fw.fasta primers_fw_CI.fasta
+		extract_kelt_sequences "~{reverse_primers_file}" primers_rv.fasta primers_rv_CI.fasta
+	fi
+
 	echo "Checking for consistency across all panel reference files."
 	python /Code/check_input_headers.py -i ~{panel_info} \
 		--ref_genome ~{reference_genome} \
@@ -134,6 +160,8 @@ task prepare_reference_files {
 		File panel_bedfile_o = "amplicon_panel.bed"
 		File forward_primers_o = "primers_fw.fasta"
 		File reverse_primers_o = "primers_rv.fasta"
+		File? forward_primers_CI_o = "primers_fw_CI.fasta"
+		File? reverse_primers_CI_o = "primers_rv_CI.fasta"
 		File markers_table_o = "markers_table.csv"
 	}
 

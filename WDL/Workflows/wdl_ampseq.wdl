@@ -2,7 +2,7 @@ version 1.0
 
 import "../Tasks/Prepare_Reference_Files/prepare_reference_files.wdl" as prepare_reference_files_t
 import "../Tasks/File_Validation/validate_inputs.wdl" as validate_inputs_t
-#import "../Tasks/Contamination_Detection/contamination_detection.wdl" as contamination_detection_t
+import "../Tasks/Contamination_Detection/contamination_detection.wdl" as contamination_detection_t
 import "../Tasks/Cutadapters/cutadapters.wdl" as cutadapters_t
 import "../Tasks/Trimprimers/trimprimers.wdl" as trimprimers_t
 import "../Tasks/Amplicon_Denoising/amplicon_denoising.wdl" as amplicon_denoising_t
@@ -28,7 +28,7 @@ workflow ampseq {
         File? path_to_snv
 
         # Optional file for contamination detection pipeline
- #       File? barcodes_index
+        File? barcodes_index
 
         # Parameters for Denoising and ASV filtering
         String out_prefix
@@ -73,16 +73,16 @@ workflow ampseq {
         }
     }
 
-#    if(defined(barcodes_index)) {
-#        call contamination_detection_t.contamination_detection as t_0001_contamination_detection {
-#            input: 
-#                adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
-#                adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
-#                forward_primers_file = forward_primers_file,
-#                reverse_primers_file = reverse_primers_file,
-#                barcodes_index = barcodes_index
-#        }
-#    }
+    if(defined(barcodes_index)) {
+        call contamination_detection_t.contamination_detection as t_0001_contamination_detection {
+            input: 
+                adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
+                adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
+                forward_primers_file = t_000_prepare_reference_files.forward_primers_CI_o,
+                reverse_primers_file = t_000_prepare_reference_files.reverse_primers_CI_o,
+                barcodes_index = barcodes_index
+        }
+    }
 
 #    if(run_demultiplexing) {
 #        call ampseq_pipeline_demult {
@@ -99,38 +99,38 @@ workflow ampseq {
 #        }
 #    }
 
-    call amplicon_denoising_t.amplicon_denoising as t_004_amplicon_denoising {
-        input:
-            sample_ids = sample_ids,
-            fastq1s = fastq1s,
-            fastq2s = fastq2s,
-            adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
-            adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
-            primer_rem1s = t_003_trimprimers.fastq1_no_primers_o,
-            primer_rem2s = t_003_trimprimers.fastq2_no_primers_o,
-            forward_primers_file = select_first([forward_primers_file, t_000_prepare_reference_files.forward_primers_o]),
-            reverse_primers_file = select_first([reverse_primers_file, t_000_prepare_reference_files.reverse_primers_o]),
-            reference_amplicons = t_000_prepare_reference_files.reference_o,
-            reference_amplicons_2 = reference_amplicons_2,
-            run_id = run_id,
-            path_to_snv = path_to_snv
-    }
-
-    call asv_filtering_t.asv_filtering as t_005_asv_filtering {
-        input:
-            out_prefix = out_prefix,
-            sample_metadata = sample_metadata,
-            panel_bedfile = t_000_prepare_reference_files.panel_bedfile_o,
-            reference_amplicons = t_000_prepare_reference_files.reference_o,
-            markersTable = t_000_prepare_reference_files.markers_table_o,      
-            reference_genome = reference_genome,
-            CIGARVariants = t_004_amplicon_denoising.CIGARVariants_Bfilter_o,
-            ASVTable = t_004_amplicon_denoising.ASVTable_o,
-            ASVSeqs = t_004_amplicon_denoising.ASVSeqs_o,
-            ASV_to_CIGAR = t_004_amplicon_denoising.ASV_to_CIGAR_o,
-            ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o,
-            ReadAttrition = t_004_amplicon_denoising.ReadAttrition_o
-    }
+#    call amplicon_denoising_t.amplicon_denoising as t_004_amplicon_denoising {
+#        input:
+#            sample_ids = sample_ids,
+#            fastq1s = fastq1s,
+#            fastq2s = fastq2s,
+#            adaptor_rem1s = t_002_cutadapters.fastq1_noadapters_o,
+#            adaptor_rem2s = t_002_cutadapters.fastq2_noadapters_o,
+#            primer_rem1s = t_003_trimprimers.fastq1_no_primers_o,
+#            primer_rem2s = t_003_trimprimers.fastq2_no_primers_o,
+#            forward_primers_file = select_first([forward_primers_file, t_000_prepare_reference_files.forward_primers_o]),
+#            reverse_primers_file = select_first([reverse_primers_file, t_000_prepare_reference_files.reverse_primers_o]),
+#            reference_amplicons = t_000_prepare_reference_files.reference_o,
+#            reference_amplicons_2 = reference_amplicons_2,
+#            run_id = run_id,
+#            path_to_snv = path_to_snv
+#    }
+#
+#    call asv_filtering_t.asv_filtering as t_005_asv_filtering {
+#        input:
+#            out_prefix = out_prefix,
+#            sample_metadata = sample_metadata,
+#            panel_bedfile = t_000_prepare_reference_files.panel_bedfile_o,
+#            reference_amplicons = t_000_prepare_reference_files.reference_o,
+#            markersTable = t_000_prepare_reference_files.markers_table_o,      
+#            reference_genome = reference_genome,
+#            CIGARVariants = t_004_amplicon_denoising.CIGARVariants_Bfilter_o,
+#            ASVTable = t_004_amplicon_denoising.ASVTable_o,
+#            ASVSeqs = t_004_amplicon_denoising.ASVSeqs_o,
+#            ASV_to_CIGAR = t_004_amplicon_denoising.ASV_to_CIGAR_o,
+#            ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o,
+#            ReadAttrition = t_004_amplicon_denoising.ReadAttrition_o
+#    }
 
     output {
         # PREPARE REFERENCE FILES
@@ -151,9 +151,9 @@ workflow ampseq {
         #Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers_o
 
         # CONTAMINATION DETECTION
-        #File? contamination_detection_missing_files_f = t_0001_contamination_detection.missing_files
-        #File? contamination_detection_sample_cards_f = t_0001_contamination_detection.contamination_detection_sample_cards
-        #File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
+        File? contamination_detection_missing_files_f = t_0001_contamination_detection.missing_files
+        File? contamination_detection_sample_cards_f = t_0001_contamination_detection.contamination_detection_sample_cards
+        File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
 
         # DADA2
         #File ASVBimeras_f = t_004_amplicon_denoising.ASVBimeras_o
@@ -169,7 +169,7 @@ workflow ampseq {
         #File ZeroReadsSampleList_f = t_004_amplicon_denoising.ZeroReadsSampleList_o
 
         # ASV Filtering
-        File ampseq_object_f = t_005_asv_filtering.ampseq_object_o
+#        File ampseq_object_f = t_005_asv_filtering.ampseq_object_o
     }
 }
 
