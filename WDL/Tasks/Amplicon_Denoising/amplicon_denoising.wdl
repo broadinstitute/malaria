@@ -13,7 +13,6 @@ task amplicon_denoising {
         File reverse_primers_file
         File reference_amplicons
         File? reference_amplicons_2
-        Array[String] run_id
 
         #Variables for DADA2
         String Class = "parasite" # Name of the column in the metadata file for sample class
