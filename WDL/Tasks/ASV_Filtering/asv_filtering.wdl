@@ -2,7 +2,6 @@ version 1.0
 
 task asv_filtering {
 	input {
-		String out_prefix 
 		File markersTable
 		File reference_genome
 		File? panel_bedfile
@@ -11,7 +10,7 @@ task asv_filtering {
 
 		# Metadata columns
 		File sample_metadata
-		String? metadata_variable1_name = 'Country'
+		String? metadata_variable1_name = 'Countr'
 		String? metadata_variable2_name
 		String? metadata_latitude_name = 'Latitude'
 		String? metadata_longitude_name = 'Longitude'
@@ -79,8 +78,9 @@ task asv_filtering {
 		gsutil cp ~{reference_genome} references/
 		~{"gsutil cp " + panel_bedfile + " references/"}
 		gsutil cp ~{sample_metadata} Results/metadata.csv
-		
-		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/~{out_prefix}_CIGARVariants_Bfilter.out.tsv
+
+		out_prefix=$(date +"%Y_%m_%d")
+		gsutil cp ~{CIGARVariants} Results/~{cigar_variants_dir}/${out_prefix}_CIGARVariants_Bfilter.out.tsv
 		gsutil cp ~{ASVTable} Results/~{asv_table_dir}
 		gsutil cp ~{ASV_to_CIGAR} Results/~{asv2cigar_dir}
 		gsutil cp ~{ASVSeqs} Results/~{asv_seq_dir}
@@ -103,7 +103,7 @@ task asv_filtering {
 		-asv2cigar_files '~{asv2cigar_dir}' \
 		-asv_seq_files '~{asv_seq_dir}' \
 		-zero_read_sample_list '~{zero_read_sample_list_dir}' \
-		-o '~{out_prefix}' \
+		-o '${out_prefix}' \
 		-markers markersTable.csv \
 		-sample_id_pattern '~{sample_id_pat}' \
 		~{"-min_abd " + min_abd} \
@@ -134,7 +134,7 @@ task asv_filtering {
 	>>>
 	
 	output {
-		File ampseq_object_o = "Results/~{out_prefix}.xlsx"
+		File ampseq_object_o = glob("Results/*.xlsx")
 	}
 	runtime {
 		cpu: 1

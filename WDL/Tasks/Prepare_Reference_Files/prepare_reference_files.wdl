@@ -15,7 +15,7 @@ task prepare_reference_files {
 	# 1 MAKE REFERENCE_OUT OPTIONAL. SKIP THE GENERATION OF THE REFERENCE FILE IF PROVIDED BY USER.
 	export TMPDIR=tmp
 	set -euxo pipefail
-
+	
 	###################################################################
 	# Need to check for byte-order mark for interoperability purposes #
 	###################################################################

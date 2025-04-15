@@ -2,7 +2,7 @@ version 1.0
 
 task amplicon_denoising {
     input {
-        Array[String] sample_ids
+        Array[String]? sample_ids
         Array[File] fastq1s
         Array[File] fastq2s
         Array[File] adaptor_rem1s
@@ -42,8 +42,6 @@ task amplicon_denoising {
         String polyN = "5"
     }
 
-    #Int total_size = ceil((size(fastq1s) + size(fastq2s)) * 1.5)
-    #Int total_size = ceil(length(fastq1s) * 0.5)
     Int total_size = ceil(length(fastq1s) * 10)
 
     command <<<
@@ -53,7 +51,32 @@ task amplicon_denoising {
         set -euxo pipefail
 
         # INPUT STRINGS
-        sample_ids_string=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+        if [ -n "~{sample_ids}" ]; then 
+           sample_ids_string=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+           sample_ids_a=(${sample_ids_string})
+        else
+           sample_ids=$(IFS=" "; echo "~{sep=' ' fastq1s}")
+           echo "Sample IDs: ${sample_ids}"
+           read -r -a paths <<< "${sample_ids}"
+
+           # Loop through each element
+           sample_ids_string=()
+           i=0
+           for path in "${paths[@]}"; do
+              echo "Processing ${path}"
+              filename=$(basename "${path}") # Get the file name
+              echo "Filename: ${filename}"
+              sample_id="${filename%%_*}" # Remove everything after first underscore
+              echo "Sample ID: ${sample_id}"
+              i=$((i + 1))
+              sample_ids_string[$i]="${sample_id}"
+           done
+           echo "Echoing sample_ids_string"
+           echo "${sample_ids_string[@]}"
+           sample_ids_a=(${sample_ids_string[*]})
+        fi
+
+
         fastq1s_string=$(IFS=" "; echo "~{sep=' ' fastq1s}")
         fastq2s_string=$(IFS=" "; echo "~{sep=' ' fastq2s}")
         adaptor_rem1s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem1s}")
@@ -62,13 +85,17 @@ task amplicon_denoising {
         primer_rem2s_string=$(IFS=" "; echo "~{sep=' ' primer_rem2s}")
 
         # Create a CSV file with the input data
-        sample_ids_a=(${sample_ids_string})
         fastq1s_a=(${fastq1s_string})
         fastq2s_a=(${fastq2s_string})
         adaptor_rem1s_a=(${adaptor_rem1s_string})
         adaptor_rem2s_a=(${adaptor_rem2s_string})
         primer_rem1s_a=(${primer_rem1s_string})
         primer_rem2s_a=(${primer_rem2s_string})
+
+        # Add compatibility with the automatic name generator
+        #for i in "${!sample_ids_a[@]}"; do
+        #  sample_ids_a[$i]="${sample_ids_a[$i]%_S*_L001}"
+        #done
 
         # Write data to the CSV
         echo "sample_ids,fastq1s,fastq2s,adaptor_rem1s,adaptor_rem2s,primer_rem1s,primer_rem2s" > samples_tmp.csv
@@ -101,13 +128,6 @@ task amplicon_denoising {
                     --bimera 
 
         echo "DADA2 denoising complete."
-                    #-b "${sample_ids_string}" \
-                    #-f1 "${fastq1s_string}" \
-                    #-f2 "${fastq2s_string}" \
-                    #-p1 "${primer_rem1s_string}" \
-                    #-p2 "${primer_rem2s_string}" \
-                    #-a1 "${adaptor_rem1s_string}" \
-                    #-a2 "${adaptor_rem2s_string}" \
 
         ###################################################################
         # Run post-processing                                             #

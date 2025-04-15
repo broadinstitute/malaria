@@ -24,6 +24,9 @@ task contamination_detection {
 	
 	adaptor_rem1s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem1s}")
 	adaptor_rem2s_string=$(IFS=" "; echo "~{sep=' ' adaptor_rem2s}")
+
+	echo "adaptor_rem1,adaptor_rem2" > adaptors.csv
+	paste -d, <(echo "${adaptor_rem1s_string}" | tr ' ' '\n') <(echo "${adaptor_rem2s_string}" | tr ' ' '\n') >> adaptors.csv
 	
 	# Detect missing files
 	touch missing_files.tsv
@@ -43,9 +46,9 @@ task contamination_detection {
 	done
 
 	echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices."
-	python /Code/CI_TerraPipeline.py -f1 "${adaptor_rem1s_string}" -f2 "${adaptor_rem2s_string}" -b "~{barcodes_index}" -l found_files.tsv
+	python /Code/CI_TerraPipeline.py -a adaptors.csv -b "~{barcodes_index}" -l found_files.tsv    
 
-	Rscript /Code/render_report.R -d $PWD/Report/Merge/ -o $PWD/Report/ -p ~{barcodes_index} -m 1000 -c 0.5 -mf $PWD/missing_files.tsv
+	Rscript /Code/render_report.R -d $PWD/Report/Merge/ -o $PWD/Report/ -p ~{barcodes_index} -m 1000 -c ~{contamination_threshold} -mf $PWD/missing_files.tsv
 	tar -czvf Report_Cards.tar.gz Report
 	
 	echo "Finished contamination detection"
