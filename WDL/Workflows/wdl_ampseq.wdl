@@ -62,13 +62,13 @@ workflow ampseq {
                 fastq2 = t_001_validate_fastqs.fastq2_o
         }
 
-        call trimprimers_t.trimprimers as t_003_trimprimers {
-            input:
-                trimmed_fastq1 = t_002_cutadapters.fastq1_noadapters_o,
-                trimmed_fastq2 = t_002_cutadapters.fastq2_noadapters_o,
-                forward_primers_file = select_first([forward_primers_file, t_000_prepare_reference_files.forward_primers_o]),
-                reverse_primers_file = select_first([reverse_primers_file, t_000_prepare_reference_files.reverse_primers_o])
-        }
+#        call trimprimers_t.trimprimers as t_003_trimprimers {
+#            input:
+#                trimmed_fastq1 = t_002_cutadapters.fastq1_noadapters_o,
+#                trimmed_fastq2 = t_002_cutadapters.fastq2_noadapters_o,
+#                forward_primers_file = select_first([forward_primers_file, t_000_prepare_reference_files.forward_primers_o]),
+#                reverse_primers_file = select_first([reverse_primers_file, t_000_prepare_reference_files.reverse_primers_o])
+#        }
     }
 
     if(defined(barcodes_index)) {

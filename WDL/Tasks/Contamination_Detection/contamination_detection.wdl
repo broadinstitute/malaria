@@ -10,7 +10,8 @@ task contamination_detection {
 
 		#Contamination detection parameters
 		Int minreads_threshold = 1000
-		Float contamination_threshold = 1
+		Int contamination_threshold = 0
+		Int primer_distance_threshold = 2
 	}
 
 	command <<<
@@ -46,7 +47,7 @@ task contamination_detection {
 	done
 
 	echo "Sequencing run with inline barcodes. Performing analysis of combinatorial indices."
-	python /Code/CI_TerraPipeline.py -a adaptors.csv -b "~{barcodes_index}" -l found_files.tsv    
+	python /Code/CI_TerraPipeline.py -a adaptors.csv -b "~{barcodes_index}" -l found_files.tsv -d "~{primer_distance_threshold}"
 
 	Rscript /Code/render_report.R -d $PWD/Report/Merge/ -o $PWD/Report/ -p ~{barcodes_index} -m 1000 -c ~{contamination_threshold} -mf $PWD/missing_files.tsv
 	tar -czvf Report_Cards.tar.gz Report
