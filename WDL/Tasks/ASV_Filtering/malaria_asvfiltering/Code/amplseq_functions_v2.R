@@ -268,9 +268,6 @@ read_cigar_tables = function(paths = NULL,
         temp_asv_table2 = temp_asv_table1[as.character(temp_asv_seqs1) %in% as.character(asv_seqs),]
         temp_asv_seqs2 = temp_asv_seqs1[as.character(temp_asv_seqs1) %in% as.character(asv_seqs)]
         rownames(temp_asv_table2) = as.character(temp_asv_seqs2)
-        # temp_asv_table2$asvs = as.character(temp_asv_seqs2)
-        # 
-        # temp_asv_table2 = temp_asv_table2[order(temp_asv_table2$asvs),]
         
         # asvs in the previous data set present in the new data set
         temp_asv_table3 = asv_table[as.character(asv_seqs) %in% as.character(temp_asv_seqs1),]
@@ -473,6 +470,8 @@ setClass('ampseq', slots = c(
   gt = "ANY",
   asv_table = 'ANY',
   asv_seqs = 'ANY',
+  asv_seqs_masked = 'ANY',
+  vcf_like = 'ANY',
   metadata = "ANY",
   markers = "ANY",
   loci_performance = "ANY",
@@ -487,6 +486,8 @@ setClass('ampseq', slots = c(
 create_ampseq = function(gt = NULL,
                          asv_table = NULL,
                          asv_seqs = NULL,
+                         asv_seqs_masked = NULL,
+                         vcf_like = NULL,
                          metadata = NULL,
                          markers = NULL,
                          loci_performance = NULL,
@@ -499,6 +500,8 @@ create_ampseq = function(gt = NULL,
   obj@gt = gt
   obj@asv_table = asv_table
   obj@asv_seqs = asv_seqs
+  obj@asv_seqs_masked = asv_seqs_masked
+  obj@vcf_like = vcf_like
   obj@metadata = metadata
   obj@markers = markers
   obj@loci_performance = loci_performance
@@ -586,6 +589,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
     ampseq_object = create_ampseq(gt = ampseq_loci_abd_table,
                                   asv_table = asv_table,
                                   asv_seqs = asv_seqs,
+                                  asv_seqs_masked = asv_seqs,
                                   metadata = metadata,
                                   controls = list(gt = controls_ampseq_loci_abd_table,
                                                   metadata = controls_metadata),
@@ -617,9 +621,12 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
         
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[names(ampseq_object@asv_seqs) %in%
                                                           ampseq_object@asv_table$hapid]
+        ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[names(ampseq_object@asv_seqs_masked) %in%
+                                                          ampseq_object@asv_table$hapid]
         
         ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
         names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
         
       }
       
@@ -633,6 +640,7 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
     ampseq_object = create_ampseq(gt = ampseq_loci_abd_table,
                                   asv_table = asv_table,
                                   asv_seqs = asv_seqs,
+                                  asv_seqs_masked = asv_seqs,
                                   metadata = metadata,
                                   markers = markers,
                                   loci_performance = NULL,
@@ -661,6 +669,9 @@ cigar2ampseq = function(cigar_object, min_abd = 1, min_ratio = .1, markers = NUL
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[names(ampseq_object@asv_seqs) %in%
                                                           ampseq_object@asv_table$hapid]
         
+        ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[names(ampseq_object@asv_seqs_masked) %in%
+                                                          ampseq_object@asv_table$hapid]
+
       }
       
     }
@@ -722,6 +733,8 @@ ampseq2cigar = function(ampseq_object){
 
 ## join_ampseq----
 
+# Use only if the objects to merge haven't been masked
+
 join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
   
   gt = NULL
@@ -742,6 +755,9 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       asv_seqs = obj@asv_seqs
       metadata = obj@metadata
       markers = obj@markers
+
+      asv_table$hapid = paste0('ASV', 1:nrow(asv_table))
+      names(asv_seqs) = asv_table$hapid
       
     }else{# for subsequent objects
       
@@ -750,6 +766,9 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       temp_asv_seqs1 = obj@asv_seqs
       temp_metadata1 = obj@metadata
       temp_markers1 = obj@markers
+
+      temp_asv_table1$hapid = paste0('ASV', 1:nrow(temp_asv_table1))
+      names(temp_asv_seqs1) = temp_asv_table1$hapid
       
       # if there are shared asvs
       if(sum(as.character(temp_asv_seqs1) %in% as.character(asv_seqs)) > 0){
@@ -901,13 +920,28 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
       }else if(length(unshared_loci) != 0 &
                length(unshared_attributes) == 0){
         
-        unshared_loci_in_tablen = markers$amplicon[!(markers$amplicon %in% temp_markers1$amplicon)]
-        temp_markers2 = temp_markers1[temp_markers1$amplicon %in% unshared_loci_in_tablen, names(markers)]
+       shared_loci = markers$amplicon[!(markers$amplicon %in% unshared_loci)]
         
-        markers = rbind(markers, temp_markers2)
+        unshared_loci_with_respc_tablen = markers$amplicon[(markers$amplicon %in% unshared_loci)]
+        
+        unshared_loci_in_tablen = temp_markers1$amplicon[(temp_markers1$amplicon %in% unshared_loci)]
+        
+        shared_loci_df = markers[markers$amplicon%in% shared_loci,]
+        
+        unshared_loci_with_tablen_df = markers[markers$amplicon %in% unshared_loci_with_respc_tablen, ]
+        
+        unshared_loci_in_tablen_df = temp_markers1[temp_markers1$amplicon %in% unshared_loci_in_tablen, names(markers)]
+        
+        markers = rbind(shared_loci_df, unshared_loci_with_tablen_df, unshared_loci_in_tablen_df)
         markers %<>% arrange(chromosome, start)
         
-        rm(temp_markers2)
+        rm(list = c('shared_loci_df', 
+                    'unshared_loci_with_tablen_df', 
+                    'unshared_loci_in_tablen_df',
+                    'shared_loci',
+                    'unshared_loci_with_respc_tablen',
+                    'unshared_loci_in_tablen'
+                    ))
         
       }
       
@@ -963,7 +997,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
    
    # Remove duplicates
   if(remove_replicates){
-    
+    print("Duplicated samples are being removed...")    
     duplicated_samples = metadata[duplicated(metadata$Sample_id),][['Sample_id']]
     
     gt_replicates = gt[duplicated(metadata$Sample_id),]
@@ -999,6 +1033,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
   ampseq_object = create_ampseq(gt = gt,
                                 asv_table = asv_table,
                                 asv_seqs = asv_seqs,
+                                asv_seqs_masked = asv_seqs,
                                 metadata = metadata,
                                 markers = markers)
   
@@ -1008,7 +1043,7 @@ join_ampseq = function(ampseq_obj_list = NULL, remove_replicates = TRUE){
 
 ## write_ampseq----
 
-write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name = 'wb.xlsx'){
+write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json', 'tsv'), name = 'wb.xlsx', sep = '\t'){
   
   if(format == 'excel'){
     
@@ -1024,6 +1059,8 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
                        'loci_performance', 
                        'asv_table', 
                        'asv_seqs', 
+                       'asv_seqs_masked',
+                       'vcf_like',
                        'discarded_loci',
                        'discarded_samples',
                        'controls')){
@@ -1037,7 +1074,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
         } else {
           temp_sheet = NULL
         }     
-      }else if(temp_slot == 'asv_seqs'){
+      }else if(temp_slot %in% c('asv_seqs', 'asv_seqs_masked')){
         print("Printing asv_seqs slot...")      
         if(!is.null(slot(ampseq_object, temp_slot))){
           
@@ -1217,7 +1254,9 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
                        'markers', 
                        'loci_performance', 
                        'asv_table', 
-                       'asv_seqs', 
+                       'asv_seqs',
+                       'asv_seqs_masked',
+                       'vcf_like',
                        'discarded_loci',
                        'discarded_samples',
                        'controls')){
@@ -1227,7 +1266,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
         temp_sheet = data.frame(Sample_id = rownames(slot(ampseq_object, temp_slot)),
                                 as.data.frame(slot(ampseq_object, temp_slot)))
         
-      }else if(temp_slot == 'asv_seqs'){
+      }else if(temp_slot %in% c('asv_seqs', 'asv_seqs_masked')){
         
         if(!is.null(slot(ampseq_object, temp_slot))){
           
@@ -1364,6 +1403,173 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
     }
     
     
+  }else if(format == 'tsv'){
+    
+    if(file.exists(name)){
+      system(paste0('rm -r ', name))
+    }
+    
+    system(paste0('mkdir ', name))
+    
+    for(temp_slot in c('gt', 
+                       'metadata', 
+                       'markers', 
+                       'loci_performance', 
+                       'asv_table', 
+                       'asv_seqs', 
+                       'asv_seqs_masked',
+                       'vcf_like',
+                       'discarded_loci',
+                       'discarded_samples',
+                       'controls')){
+      
+      if(temp_slot == 'gt'){
+        
+        temp_sheet = data.frame(Sample_id = rownames(slot(ampseq_object, temp_slot)),
+                                as.data.frame(slot(ampseq_object, temp_slot)))
+        
+      }else if(temp_slot %in% c('asv_seqs', 'asv_seqs_masked')){
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_sheet = data.frame(asv_id = names(slot(ampseq_object, temp_slot)),
+                                  asv_seq = as.character(slot(ampseq_object, temp_slot)))
+          
+        }else{
+          temp_sheet = NULL
+        }
+        
+      }else if(temp_slot == 'markers'){
+        
+        temp_sheet = as.data.frame(slot(ampseq_object, temp_slot))
+        
+        if(sum(is.infinite(temp_sheet[['distance']])) > 0){
+          temp_sheet[is.infinite(temp_sheet[['distance']]),][['distance']] = NA
+        }
+        
+        
+      }else if(temp_slot == 'discarded_loci'){
+        
+        temp_sheet = NULL
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_discarded_loci = slot(ampseq_object, temp_slot)
+          
+          # write gt
+          
+          if(!is.null(nrow(temp_discarded_loci[['gt']]))){
+            temp_discarded_loci_gt = data.frame(Sample_id = rownames(temp_discarded_loci[['gt']]),
+                                                as.data.frame(temp_discarded_loci[['gt']]))
+          }else{
+            
+            temp_discarded_loci_gt = data.frame(Sample_id = names(temp_discarded_loci[['gt']]),
+                                                as.data.frame(temp_discarded_loci[['gt']]))
+            
+          }
+          
+          
+          
+          write.table(temp_discarded_loci_gt,
+                    file.path(name, 'discarded_loci_gt.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write markers
+          
+          temp_discarded_loci_markers = as.data.frame(temp_discarded_loci[['markers']])
+          
+          if(sum(is.infinite(temp_discarded_loci_markers[['distance']])) > 0){
+            temp_discarded_loci_markers[is.infinite(temp_discarded_loci_markers[['distance']]),][['distance']] = NA  
+          }
+          
+          write.table(temp_discarded_loci_markers,
+                    file.path(name, 'discarded_loci_markers.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write loci_performance
+          
+          temp_discarded_loci_loci_performance = as.data.frame(temp_discarded_loci[['loci_performance']])
+          
+          write.table(temp_discarded_loci_loci_performance,
+                    file.path(name, 'discarded_loci_loci_performance.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+        }
+        
+        
+      }else if(temp_slot == 'discarded_samples'){
+        
+        temp_sheet = NULL
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_discarded_samples = slot(ampseq_object, temp_slot)
+          
+          # write gt
+          
+          temp_discarded_samples_gt = data.frame(Sample_id = rownames(temp_discarded_samples[['gt']]),
+                                              as.data.frame(temp_discarded_samples[['gt']]))
+          
+          write.table(temp_discarded_samples_gt,
+                    file.path(name, 'discarded_samples_gt.tsv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write metadata
+          
+          temp_discarded_samples_metadata = as.data.frame(temp_discarded_samples[['metadata']])
+          
+          write.table(temp_discarded_samples_metadata,
+                    file.path(name, 'discarded_samples_metadata.tsv'),
+                    quote = F, row.names = F, sep = sep)
+        }
+        
+      }else if(temp_slot == 'controls'){
+        
+        temp_sheet = NULL
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          
+          temp_controls = slot(ampseq_object, temp_slot)
+          
+          # write gt
+          
+          temp_controls_gt = data.frame(Sample_id = rownames(temp_controls[['gt']]),
+                                        as.data.frame(temp_controls[['gt']]))
+          
+          write.table(temp_controls_gt,
+                    file.path(name, 'controls_gt.csv'), 
+                    quote = F, row.names = F, sep = sep)
+          
+          # write metadata
+          
+          temp_controls_metadata = as.data.frame(temp_controls[['metadata']])
+          
+          write.table(temp_controls_metadata,
+                    file.path(name, 'controls_metadata.csv'),
+                    quote = F, row.names = F, sep = sep)
+        }
+        
+      }else{
+        
+        if(!is.null(slot(ampseq_object, temp_slot))){
+          temp_sheet = as.data.frame(slot(ampseq_object, temp_slot))
+        }else{
+          temp_sheet = NULL
+        }
+        
+        
+      }
+      
+      if(!is.null(temp_sheet)){
+        
+        write.table(temp_sheet, paste0(file.path(name, temp_slot), '.tsv'), quote = F, row.names = F, sep = sep)
+        
+      }
+      
+      
+    }
+    
+    
   }else if(format == 'json'){
     # In development
     
@@ -1384,7 +1590,7 @@ write_ampseq = function(ampseq_object, format = c('excel', 'csv', 'json'), name 
 
 ## write_cigar----
 
-write_cigar = function(cigar_object, format = c('excel', 'csv', 'json'), name = 'wb.xlsx'){
+write_cigar = function(cigar_object, format = c('excel', 'csv', 'json', 'tsv'), name = 'wb.xlsx', sep = '\t'){
   
   if(format == 'excel'){
     
@@ -1490,6 +1696,56 @@ write_cigar = function(cigar_object, format = c('excel', 'csv', 'json'), name = 
     }
     
     
+  }else if(format == 'tsv'){
+    
+    if(file.exists(name)){
+      system(paste0('rm -r ', name))
+    }
+    
+    system(paste0('mkdir ', name))
+    
+    for(temp_slot in c('cigar_table', 
+                       'metadata',
+                       'asv_table', 
+                       'asv_seqs')){
+      
+      if(temp_slot == 'cigar_table'){
+        
+        temp_sheet = data.frame(Sample_id = rownames(slot(cigar_object, temp_slot)),
+                                as.data.frame(slot(cigar_object, temp_slot)))
+        
+      }else if(temp_slot == 'asv_seqs'){
+        
+        if(!is.null(slot(cigar_object, temp_slot))){
+          
+          temp_sheet = data.frame(asv_id = names(slot(cigar_object, temp_slot)),
+                                  asv_seq = as.character(slot(cigar_object, temp_slot)))
+          
+        }else{
+          temp_sheet = NULL
+        }
+        
+      }else{
+        
+        if(!is.null(slot(cigar_object, temp_slot))){
+          temp_sheet = as.data.frame(slot(cigar_object, temp_slot))
+        }else{
+          temp_sheet = NULL
+        }
+        
+        
+      }
+      
+      if(!is.null(temp_sheet)){
+        
+        write.table(temp_sheet, paste0(file.path(name, temp_slot), '.tsv'), quote = F, row.names = F, sep = sep)
+        
+      }
+      
+      
+    }
+    
+    
   }else if(format == 'json'){
     # In development
     
@@ -1510,7 +1766,7 @@ write_cigar = function(cigar_object, format = c('excel', 'csv', 'json'), name = 
 
 ## read_ampseq----
 
-read_ampseq = function(file = NULL, format = 'excel'){
+read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
   
   ampseq_object = create_ampseq()
   
@@ -1528,7 +1784,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
-      }else if(sheet == 'asv_seqs'){
+      }else if(sheet %in% c('asv_seqs', 'asv_seqs_masked')){
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_names = temp_sheet[[1]]
         temp_sheet = DNAStringSet(temp_sheet[[2]])
@@ -1536,7 +1792,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
-      }else if(sheet %in% c('metadata', 'loci_performance')){
+      }else if(sheet %in% c('metadata', 'loci_performance', 'vcf_like')){
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_rownames = temp_sheet[,1]
         rownames(temp_sheet) = temp_sheet_rownames
@@ -1629,7 +1885,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
         
-      }else if(sheet == 'asv_seqs.csv'){
+      }else if(sheet %in% c('asv_seqs.csv', 'asv_seqs_masked.csv')){
         
         temp_sheet = read.csv(file.path(file, sheet))
         temp_sheet_names = temp_sheet[[1]]
@@ -1638,7 +1894,7 @@ read_ampseq = function(file = NULL, format = 'excel'){
         
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
         
-      }else if(sheet %in% c('metadata.csv', 'loci_performance.csv')){
+      }else if(sheet %in% c('metadata.csv', 'loci_performance.csv', 'vcf_like.csv')){
         
         temp_sheet = read.csv(file.path(file, sheet))
         temp_sheet_rownames = temp_sheet[,1]
@@ -1723,6 +1979,119 @@ read_ampseq = function(file = NULL, format = 'excel'){
         
         temp_sheet = read.csv(file.path(file, sheet))
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
+        
+      }
+    }
+    
+  }else if(format == 'tsv'){
+    
+    for(sheet in list.files(file)){
+      if(sheet == 'gt.tsv'){
+        
+        temp_sheet = read.table(file.path(file, sheet), sep = sep, header = T)
+        temp_sheet_rownames = temp_sheet[,1]
+        temp_sheet = as.matrix(temp_sheet[,-1])
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(sheet %in% c('asv_seqs.tsv', 'asv_seqs_masked.tsv')){
+        
+        temp_sheet = read.table(file.path(file, sheet), sep = sep, header = T)
+        temp_sheet_names = temp_sheet[[1]]
+        temp_sheet = DNAStringSet(temp_sheet[[2]])
+        names(temp_sheet) = temp_sheet_names
+        
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(sheet %in% c('metadata.tsv', 'loci_performance.tsv', 'vcf_like.tsv')){
+        
+        temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+        temp_sheet_rownames = temp_sheet[,1]
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(sheet == 'markers.tsv'){
+        
+        temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+        
+        if(sum(is.na(temp_sheet[['distance']])) > 0){
+          temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+        }
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
+        
+      }else if(grepl('discarded_loci', sheet)){
+        
+        if(sheet == 'discarded_loci_gt.tsv'){
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          temp_sheet = as.matrix(temp_sheet[,-1])
+          rownames(temp_sheet) = temp_sheet_rownames
+          
+          ampseq_object@discarded_loci[['gt']] = temp_sheet
+          
+        }else if(sheet == 'discarded_loci_markers.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          
+          if(sum(is.na(temp_sheet[['distance']])) > 0){
+            temp_sheet[is.na(temp_sheet[['distance']]),][['distance']] = Inf
+          }
+          
+          ampseq_object@discarded_loci[['markers']] = temp_sheet
+          
+        }else if(sheet == 'discarded_loci_loci_performance.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          rownames(temp_sheet) = temp_sheet_rownames
+          ampseq_object@discarded_loci[['loci_performance']] = temp_sheet
+          
+        }
+        
+      }else if(grepl('discarded_samples', sheet)){
+        
+        if(sheet == 'discarded_samples_gt.tsv'){
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          temp_sheet = as.matrix(temp_sheet[,-1])
+          rownames(temp_sheet) = temp_sheet_rownames
+          
+          ampseq_object@discarded_samples[['gt']] = temp_sheet
+          
+        }else if(sheet == 'discarded_samples_metadata.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          rownames(temp_sheet) = temp_sheet_rownames
+          ampseq_object@discarded_samples[['metadata']] = temp_sheet
+          
+        }
+        
+      }else if(grepl('controls', sheet)){
+        
+        if(sheet == 'controls_gt.tsv'){
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          temp_sheet = as.matrix(temp_sheet[,-1])
+          rownames(temp_sheet) = temp_sheet_rownames
+          
+          ampseq_object@controls[['gt']] = temp_sheet
+          
+        }else if(sheet == 'controls_metadata.tsv'){
+          
+          temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+          temp_sheet_rownames = temp_sheet[,1]
+          rownames(temp_sheet) = temp_sheet_rownames
+          ampseq_object@controls[['metadata']] = temp_sheet
+          
+        }
+        
+      }else{
+        
+        temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
+        slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
         
       }
     }
@@ -1825,6 +2194,8 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
   
   reference_genome = readDNAStringSet(ref_fasta)
   
+  names(reference_genome) = gsub(' \\| .+', '', names(reference_genome))
+
   loci_table = NULL
   gt = NULL
   
@@ -1839,7 +2210,7 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
   # 
   # which(markers$amplicon == amplicon)
   # 
-  amplicon = markers$amplicon[1]
+  #amplicon = markers$amplicon[1]
   for(amplicon in markers$amplicon){
     
     print(amplicon)
@@ -2179,6 +2550,9 @@ filter_samples = function(obj, v, update_cigars = TRUE){
                    '\n'
         ))
 
+        # stop('There are cigar strings that are different in the gt and the asv_table')
+
+        # Next lines skip the problem of having discrepancies but do not solve the problem
         cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
                 
         for(cigar_string_to_remove in cigar_strings_to_remove){
@@ -2193,8 +2567,12 @@ filter_samples = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
 
+          obj2@asv_seqs_masked = obj2@asv_seqs_masked[
+            names(obj2@asv_seqs_masked) %in% obj2@asv_table$hapid]
+
           obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
           names(obj2@asv_seqs) = obj2@asv_table$hapid
+          names(obj2@asv_seqs_masked) = obj2@asv_table$hapid
 
         }
 
@@ -2226,8 +2604,12 @@ filter_samples = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
           
+          obj2@asv_seqs_masked = obj2@asv_seqs_masked[
+            names(obj2@asv_seqs_masked) %in% obj2@asv_table$hapid]
+
           obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
           names(obj2@asv_seqs) = obj2@asv_table$hapid
+          names(obj2@asv_seqs_masked) = obj2@asv_table$hapid
           
         }
         
@@ -2318,6 +2700,10 @@ filter_loci = function(obj, v, update_cigars = TRUE){
                    '\n'
         ))
         
+        # stop('There are cigar strings that are different in the gt and the asv_table')
+
+        # Next lines skip the problem of having discrepancies but do not solve the problem
+
         cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
 
        for(cigar_string_to_remove in cigar_strings_to_remove){
@@ -2332,8 +2718,12 @@ filter_loci = function(obj, v, update_cigars = TRUE){
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
 
+          obj2@asv_seqs_masked = obj2@asv_seqs_masked[
+            names(obj2@asv_seqs_masked) %in% obj2@asv_table$hapid]
+
           obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
           names(obj2@asv_seqs) = obj2@asv_table$hapid
+          names(obj2@asv_seqs_masked) = obj2@asv_table$hapid
 
         }
 
@@ -2354,7 +2744,7 @@ filter_loci = function(obj, v, update_cigars = TRUE){
         
         cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
+        for(cigar_string_to_remove in unique(cigar_strings_to_remove)){
           
           Amplicon = gsub(';.+$', '', cigar_string_to_remove)
           CIGAR = gsub('^.+;', '', cigar_string_to_remove)
@@ -2365,9 +2755,13 @@ filter_loci = function(obj, v, update_cigars = TRUE){
           
           obj2@asv_seqs = obj2@asv_seqs[
             names(obj2@asv_seqs) %in% obj2@asv_table$hapid]
+
+          obj2@asv_seqs_masked = obj2@asv_seqs_masked[
+            names(obj2@asv_seqs_masked) %in% obj2@asv_table$hapid]
           
           obj2@asv_table$hapid = paste0('ASV', 1:nrow(obj2@asv_table))
           names(obj2@asv_seqs) = obj2@asv_table$hapid
+          names(obj2@asv_seqs_masked) = obj2@asv_table$hapid
           
         }
         
@@ -2410,6 +2804,7 @@ filter_loci = function(obj, v, update_cigars = TRUE){
   
   return(obj2)
 }
+
 # Mask alternative alleles----
 setGeneric("mask_alt_alleles", function(obj = NULL, ref_fasta = NULL, mask_formula = "dVSITES_ij > 0.3", homopolymer_length = 5) standardGeneric("mask_alt_alleles"))
 
@@ -2423,6 +2818,8 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
             
             mhaps$homopolymer_regions = NA
             mhaps$homopolymer_anchors = NA
+            
+            mhaps$STR_regions = NA
             
             ref_sequences = readDNAStringSet(ref_fasta)
             
@@ -2439,9 +2836,11 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
             
             for(mhap in mhaps$amplicon){
               
+              # Identification of Homopolymers
+              
               homopolymers = unlist(str_extract_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern))
               
-              if(length(homopolymers) > 0 ){
+              if(length(homopolymers) > 0){
                 
                 homopolymers_location = str_locate_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern)
                 
@@ -2467,13 +2866,175 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                     anchor_position = c(anchor_position, '')
                   }
                   
-                  
                 }
                 
                 if(!is.null(anchor_position)){
                   homopolymer_anchors = paste0(homopolymers_location[[1]][,'start'] - 1, anchor_position)
                   mhaps[mhaps$amplicon == mhap, ][['homopolymer_anchors']] = paste(homopolymer_anchors, collapse = ',')  
                 }
+                
+              }
+              
+              # Identification of STRs in flanking regions
+              alleles = unique(unlist(strsplit(gsub(':\\d+', '',gt[,mhap]), '_')))
+              alleles = alleles[!is.na(alleles)]
+              
+              if(sum(grepl('=', alleles)) > 0){
+                
+                insertions = unique(unlist(str_extract_all(alleles, '\\d+I=[ATCG]+')))
+                deletions = unique(unlist(str_extract_all(alleles, '\\d+D=[ATCG]+')))
+                
+                if(length(insertions) > 0){
+                  insertions_at_3prime = 
+                    as.integer(gsub('I=[ATCG]+', '', insertions)) == mhaps[mhaps$amplicon == mhap, ][['length']]
+                }else{
+                  
+                  insertions_at_3prime = NULL
+                  
+                }
+                
+                if(length(deletions) > 0){
+                  
+                  deletions_at_3prime = sapply(deletions, function(deletion){
+                    grepl(paste0(gsub('\\d+D=', '', deletion), '$'),
+                          as.character(ref_sequences[[mhap]]))},
+                    simplify = T)
+                  
+                }else{
+                  
+                  deletions_at_3prime = NULL
+                  
+                }
+                
+                STR_at_3prime_start = NULL
+                STR_at_3prime = NULL
+                
+                if(sum(insertions_at_3prime) > 0 | sum(deletions_at_3prime) > 0){
+                  
+                  insertions_at_3prime = insertions[insertions_at_3prime]
+                  
+                  insertions_at_3prime = gsub('\\d+I=.', '',insertions_at_3prime)
+                  
+                  deletions_at_3prime = deletions[deletions_at_3prime]
+                  
+                  deletions_at_3prime = gsub('\\d+D=', '',deletions_at_3prime)
+                  
+                  indels_at_3prime = unique(c(insertions_at_3prime, deletions_at_3prime))
+                  
+                  for(indel_at_3prime in indels_at_3prime){
+                    
+                    if(grepl(paste0(indel_at_3prime, '$'), as.character(ref_sequences[[mhap]]))){
+                      
+                      temp_ref_sequence = as.character(ref_sequences[[mhap]])
+                      
+                      while(grepl(paste0(indel_at_3prime, '$'), temp_ref_sequence)){
+                        
+                        temp_ref_sequence = gsub(paste0(indel_at_3prime, '$'), '', temp_ref_sequence)
+                        
+                      }
+                      
+                      STR_at_3prime_start = c(STR_at_3prime_start, nchar(temp_ref_sequence) + 1)
+                      STR_at_3prime = c(STR_at_3prime, indel_at_3prime)
+                      
+                    }
+                    
+                  }
+                  
+                  if(!is.null(STR_at_3prime_start)){
+                    STR_at_3prime = STR_at_3prime[which.min(STR_at_3prime_start)]
+                    STR_at_3prime_start = min(STR_at_3prime_start)
+                    
+                    if(is.infinite(STR_at_3prime_start)){stop()}
+                    
+                    STR_at_3prime_end = mhaps[mhaps$amplicon == mhap, ][['length']]
+                  }
+                  
+                }
+                
+                
+                
+                if(length(insertions) > 0){
+                  insertions_at_5prime = 
+                    as.integer(gsub('I=[ATCG]+', '', insertions)) == 0
+                }else{
+                  
+                  insertions_at_5prime = NULL
+                  
+                }
+                
+                if(length(deletions) > 0){
+                  
+                  deletions_at_5primet = as.integer(gsub('D=[ATCG]+', '', deletions)) == 1
+                  
+                }else{
+                  
+                  deletions_at_5primet = NULL
+                  
+                }
+                
+                
+                STR_at_5prime_end = NULL
+                STR_at_5prime = NULL
+                
+                if(sum(insertions_at_5prime) > 0 | sum(deletions_at_5primet) > 0){
+                  
+                  insertions_at_5prime = insertions[insertions_at_5prime]
+                  
+                  insertions_at_5prime = gsub('\\d+I=', '',insertions_at_5prime)
+                  
+                  deletions_at_5primet = deletions[deletions_at_5primet]
+                  
+                  deletions_at_5primet = gsub('\\d+D=', '',deletions_at_5primet)
+                  
+                  indels_at_5prime = unique(c(insertions_at_5prime, deletions_at_5primet))
+                  
+                  for(indel_at_5prime in indels_at_5prime){
+                    
+                    if(grepl(paste0('^', indel_at_5prime), as.character(ref_sequences[[mhap]]))){
+                      
+                      temp_ref_sequence = as.character(ref_sequences[[mhap]])
+                      
+                      while(grepl(paste0('^', indel_at_5prime), temp_ref_sequence)){
+                        
+                        temp_ref_sequence = gsub(paste0('^', indel_at_5prime), '', temp_ref_sequence)
+                        
+                      }
+                      
+                      STR_at_5prime_end = c(STR_at_5prime_end, 
+                                            nchar(as.character(ref_sequences[[mhap]])) -
+                                              nchar(temp_ref_sequence))
+                      STR_at_5prime = c(STR_at_5prime, indel_at_5prime)
+                      
+                    }
+                    
+                  }
+                  
+                  if(!is.null(STR_at_5prime_end)){
+                    
+                    STR_at_5prime = STR_at_5prime[which.max(STR_at_5prime_end)]
+                    STR_at_5prime_end = max(STR_at_5prime_end)
+                    STR_at_5prime_start = 0
+                  }
+                  
+                }
+                
+                if(!is.null(STR_at_5prime_end) & !is.null(STR_at_3prime_start)){
+                  
+                  mhaps[mhaps$amplicon == mhap, ][['STR_regions']] = 
+                    paste(c(paste0(STR_at_5prime, ':', STR_at_5prime_start, '-', STR_at_5prime_end),
+                            paste0(STR_at_3prime, ':', STR_at_3prime_start, '-', STR_at_3prime_end)), 
+                          collapse = ',')
+                  
+                }else if(!is.null(STR_at_5prime_end) & is.null(STR_at_3prime_start)){
+                  
+                  mhaps[mhaps$amplicon == mhap, ][['STR_regions']] = paste0(STR_at_5prime, ':', STR_at_5prime_start, '-', STR_at_5prime_end)
+                  
+                }else if(is.null(STR_at_5prime_end) & !is.null(STR_at_3prime_start)){
+                  
+                  mhaps[mhaps$amplicon == mhap, ][['STR_regions']] = paste0(STR_at_3prime, ':', STR_at_3prime_start, '-', STR_at_3prime_end)
+                  
+                }
+                
               }
               
               
@@ -2494,7 +3055,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
             
             # Check if formula is correct
             
-            if(grepl("(h_ij|h_ijminor|p_ij|P_ij|H_ij|H_ijminor|nVSITES_ij|dVSITES_ij|nSNVs_ij|dSNVs_ij|nINDELs_ij|dINDELs_ij|flanking_INDEL|SNV_in_homopolymer|INDEL_in_homopolymer|bimera)(<|>|!|=)+", mask_formula)){
+            if(grepl("(h_ij|h_ijminor|p_ij|P_ij|H_ij|H_ijminor|nVSITES_ij|dVSITES_ij|nSNVs_ij|dSNVs_ij|nINDELs_ij|dINDELs_ij|flanking_INDEL|SNV_in_homopolymer|INDEL_in_homopolymer|Variant_in_STR|bimera)(<|>|!|=)+", mask_formula)){
               stop("All mathematical and logical operators must be separated by blank spaces in mask_formula")
             }
             
@@ -2524,7 +3085,19 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                 stop("Filter INDEL_in_homopolymer is been called but there are spelling issues in this part of the formula")
               }
             }
-            
+
+            if(grepl("Variant_in_STR ", mask_formula)){
+              
+              mask_filter = str_extract(mask_formula, "Variant_in_STR (=|!|>|<)+ (\\d+\\.?\\d*|\\d*\\.?\\d+|TRUE|FALSE)")
+              
+              if(!is.na(mask_filter)){
+                print(paste0('Filter ', str_extract(mask_formula, "Variant_in_STR (=|!|>|<)* (\\d+\\.?\\d*|\\d*\\.?\\d+|TRUE|FALSE)"), ' will be applied'))
+                mask_formula = gsub("Variant_in_STR ", "ASVs_attributes_table_temp[['Variant_in_STR']] ", mask_formula)
+              }else{
+                stop("Filter Variant_in_STR is been called but there are spelling issues in this part of the formula")
+              }
+            }
+
             
             if(grepl("flanking_INDEL ", mask_formula)){
               
@@ -2710,7 +3283,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
               for(wrong_filter in mask_formula_check){
                 print(paste0("Spelling error with filter ", wrong_filter))
               }
-              stop("Execution halted, revise mask_filter argument.\nPossible filters are:\nh_ij, h_ijminor, p_ij, P_ij, H_ij, H_ijminor, nVSITES_ij, dVSITES_ij, nSNVs_ij, dSNVs_ij, nINDELs_ij, dINDELs_ij, flanking_INDEL, SNV_in_homopolymer, INDEL_in_homopolymer, bimera")
+              stop("Execution halted, revise mask_filter argument.\nPossible filters are:\nh_ij, h_ijminor, p_ij, P_ij, H_ij, H_ijminor, nVSITES_ij, dVSITES_ij, nSNVs_ij, dSNVs_ij, nINDELs_ij, dINDELs_ij, flanking_INDEL, SNV_in_homopolymer, INDEL_in_homopolymer, Variant_in_STR, bimera")
             }
             
             for(mhap in 1:ncol(gt)){
@@ -2876,12 +3449,12 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '\\d+-'))))
                                     end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '-\\d+'))))
                                     
-                                    masked_region = c(unlist(sapply(1:length(start), function(pos){
+                                    masked_region_for_deletions = c(unlist(sapply(1:length(start), function(pos){
                                       seq(start[pos], end[pos], 1)})))
                                     
-                                    masked_region_for_insertions = c(masked_region[1] - 1, masked_region)
+                                    masked_region_for_insertions = c(unlist(sapply(1:length(start), function(pos){
+                                      seq(start[pos] - 1, end[pos], 1)})))
                                     
-                                    masked_region_for_deletions = masked_region
                                     
                                     Insertions_in_homopolymer = sum(inserted_positions %in% masked_region_for_insertions) > 0
                                     Deletions_in_homopolymer = sum(deleted_positions %in% masked_region_for_insertions) > 0
@@ -2935,6 +3508,73 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     
                                     INDEL_in_homopolymer_pattern = NA
                                     INDEL_in_homopolymer_replacement = NA
+                                  }
+
+                                  
+                                  # Variant_in_STR
+                                  
+                                  if(!is.na(mhaps[mhap,][['STR_regions']])){
+                                    
+                                    SNV_DEL_positions = positions[type_polymorphism %in% c('Deletion', 'SNV')]
+                                    INS_positions = positions[type_polymorphism %in% c('Insertion')]
+                                    
+                                    SNV_DEL_polymorphisms = polymorphisms[type_polymorphism %in% c('Deletion', 'SNV')]
+                                    INS_polymorphisms = polymorphisms[type_polymorphism %in% c('Insertion')]
+                                    
+                                    start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['STR_regions']], '\\d+-'))))
+                                    end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['STR_regions']], '-\\d+'))))
+                                    
+                                    masked_region_for_SNV_DEL = c(unlist(sapply(1:length(start), function(pos){
+                                      seq(start[pos], end[pos], 1)})))
+                                    
+                                    masked_region_for_INS = c(unlist(sapply(1:length(start), function(pos){
+                                      seq(start[pos] - 1, end[pos], 1)})))
+                                    
+                                    Insertion_in_STR = sum(positions %in% INS_positions & positions %in% masked_region_for_INS) > 0
+                                    SNV_or_Deletion_in_homopolymer = sum(positions %in% masked_region_for_SNV_DEL) > 0
+                                    
+                                  }else{
+                                    Insertion_in_STR = FALSE
+                                    SNV_or_Deletion_in_homopolymer = FALSE
+                                  }
+                                  
+                                  # Variant_in_STR pattern and replacement
+                                  
+                                  Variant_in_STR = Insertion_in_STR == 1 | SNV_or_Deletion_in_homopolymer == 1
+                                  
+                                  if(Variant_in_STR == 1){
+                                    
+                                    Variant_in_STR_pattern = allele
+                                    
+                                    INS_positions_remined = INS_positions[!(INS_positions %in% masked_region_for_INS)]
+                                    INS_polymorphisms_remined = INS_polymorphisms[!(INS_positions %in% masked_region_for_INS)]
+                                    
+                                    SNV_DEL_positions_remined = SNV_DEL_positions[!(SNV_DEL_positions %in% masked_region_for_SNV_DEL)]
+                                    SNV_DEL_polymorphisms_remined = SNV_DEL_polymorphisms[!(SNV_DEL_positions %in% masked_region_for_SNV_DEL)]
+                                    
+                                    Variant_in_STR_replacement = data.frame(positions = c(INS_positions_remined,
+                                                                                          SNV_DEL_positions_remined),
+                                                                            polymorphisms = c(INS_polymorphisms_remined,
+                                                                                              SNV_DEL_polymorphisms_remined))
+                                    
+                                    Variant_in_STR_replacement = Variant_in_STR_replacement[order(Variant_in_STR_replacement$positions),]
+                                    
+                                    Variant_in_STR_replacement = gsub(' ',
+                                                                      '',
+                                                                      paste(apply(Variant_in_STR_replacement, 
+                                                                                  1, 
+                                                                                  function(pos){paste(pos, collapse = '')}), 
+                                                                            collapse = ''))
+                                    
+                                    if(Variant_in_STR_replacement == ''){
+                                      Variant_in_STR_replacement = '.'
+                                    }
+                                    
+                                  }else{
+                                    
+                                    Variant_in_STR_pattern = NA
+                                    Variant_in_STR_replacement = NA
+                                    
                                   }
                                   
                                   
@@ -3018,6 +3658,8 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     
                                     mhaps[mhap,][['homopolymer_anchors']],
                                     mhaps[mhap,][['homopolymer_regions']],
+
+                                    mhaps[mhap,][['STR_regions']],
                                     
                                     SNV_in_homopolymer,
                                     SNV_in_homopolymer_pattern,
@@ -3026,6 +3668,10 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                     INDEL_in_homopolymer,
                                     INDEL_in_homopolymer_pattern,
                                     INDEL_in_homopolymer_replacement,
+
+                                    Variant_in_STR,
+                                    Variant_in_STR_pattern,
+                                    Variant_in_STR_replacement,
                                     
                                     flanking_INDEL,
                                     paste(flanking_INDEL_pattern, collapse = '||'),
@@ -3039,6 +3685,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                 
                 
                 ASVs_attributes_table_temp = as.data.frame(cbind(alleles, h_ij))
+
                 names(ASVs_attributes_table_temp) = c('Allele',
                                                       'P_ij',
                                                       'H_ij',
@@ -3054,12 +3701,16 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                                       'dINDELs_ij',
                                                       'homopolymer_anchors',
                                                       'homopolymer_regions',
+                                                      'STR_regions',
                                                       'SNV_in_homopolymer',
                                                       'SNV_in_homopolymer_pattern',
                                                       'SNV_in_homopolymer_replacement',
                                                       'INDEL_in_homopolymer',
                                                       'INDEL_in_homopolymer_pattern',
                                                       'INDEL_in_homopolymer_replacement',
+                                                      'Variant_in_STR',
+                                                      'Variant_in_STR_pattern',
+                                                      'Variant_in_STR_replacement',
                                                       'flanking_INDEL',
                                                       'flanking_INDEL_pattern',
                                                       'flanking_INDEL_replacement',
@@ -3085,6 +3736,9 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                 ASVs_attributes_table_temp[['SNV_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['SNV_in_homopolymer']])
                 ASVs_attributes_table_temp[['INDEL_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['INDEL_in_homopolymer']])
                 
+                ASVs_attributes_table_temp[['Variant_in_STR']] = as.logical(ASVs_attributes_table_temp[['Variant_in_STR']])
+  
+
                 #ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
                 
                 ASVs_attributes_table_temp[['flanking_INDEL_pattern']] = unlist(sapply(ASVs_attributes_table_temp[['flanking_INDEL_pattern']],
@@ -3189,6 +3843,66 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                     replacement_alleles = ASVs_attributes_table_temp[
                       eval(parse(text = mask_formula)),][['INDEL_in_homopolymer_replacement']]
                     
+                    
+                    for(replaced_allele in 1:length(replaced_alleles)){
+                      
+                      temp_replaced_allele = replaced_alleles[replaced_allele]
+                      temp_replacement_allele = replacement_alleles[replaced_allele]
+                      
+                      asv_table[asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
+                                  !is.na(asv_table[['Amplicon']]) &
+                                  replace_na(asv_table[['CIGAR_masked']], 'NAs') == temp_replaced_allele
+                                ,][['CIGAR_masked']] = temp_replacement_allele
+                      
+                      for(sample in 1:nrow(gt_masked)){
+                        
+                        replaced_pattern = str_extract(gt_masked[sample,mhap], paste0('(^|_)',temp_replaced_allele, ':'))
+                        
+                        if(!is.na(replaced_pattern)){
+                          
+                          replacement_pattern = gsub(temp_replaced_allele, temp_replacement_allele, replaced_pattern)
+                          gt_masked[sample,mhap] = gsub(ifelse(grepl('_',replaced_pattern), replaced_pattern, paste0('^', replaced_pattern)), 
+                                                        replacement_pattern, 
+                                                        gt_masked[sample,mhap])
+                        }
+                        
+                      }
+                      
+                    }
+                    
+                    for(sample in 1:nrow(gt_masked)){
+                      
+                      sample_alleles = gsub(':.+','',str_split(gt_masked[sample, mhap], '_')[[1]])
+                      
+                      if(sum(!is.na(sample_alleles)) > 1){
+                        
+                        sample_allele_readdepth = gsub('.+:','',str_split(gt_masked[sample, mhap], '_')[[1]])
+                        
+                        sample_alleles = data.frame(sample_allele = sample_alleles,
+                                                    sample_allele_readdepth = as.integer(sample_allele_readdepth))
+                        
+                        sample_alleles %<>% summarise(sample_allele_readdepth = sum(sample_allele_readdepth),
+                                                      .by = sample_allele)
+                        
+                        sample_alleles %<>% arrange(desc(sample_allele_readdepth))
+                        
+                        gt_masked[sample, mhap] = paste(paste(sample_alleles$sample_allele, sample_alleles$sample_allele_readdepth, sep = ':'), collapse = '_')
+                        
+                      }
+                      
+                    }
+                    
+                  }
+                  
+                  }else if(grepl('Variant_in_STR',mask_formula)){
+                  
+                  replaced_alleles = ASVs_attributes_table_temp[
+                    eval(parse(text = mask_formula)),][['Variant_in_STR_pattern']]
+                  
+                  if(length(replaced_alleles) > 0){
+                    
+                    replacement_alleles = ASVs_attributes_table_temp[
+                      eval(parse(text = mask_formula)),][['Variant_in_STR_replacement']]
                     
                     for(replaced_allele in 1:length(replaced_alleles)){
                       
@@ -3380,6 +4094,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                 ,]
                       
                       obj@asv_seqs = obj@asv_seqs[names(obj@asv_seqs) %in% asv_table[['hapid']]]
+                      obj@asv_seqs_masked = obj@asv_seqs_masked[names(obj@asv_seqs_masked) %in% asv_table[['hapid']]]
 
                     }
                     
@@ -3394,6 +4109,10 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
               
             }
             
+            obj@asv_seqs_masked = cigar_strings2fasta(obj = ampseq_object@asv_table, ref_fasta = ref_fasta, cigar_string_col = 'CIGAR_masked', amplicon_col = 'Amplicon', format = 'DNAStringSet')
+            
+            names(obj@asv_seqs_masked) = names(obj@asv_seqs)
+
             obj@gt = gt_masked
             obj@asv_table = asv_table
             
@@ -3570,7 +4289,7 @@ get_ReadDepth_coverage = function(ampseq_object, variable = NULL, plot = TRUE){
     
   }else{
     
-    if(is.null(variable)){
+    if(!is.null(variable)){
       names(coverage) = c(names(coverage)[1], variable, names(coverage)[c(-1, -2)])
       names(coverage_by_sample) = c(variable, names(coverage_by_sample)[-1])
       }else{
@@ -3744,6 +4463,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
                                           loci_performance = loci_performance_complete,
                                           markers = discarded_markers)
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
+      #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
+
       cigars_gt = get_cigar_alleles(ampseq_object, 
                                     from = 'gt',
                                     as = 'vector')
@@ -3780,8 +4501,12 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
+          ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+            names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
+
           ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
           names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
 
         }        
         
@@ -3801,7 +4526,7 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
         
         cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
+        for(cigar_string_to_remove in unique(cigar_strings_to_remove)){
           
           Amplicon = gsub(';.+$', '', cigar_string_to_remove)
           CIGAR = gsub('^.+;', '', cigar_string_to_remove)
@@ -3813,8 +4538,12 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
           
+          ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+            names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
+
           ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
           names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
           
         }
         
@@ -3831,6 +4560,9 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       print("Deciding which loci to keep/discard...")
 
       discarded_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] <= threshold, , drop=FALSE][["loci"]]
+
+      if(length(discarded_loci) > 0){
+
       keeped_loci = loci_performance[loci_performance[["loci_ampl_rate_Total"]] > threshold, , drop=FALSE][["loci"]]
       
       # Ensure that these stay as dataframes
@@ -3871,6 +4603,8 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
       ampseq_object@discarded_loci = list(gt = ampseq_loci_abd_table_discarded_loci,
                                           loci_performance = loci_performance_complete,
                                           markers = discarded_markers)
+
+      }
       ampseq_object@plots[["all_loci_amplification_rate"]] = all_loci_performance_plot
       #ampseq_object@plots[["amplification_rate_per_locus"]] = amplification_rate_per_locus
 
@@ -3910,8 +4644,12 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
+          ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+            names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
+
           ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
           names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
 
         }
 
@@ -3931,7 +4669,7 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
         
         cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
         
-        for(cigar_string_to_remove in cigar_strings_to_remove){
+        for(cigar_string_to_remove in unique(cigar_strings_to_remove)){
           
           Amplicon = gsub(';.+$', '', cigar_string_to_remove)
           CIGAR = gsub('^.+;', '', cigar_string_to_remove)
@@ -3942,9 +4680,13 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
           
           ampseq_object@asv_seqs = ampseq_object@asv_seqs[
             names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
+
+          ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+            names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
           
           ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
           names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+          names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
           
         }
         
@@ -3964,10 +4706,10 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     
   }else{
     
-    return(all_loci_performance_plot)
+    return(list(all_loci_performance_plot = all_loci_performance_plot,
+                amplification_rate_per_locus = amplification_rate_per_locus))
     
   }
-  
   
 
 }
@@ -3987,6 +4729,7 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
   }
 
   metadata[["sample_ampl_rate"]] = apply(ampseq_loci_abd_table, 1, function(x) 1 - sum(is.na(x))/length(x))
+
   if(!is.null(strata)){
     
     
@@ -4022,7 +4765,7 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     name_of_discarded_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] <= threshold ,][["Sample_id"]]]
     number_of_discarded_samples = length(name_of_discarded_samples)
     
-    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold , ,][["Sample_id"]]]
+    name_of_kept_samples = rownames(ampseq_loci_abd_table)[rownames(ampseq_loci_abd_table) %in% metadata[metadata[["sample_ampl_rate"]] > threshold ,][["Sample_id"]]]
     number_of_kept_samples = length(name_of_kept_samples)
     
     print("Table with discarded samples")
@@ -4043,8 +4786,8 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
     print("Printing ampseq_loci_abd_table...")
     print(rownames(ampseq_loci_abd_table))
     metadata_complete = metadata
-    metadata = metadata[metadata[["sample_ampl_rate"]] > threshold ,]
-    metadata_discarded = metadata_complete[metadata_complete[["sample_ampl_rate"]] <= threshold ,]
+    metadata = metadata[metadata[["Sample_id"]] %in% name_of_kept_samples ,]
+    metadata_discarded = metadata_complete[metadata_complete[["Sample_id"]] %in% name_of_discarded_samples ,]
     
     # loci_performance[["loci_ampl_rate2"]] = apply(ampseq_loci_abd_table, 2, function(x) 1- sum(is.na(x))/length(x))
     # 
@@ -4104,8 +4847,12 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[
           names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
+        ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+          names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
+
         ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
         names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
 
       }
 
@@ -4126,7 +4873,7 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
       
       cigar_strings_to_remove = cigars_asvtab[!(cigars_asvtab %in% cigars_gt)]
       
-      for(cigar_string_to_remove in cigar_strings_to_remove){
+      for(cigar_string_to_remove in unique(cigar_strings_to_remove)){
         
         Amplicon = gsub(';.+$', '', cigar_string_to_remove)
         CIGAR = gsub('^.+;', '', cigar_string_to_remove)
@@ -4137,9 +4884,13 @@ sample_amplification_rate = function(ampseq_object, threshold = .8, update_sampl
         
         ampseq_object@asv_seqs = ampseq_object@asv_seqs[
           names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
+
+        ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+          names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
         
         ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
         names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+        names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
         
       }
       
@@ -4184,6 +4935,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             
             mhaps$homopolymer_regions = NA
             mhaps$homopolymer_anchors = NA
+
+            mhaps$STR_regions = NA
             
             ref_sequences = readDNAStringSet(ref_fasta)
             
@@ -4197,12 +4950,15 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
             homopolymer_pattern = '(A{length,}|T{length,}|G{length,}|C{length,})'
             
             homopolymer_pattern = gsub('length', homopolymer_length, homopolymer_pattern)
+
             
             for(mhap in mhaps$amplicon){
+
+              # Identification of Homopolymers
               
               homopolymers = unlist(str_extract_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern))
               
-              if(length(homopolymers) > 0 ){
+              if(length(homopolymers) > 0){
                 
                 homopolymers_location = str_locate_all(as.character(ref_sequences[[mhap]]), homopolymer_pattern)
                 
@@ -4228,17 +4984,182 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                     anchor_position = c(anchor_position, '')
                   }
                   
-                  
                 }
                 
                 if(!is.null(anchor_position)){
                   homopolymer_anchors = paste0(homopolymers_location[[1]][,'start'] - 1, anchor_position)
                   mhaps[mhaps$amplicon == mhap, ][['homopolymer_anchors']] = paste(homopolymer_anchors, collapse = ',')  
                 }
+              
+              }
+              
+              # Identification of STRs in flanking regions
+              alleles = unique(unlist(strsplit(gsub(':\\d+', '',gt[,mhap]), '_')))
+              alleles = alleles[!is.na(alleles)]
+              
+              if(sum(grepl('=', alleles)) > 0){
+                
+                insertions = unique(unlist(str_extract_all(alleles, '\\d+I=[ATCG]+')))
+                deletions = unique(unlist(str_extract_all(alleles, '\\d+D=[ATCG]+')))
+                
+                if(length(insertions) > 0){
+                  insertions_at_3prime = 
+                    as.integer(gsub('I=[ATCG]+', '', insertions)) == mhaps[mhaps$amplicon == mhap, ][['length']]
+                }else{
+                  
+                  insertions_at_3prime = NULL
+                  
+                }
+                
+                if(length(deletions) > 0){
+                  
+                  deletions_at_3prime = sapply(deletions, function(deletion){
+                    grepl(paste0(gsub('\\d+D=', '', deletion), '$'),
+                          as.character(ref_sequences[[mhap]]))},
+                    simplify = T)
+                  
+                }else{
+                  
+                  deletions_at_3prime = NULL
+                  
+                }
+                
+                STR_at_3prime_start = NULL
+                STR_at_3prime = NULL
+                
+                if(sum(insertions_at_3prime) > 0 | sum(deletions_at_3prime) > 0){
+                  
+                  insertions_at_3prime = insertions[insertions_at_3prime]
+                  
+                  insertions_at_3prime = gsub('\\d+I=.', '',insertions_at_3prime)
+                  
+                  deletions_at_3prime = deletions[deletions_at_3prime]
+                  
+                  deletions_at_3prime = gsub('\\d+D=', '',deletions_at_3prime)
+                  
+                  indels_at_3prime = unique(c(insertions_at_3prime, deletions_at_3prime))
+                  
+                  for(indel_at_3prime in indels_at_3prime){
+                    
+                    if(grepl(paste0(indel_at_3prime, '$'), as.character(ref_sequences[[mhap]]))){
+                      
+                      temp_ref_sequence = as.character(ref_sequences[[mhap]])
+                      
+                      while(grepl(paste0(indel_at_3prime, '$'), temp_ref_sequence)){
+                        
+                        temp_ref_sequence = gsub(paste0(indel_at_3prime, '$'), '', temp_ref_sequence)
+                        
+                      }
+                      
+                      STR_at_3prime_start = c(STR_at_3prime_start, nchar(temp_ref_sequence) + 1)
+                      STR_at_3prime = c(STR_at_3prime, indel_at_3prime)
+                      
+                    }
+                    
+                  }
+                  
+                  if(!is.null(STR_at_3prime_start)){
+                    STR_at_3prime = STR_at_3prime[which.min(STR_at_3prime_start)]
+                    STR_at_3prime_start = min(STR_at_3prime_start)
+                    
+                    if(is.infinite(STR_at_3prime_start)){stop()}
+                    
+                    STR_at_3prime_end = mhaps[mhaps$amplicon == mhap, ][['length']]
+                  }
+                  
+                }
+                
+                
+                
+                if(length(insertions) > 0){
+                  insertions_at_5prime = 
+                    as.integer(gsub('I=[ATCG]+', '', insertions)) == 0
+                }else{
+                  
+                  insertions_at_5prime = NULL
+                  
+                }
+                
+                if(length(deletions) > 0){
+                  
+                  deletions_at_5primet = as.integer(gsub('D=[ATCG]+', '', deletions)) == 1
+                  
+                }else{
+                  
+                  deletions_at_5primet = NULL
+                  
+                }
+                
+                
+                STR_at_5prime_end = NULL
+                STR_at_5prime = NULL
+                
+                if(sum(insertions_at_5prime) > 0 | sum(deletions_at_5primet) > 0){
+                  
+                  insertions_at_5prime = insertions[insertions_at_5prime]
+                  
+                  insertions_at_5prime = gsub('\\d+I=', '',insertions_at_5prime)
+                  
+                  deletions_at_5primet = deletions[deletions_at_5primet]
+                  
+                  deletions_at_5primet = gsub('\\d+D=', '',deletions_at_5primet)
+                  
+                  indels_at_5prime = unique(c(insertions_at_5prime, deletions_at_5primet))
+                  
+                  for(indel_at_5prime in indels_at_5prime){
+                    
+                    if(grepl(paste0('^', indel_at_5prime), as.character(ref_sequences[[mhap]]))){
+                      
+                      temp_ref_sequence = as.character(ref_sequences[[mhap]])
+                      
+                      while(grepl(paste0('^', indel_at_5prime), temp_ref_sequence)){
+                        
+                        temp_ref_sequence = gsub(paste0('^', indel_at_5prime), '', temp_ref_sequence)
+                        
+                      }
+                      
+                      STR_at_5prime_end = c(STR_at_5prime_end, 
+                                            nchar(as.character(ref_sequences[[mhap]])) -
+                                              nchar(temp_ref_sequence))
+                      STR_at_5prime = c(STR_at_5prime, indel_at_5prime)
+                      
+                    }
+                    
+                  }
+                  
+                  if(!is.null(STR_at_5prime_end)){
+                    
+                    STR_at_5prime = STR_at_5prime[which.max(STR_at_5prime_end)]
+                    STR_at_5prime_end = max(STR_at_5prime_end)
+                    STR_at_5prime_start = 0
+                  }
+                  
+                }
+                
+                if(!is.null(STR_at_5prime_end) & !is.null(STR_at_3prime_start)){
+                  
+                  mhaps[mhaps$amplicon == mhap, ][['STR_regions']] = 
+                    paste(c(paste0(STR_at_5prime, ':', STR_at_5prime_start, '-', STR_at_5prime_end),
+                            paste0(STR_at_3prime, ':', STR_at_3prime_start, '-', STR_at_3prime_end)), 
+                          collapse = ',')
+                  
+                }else if(!is.null(STR_at_5prime_end) & is.null(STR_at_3prime_start)){
+                  
+                  mhaps[mhaps$amplicon == mhap, ][['STR_regions']] = paste0(STR_at_5prime, ':', STR_at_5prime_start, '-', STR_at_5prime_end)
+                  
+                }else if(is.null(STR_at_5prime_end) & !is.null(STR_at_3prime_start)){
+                  
+                  mhaps[mhaps$amplicon == mhap, ][['STR_regions']] = paste0(STR_at_3prime, ':', STR_at_3prime_start, '-', STR_at_3prime_end)
+                  
+                }
+                
               }
               
               
             }
+            
+            
+            
             
             alt = sapply(colnames(gt), function(mhap){
               alt = unique(unlist(strsplit(gsub(':\\d+', '',gt[,mhap]), '_')))
@@ -4261,7 +5182,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
               if(length(alleles) != 0){
                 
                 # Vector of presence or absence of each alternative allele
-                h_ij = t(sapply(alleles, function(allele){
+                h_ij = t(sapply(alleles, 
+                                function(allele){
                                   P_ij = grepl(allele, temp_gts)
                                   
                                   H_ijminor = grepl(paste0('_',allele), temp_gts)
@@ -4411,15 +5333,14 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '\\d+-'))))
                                     end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['homopolymer_regions']], '-\\d+'))))
                                     
-                                    masked_region = c(unlist(sapply(1:length(start), function(pos){
+                                    masked_region_for_deletions = c(unlist(sapply(1:length(start), function(pos){
                                       seq(start[pos], end[pos], 1)})))
                                     
-                                    masked_region_for_insertions = c(masked_region[1] - 1, masked_region)
-                                    
-                                    masked_region_for_deletions = masked_region
+                                    masked_region_for_insertions = c(unlist(sapply(1:length(start), function(pos){
+                                      seq(start[pos] - 1, end[pos], 1)})))
                                     
                                     Insertions_in_homopolymer = sum(inserted_positions %in% masked_region_for_insertions) > 0
-                                    Deletions_in_homopolymer = sum(deleted_positions %in% masked_region_for_insertions) > 0
+                                    Deletions_in_homopolymer = sum(deleted_positions %in% masked_region_for_deletions) > 0
                                     
                                   }else{
                                     Insertions_in_homopolymer = FALSE
@@ -4469,6 +5390,72 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     
                                     INDEL_in_homopolymer_pattern = NA
                                     INDEL_in_homopolymer_replacement = NA
+                                  }
+
+                                  # Variant_in_STR
+                                  
+                                  if(!is.na(mhaps[mhap,][['STR_regions']])){
+                                    
+                                    SNV_DEL_positions = positions[type_polymorphism %in% c('Deletion', 'SNV')]
+                                    INS_positions = positions[type_polymorphism %in% c('Insertion')]
+                                    
+                                    SNV_DEL_polymorphisms = polymorphisms[type_polymorphism %in% c('Deletion', 'SNV')]
+                                    INS_polymorphisms = polymorphisms[type_polymorphism %in% c('Insertion')]
+                                    
+                                    start = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['STR_regions']], '\\d+-'))))
+                                    end = as.integer(gsub('-', '', unlist(str_extract_all(mhaps[mhap,][['STR_regions']], '-\\d+'))))
+                                    
+                                    masked_region_for_SNV_DEL = c(unlist(sapply(1:length(start), function(pos){
+                                      seq(start[pos], end[pos], 1)})))
+                                    
+                                    masked_region_for_INS = c(unlist(sapply(1:length(start), function(pos){
+                                      seq(start[pos] - 1, end[pos], 1)})))
+                                    
+                                    Insertion_in_STR = sum(positions %in% INS_positions & positions %in% masked_region_for_INS) > 0
+                                    SNV_or_Deletion_in_homopolymer = sum(positions %in% masked_region_for_SNV_DEL) > 0
+                                    
+                                  }else{
+                                    Insertion_in_STR = FALSE
+                                    SNV_or_Deletion_in_homopolymer = FALSE
+                                  }
+                                  
+                                  # Variant_in_STR pattern and replacement
+                                  
+                                  Variant_in_STR = Insertion_in_STR == 1 | SNV_or_Deletion_in_homopolymer == 1
+                                  
+                                  if(Variant_in_STR == 1){
+                                    
+                                    Variant_in_STR_pattern = allele
+                                    
+                                    INS_positions_remined = INS_positions[!(INS_positions %in% masked_region_for_INS)]
+                                    INS_polymorphisms_remined = INS_polymorphisms[!(INS_positions %in% masked_region_for_INS)]
+                                    
+                                    SNV_DEL_positions_remined = SNV_DEL_positions[!(SNV_DEL_positions %in% masked_region_for_SNV_DEL)]
+                                    SNV_DEL_polymorphisms_remined = SNV_DEL_polymorphisms[!(SNV_DEL_positions %in% masked_region_for_SNV_DEL)]
+                                    
+                                    Variant_in_STR_replacement = data.frame(positions = c(INS_positions_remined,
+                                                                                                SNV_DEL_positions_remined),
+                                                                                  polymorphisms = c(INS_polymorphisms_remined,
+                                                                                                    SNV_DEL_polymorphisms_remined))
+                                    
+                                    Variant_in_STR_replacement = Variant_in_STR_replacement[order(Variant_in_STR_replacement$positions),]
+                                    
+                                    Variant_in_STR_replacement = gsub(' ',
+                                                                      '',
+                                                                      paste(apply(Variant_in_STR_replacement, 
+                                                                                  1, 
+                                                                                  function(pos){paste(pos, collapse = '')}), 
+                                                                            collapse = ''))
+                                    
+                                    if(Variant_in_STR_replacement == ''){
+                                      Variant_in_STR_replacement = '.'
+                                    }
+                                    
+                                  }else{
+                                    
+                                    Variant_in_STR_pattern = NA
+                                    Variant_in_STR_replacement = NA
+                                    
                                   }
                                   
                                   
@@ -4532,6 +5519,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                   }else if(length(bimera) == 0){
                                     bimera = FALSE
                                   }
+
               c(sum(P_ij, na.rm = T), 
                                     sum(H_ij, na.rm = T), 
                                     sum(H_ijminor, na.rm = T),
@@ -4553,6 +5541,8 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
 
                                     mhaps[mhap,][['homopolymer_anchors']],
                                     mhaps[mhap,][['homopolymer_regions']],
+
+                                    mhaps[mhap,][['STR_regions']],
                                     
                                     SNV_in_homopolymer,
                                     SNV_in_homopolymer_pattern,
@@ -4561,6 +5551,10 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                     INDEL_in_homopolymer,
                                     INDEL_in_homopolymer_pattern,
                                     INDEL_in_homopolymer_replacement,
+
+                                    Variant_in_STR,
+                                    Variant_in_STR_pattern,
+                                    Variant_in_STR_replacement,
                                     
                                     flanking_INDEL,
                                     paste(flanking_INDEL_pattern, collapse = '||'),
@@ -4573,6 +5567,7 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                 }, simplify = T))
 
                 ASVs_attributes_table_temp = as.data.frame(cbind(alleles, h_ij))
+
                 names(ASVs_attributes_table_temp) = c('Allele',
                                                       'P_ij',
                                                       'H_ij',
@@ -4588,16 +5583,21 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                       'dINDELs_ij',
                                                       'homopolymer_anchors',
                                                       'homopolymer_regions',
+                                                      'STR_regions',
                                                       'SNV_in_homopolymer',
                                                       'SNV_in_homopolymer_pattern',
                                                       'SNV_in_homopolymer_replacement',
                                                       'INDEL_in_homopolymer',
                                                       'INDEL_in_homopolymer_pattern',
                                                       'INDEL_in_homopolymer_replacement',
+                                                      'Variant_in_STR',
+                                                      'Variant_in_STR_pattern',
+                                                      'Variant_in_STR_replacement',
                                                       'flanking_INDEL',
                                                       'flanking_INDEL_pattern',
                                                       'flanking_INDEL_replacement',
                                                       'bimera')
+
                 ASVs_attributes_table_temp[['P_ij']] = as.integer(ASVs_attributes_table_temp[['P_ij']])
                 ASVs_attributes_table_temp[['H_ij']] = as.integer(ASVs_attributes_table_temp[['H_ij']])
                 ASVs_attributes_table_temp[['H_ijminor']] = as.integer(ASVs_attributes_table_temp[['H_ijminor']])
@@ -4616,6 +5616,10 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                 
                 ASVs_attributes_table_temp[['SNV_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['SNV_in_homopolymer']])
                 ASVs_attributes_table_temp[['INDEL_in_homopolymer']] = as.logical(ASVs_attributes_table_temp[['INDEL_in_homopolymer']])
+
+                ASVs_attributes_table_temp[['Variant_in_STR']] = as.logical(ASVs_attributes_table_temp[['Variant_in_STR']])
+                
+                #print(ASVs_attributes_table_temp[['flanking_INDEL']])
                 
                 #ASVs_attributes_table_temp[['flanking_INDEL']] = as.logical(as.integer(ASVs_attributes_table_temp[['flanking_INDEL']]))
                 
@@ -4648,6 +5652,14 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
               INDEL_in_homopolymer_replacement = case_when(
                 INDEL_in_homopolymer_replacement == 'NA' ~ NA,
                 INDEL_in_homopolymer_replacement != 'NA' ~ INDEL_in_homopolymer_replacement),
+
+              SNV_in_homopolymer_pattern = case_when(
+                SNV_in_homopolymer_pattern == 'NA' ~ NA,
+                SNV_in_homopolymer_pattern != 'NA' ~ SNV_in_homopolymer_pattern),
+              
+              Variant_in_STR_replacement = case_when(
+                Variant_in_STR_replacement == 'NA' ~ NA,
+                Variant_in_STR_replacement != 'NA' ~ Variant_in_STR_replacement),
               
               flanking_INDEL_pattern = case_when(
                 flanking_INDEL_pattern == 'NA' ~ NA,
@@ -4677,23 +5689,25 @@ setMethod("get_ASVs_attributes", signature(obj = "ampseq"),
                                                      dINDELs_ij,
                                                      homopolymer_anchors,
                                                      homopolymer_regions,
+                                                     STR_regions,
                                                      SNV_in_homopolymer,
                                                      SNV_in_homopolymer_pattern,
                                                      SNV_in_homopolymer_replacement,
                                                      INDEL_in_homopolymer,
                                                      INDEL_in_homopolymer_pattern,
                                                      INDEL_in_homopolymer_replacement,
+                                                     Variant_in_STR,
+                                                     Variant_in_STR_pattern,
+                                                     Variant_in_STR_replacement,
                                                      flanking_INDEL,
                                                      flanking_INDEL_pattern,
                                                      flanking_INDEL_replacement,
                                                      bimera)
+
             return(ASVs_attributes_table)
             
           }
 )
-
-
-
 
 
 
@@ -6761,13 +7775,10 @@ drug_resistant_haplotypes = function(ampseq_object,
     }
     
     compact_haplo = paste(compact_haplo, collapse = ' ')
-    
-
-
-
 
     genotype_phenotype_match_sorted[genotype_phenotype_match_sorted[['Genotype']] == haplo &
                                       !is.na(genotype_phenotype_match_sorted[['Genotype']]), ][['compact_haplotype']] = compact_haplo
+
   }
   
   
@@ -7209,8 +8220,6 @@ drug_resistant_haplotypes = function(ampseq_object,
          x = 'Date of Collection',
          color = 'Phenotype')
   
-
-  
   print("Estimating frequency for drug resistant phenotypes")
   
   if(!is.null(Longitude) & !is.null(Latitude)){
@@ -7219,7 +8228,6 @@ drug_resistant_haplotypes = function(ampseq_object,
       summarise(Longitude = mean(Longitude),
                 Latitude = mean(Latitude),
                 count = sum(count), .by = c(Drug, Phenotype, var1))
-    
 
     drug_phenotype_summary_sdf$ssize = NA
     drug_phenotype_summary_sdf$freq = NA
@@ -7587,7 +8595,16 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
   
   prop_poly_detected = apply(gt, 2, function(x) sum(grepl("_",x))/length(x))
   
-  loci_performance[['prop_poly_detected']] = prop_poly_detected
+  if(!is.null(loci_performance)){
+    loci_performance[['prop_poly_detected']] = prop_poly_detected
+    
+  }else{
+    
+    loci_performance = data.frame(amplicon = ampseq_object@markers$amplicon,
+                                  prop_poly_detected = prop_poly_detected
+                                  )
+    
+  }
   
   if(update_popsummary){
     ampseq_object@metadata = cbind(ampseq_object@metadata, polygenomic)
@@ -7607,7 +8624,9 @@ get_polygenomic = function(ampseq_object, strata = NULL, update_popsummary = T, 
 
 ### draw_haplotypes----
 
-draw_haplotypes = function(ampseq_object = NULL, comparison_list = NULL){
+draw_haplotypes = function(ampseq_object = NULL, comparison_list = NULL, max_coi = NULL, combine_lists = F){
+  
+  if(!combine_lists){
   
   coded_haplotypes = NULL
   
@@ -7640,6 +8659,14 @@ draw_haplotypes = function(ampseq_object = NULL, comparison_list = NULL){
                 
                 pattern_to_replace = str_extract(gt[sample, mhap], pattern_to_replace)
                 replacement_pattern = gsub(alleles[allele], allele, pattern_to_replace)
+
+                  if(!grepl('^_', pattern_to_replace)){
+                    pattern_to_replace = paste0('^', pattern_to_replace)
+                  }
+                  
+                  if(!grepl('_$', pattern_to_replace)){
+                    pattern_to_replace = paste0(pattern_to_replace, '$')
+                  }
                 
                 gt[sample, mhap] = gsub(pattern_to_replace, replacement_pattern, gt[sample, mhap])
                 
@@ -7679,19 +8706,26 @@ draw_haplotypes = function(ampseq_object = NULL, comparison_list = NULL){
                                     ))
         
       }else if(polyclonals[which(comparison_list[[comparison]] == sample)]){
-        poly_sample = which(comparison_list[[comparison]] == sample)
+        
+          poly_sample = which(comparison_list[[comparison]] == sample)
+          
+          if(is.null(max_coi)){
+            sample_clonality = clonality[poly_sample]
+          }else{
+            sample_clonality = max_coi
+          }
         
         temp_gt_polyclonal = matrix(NA, 
-                                    nrow = clonality[poly_sample],
+                                    nrow = sample_clonality,
                                     ncol = ncol(gt),
                                     dimnames = list(
-                                      paste0(comparison_list[[comparison]][poly_sample], '_C',1:clonality[poly_sample]),
+                                      paste0(comparison_list[[comparison]][poly_sample], '_C',1:sample_clonality),
                                       colnames(gt)
                                     ))
         
         alleles = strsplit(gt[poly_sample,], '_')
         
-        for(clone in 1:clonality[poly_sample]){
+        for(clone in 1:sample_clonality){
           
           temp_gt_polyclonal[clone,] = unlist(sapply(alleles, function(mhap){
             
@@ -7736,18 +8770,197 @@ draw_haplotypes = function(ampseq_object = NULL, comparison_list = NULL){
     
     coded_haplotypes_temp$Allele = as.character(coded_haplotypes_temp$Allele)
     
-    coded_haplotypes_temp$Comparison = paste0('Comparison ', comparison)
+    if(!is.null(names(comparison_list))){
+        coded_haplotypes_temp$Comparison = names(comparison_list)[comparison]
+      }else{
+        coded_haplotypes_temp$Comparison = paste0('Comparison ', comparison)
+      }
     
     coded_haplotypes = rbind(coded_haplotypes, coded_haplotypes_temp)
     
   }
   
   haplotypes_plot = coded_haplotypes %>%
+    filter(!is.na(Allele))%>%
     ggplot(aes(x = Marker, y = Haplotype, fill = Allele)) +
     geom_tile()+
     scale_fill_brewer(palette = 'Set1')+
-    facet_grid(Comparison~chromosome, scales = 'free', space = 'free')+
+    facet_grid(Comparison~chromosome, scales = 'free', space = 'free', switch = 'y')+
     theme(axis.text.x = element_blank())
+
+  }else{
+    
+    if(is.null(names(comparison_list))){
+      names(comparison_list) = paste0('Comparison ', length(comparison_list))
+    }
+    
+    comparison_df = data.frame(Strata = c(sapply(names(comparison_list), function(Strata){
+      rep(Strata, length(comparison_list[[Strata]]))})),
+               Sample =unlist(comparison_list))
+    
+    temp_ampseq = filter_samples(ampseq_object, comparison_df[['Sample']], update_cigars = FALSE)
+    
+    gt = temp_ampseq@gt
+    gt = gsub(':\\d+', '', gt)
+    
+    for(mhap in 1:ncol(gt)){
+      
+      alleles = gt[,mhap]
+      alleles = alleles[!is.na(alleles)]
+      alleles = unlist(strsplit(alleles, '_')) 
+      alleles = unique(alleles)
+      
+      #if( "4G60C1" %in% alleles){stop()}
+      
+      if(length(alleles) > 0){
+        alleles_labels = 1:length(alleles)
+        
+        for(allele in alleles_labels){
+          
+          if(alleles[allele] != '.'){
+            
+            for(sample in 1:nrow(gt)){
+              
+              pattern_to_replace = paste0('(^|_)',alleles[allele], '(_|$)')
+              
+              if(grepl(pattern_to_replace, gt[sample, mhap])){
+                
+                pattern_to_replace = str_extract(gt[sample, mhap], pattern_to_replace)
+                replacement_pattern = gsub(alleles[allele], allele, pattern_to_replace)
+                
+                if(!grepl('^_', pattern_to_replace)){
+                  pattern_to_replace = paste0('^', pattern_to_replace)
+                }
+                
+                if(!grepl('_$', pattern_to_replace)){
+                  pattern_to_replace = paste0(pattern_to_replace, '$')
+                }
+                
+                gt[sample, mhap] = gsub(pattern_to_replace, replacement_pattern, gt[sample, mhap])
+                
+              }
+              
+            }
+            
+          }else{
+            gt[, mhap] = gsub('\\.', allele, gt[, mhap])
+          }
+          
+        }
+      }
+    }
+    
+    clonality = sapply(1:nrow(gt),function(sample){
+      
+      mhaps = strsplit(gt[sample,], '_')
+      max(sapply(mhaps, length))
+      
+    })
+    
+    monoclonals = clonality == 1
+    polyclonals = clonality > 1
+    
+    gt_final = NULL
+    
+    for(sample in comparison_df[['Sample']]){
+      
+      if(monoclonals[which(comparison_df[['Sample']] == sample)]){
+        temp_gt_polyclonal = matrix(gt[sample,],
+                                    ncol = ncol(gt),
+                                    nrow = 1,
+                                    dimnames = list(
+                                      sample,
+                                      colnames(gt)
+                                    ))
+        
+      }else if(polyclonals[which(comparison_df[['Sample']] == sample)]){
+        
+        poly_sample = which(comparison_df[['Sample']] == sample)
+        
+        if(is.null(max_coi)){
+          sample_clonality = clonality[poly_sample]
+        }else{
+          sample_clonality = max_coi
+        }
+        
+        temp_gt_polyclonal = matrix(NA, 
+                                    nrow = sample_clonality,
+                                    ncol = ncol(gt),
+                                    dimnames = list(
+                                      paste0(comparison_df[['Sample']][poly_sample], '_C',1:sample_clonality),
+                                      colnames(gt)
+                                    ))
+        
+        alleles = strsplit(gt[poly_sample,], '_')
+        
+        
+        
+        for(clone in 1:sample_clonality){
+          
+          temp_gt_polyclonal[clone,] = unlist(sapply(alleles, function(mhap){
+            
+            if(length(mhap) < clone){
+              mhap[1]
+            }else{
+              mhap[clone]
+            }
+            
+          }))
+          
+        }
+        
+      }
+      gt_final = rbind(gt_final, temp_gt_polyclonal)
+      
+    }
+    
+    coded_haplotypes = data.frame(Marker = colnames(gt_final),
+                                  t(gt_final))
+    
+    colnames(coded_haplotypes) = c('Marker', rownames(gt_final))
+    
+    coded_haplotypes = left_join(coded_haplotypes, 
+                                 ampseq_object@markers[,c('amplicon', 'chromosome', 'pos')],
+                                 by = join_by('Marker' == 'amplicon'))
+    
+    coded_haplotypes %<>% pivot_longer(cols = all_of(rownames(gt_final)), names_to = 'Haplotype', values_to = 'Allele')
+    
+    
+    
+    coded_haplotypes$Haplotype = 
+      factor(coded_haplotypes$Haplotype,
+             levels = rownames(gt_final))
+    
+    coded_haplotypes$Marker = 
+      factor(coded_haplotypes$Marker,
+             levels = unique(coded_haplotypes$Marker))
+    
+    coded_haplotypes$chromosome = gsub('(^[A-z]+\\d+_|_v\\d+$)', '', coded_haplotypes$chromosome)
+    
+    
+    coded_haplotypes$Allele = as.character(coded_haplotypes$Allele)
+    
+ 
+    coded_haplotypes$Comparison = NA
+    
+    for(Sample in comparison_df$Sample){
+      
+      coded_haplotypes$Comparison[
+        grepl(Sample, coded_haplotypes$Haplotype)
+      ] = comparison_df$Strata[comparison_df$Sample == Sample]
+      
+    }  
+    
+    haplotypes_plot = coded_haplotypes %>%
+      filter(!is.na(Allele))%>%
+      ggplot(aes(x = Marker, y = Haplotype, fill = Allele)) +
+      geom_tile()+
+      scale_fill_brewer(palette = 'Set1')+
+      facet_grid(Comparison ~ chromosome, scales = 'free', space = 'free', switch = 'y')+
+      theme(axis.text.x = element_blank(),
+            strip.placement = 'outside')
+    
+  }
   
   return(haplotypes_plot)
   
@@ -8011,11 +9224,9 @@ pairwise_hmmIBD = function(obj = NULL, parallel = TRUE, w = 1, n = 1){
     pairwise_df = NULL
     
     for(pair in 1:nrow(pairs)){
-      
 
       Yi_id = pairs[pair, 1]
       Yj_id = pairs[pair, 2]
-      
       
       Yi = split_clones(loci_table[Yi_id,], Yi_id)
       
@@ -8783,9 +9994,76 @@ plot_network = function(pairwise_relatedness,
                                ylim=c(-1,1))
     
   }
+
+  clusters = NULL
+  for(node in 1:length(network_object)){
+    
+    # Set of samples linked with the node
+    set_of_samples = c(names(network_object[[node]]), names(network_object[[node]][[1]]))
+    
+    proportion_of_samples_in_the_cluster = sapply(clusters, function(cluster){
+      sum(set_of_samples %in% cluster)/length(set_of_samples)
+    })
+    
+    cluster = which(proportion_of_samples_in_the_cluster > 0 & proportion_of_samples_in_the_cluster < 1 )
+    
+    if(length(cluster) == 1){
+      
+      clusters[[paste0('Cluster_', cluster)]] =
+        c(clusters[[paste0('Cluster_', cluster)]],
+          set_of_samples[!(set_of_samples %in% clusters[[paste0('Cluster_', cluster)]])]
+        )
+      
+    }else if(length(cluster) > 1){
+      # Combine clusters
+      merged_cluster = unlist(clusters[cluster])
+      
+      names(merged_cluster) = NULL
+      
+      merged_cluster = c(merged_cluster,
+                         set_of_samples[!(set_of_samples %in% merged_cluster)]
+      )
+      
+      clusters[[cluster[1]]] = merged_cluster
+      
+      clusters[cluster[-1]] = NULL
+      
+      names(clusters) = paste0('Cluster_', 1:length(clusters))
+      
+      
+    }else if(length(cluster) == 0 & isEmpty(proportion_of_samples_in_the_cluster)){
+      cluster = length(clusters) + 1
+      clusters[[paste0('Cluster_', cluster)]]  = set_of_samples
+    }else if(length(cluster) == 0 & sum(proportion_of_samples_in_the_cluster == 1) == 0){
+      cluster = length(clusters) + 1
+      clusters[[paste0('Cluster_', cluster)]]  = set_of_samples
+      
+    }
+    
+  }
+  
+  
+  cluster_df = NULL
+  
+  for(cluster in names(clusters)){
+    
+    cluster_name = cluster
+    
+    if(length(clusters[[cluster]]) == 1){
+      cluster_name = gsub('Cluster', 'Singleton', cluster_name)
+    }else if(length(clusters[[cluster]]) == 2){
+      cluster_name = gsub('Cluster', 'Doubleton', cluster_name)
+    }else if(length(clusters[[cluster]]) == 3){
+      cluster_name = gsub('Cluster', 'Tripleton', cluster_name)
+    }
+    
+    
+    cluster_df = rbind(cluster_df, data.frame(Cluster = cluster_name, Sample_id = clusters[[cluster]]))
+  }
   
   return(list(network_object = network_object,
-              plot_network = plot_network))
+              plot_network = plot_network,
+              clusters = cluster_df))
   
 }
 
@@ -8954,9 +10232,6 @@ grm = function(X){
 #' @export
 
 fastSVD = function(X, k, q = 2){
-  
-  
-  
   fastSVDCpp(X, k, q)
 }
 
@@ -9131,12 +10406,9 @@ IBD_evectors = function(ampseq_object, relatedness_table, k = NULL, Pop = 'Popul
     ibd_pca = list(eigenvector=ibd_evector, eigenvalues = ibd_evalues, contrib = ibd_contrib)
     
   }else{
-    print("No MEthod detected")
+    print("No Method detected")
   }
 
-  
-
-  
   return(ibd_pca)
   
 }
@@ -9544,9 +10816,12 @@ remove_replicates = function(ampseq_object, v){
       ampseq_object@asv_seqs = ampseq_object@asv_seqs[
         names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
 
+      ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+        names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
 
       ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
       names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
 
     }
 
@@ -9578,9 +10853,12 @@ remove_replicates = function(ampseq_object, v){
       ampseq_object@asv_seqs = ampseq_object@asv_seqs[
         names(ampseq_object@asv_seqs) %in% ampseq_object@asv_table$hapid]
       
-      
-      #ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
-      #names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      ampseq_object@asv_seqs_masked = ampseq_object@asv_seqs_masked[
+        names(ampseq_object@asv_seqs_masked) %in% ampseq_object@asv_table$hapid]
+
+      ampseq_object@asv_table$hapid = paste0('ASV', 1:nrow(ampseq_object@asv_table))
+      names(ampseq_object@asv_seqs) = ampseq_object@asv_table$hapid
+      names(ampseq_object@asv_seqs_masked) = ampseq_object@asv_table$hapid
       
     }
     
@@ -10247,7 +11525,8 @@ rGenome2ampseq = function(rGenome_object,
                 metadata = rGenome_object@metadata,
                 markers = markers,
                 asv_table = asv_table,
-                asv_seqs = asv_seqs
+                asv_seqs = asv_seqs,
+                asv_seqs_masked = asv_seqs
                 )
   
   
@@ -10727,17 +12006,23 @@ get_ampseq_limit_of_detection = function(ampseq_object,
                                          read_depth_thresholds,
                                          AmpRate_Thresholds,
                                          sample_concentration,
-                                         by,
-                                         #method,
+                                         for_markers = FALSE,
+                                         for_procedure = TRUE,
+                                         strata,
+                                         upper_limit_marker_model = 1000,
+                                         nObs_marker_model = 1000,
                                          digits = 6,
                                          x_lable = 'DNA parasite concentration by qPCR',
                                          y_lable = 'Fraction of amplified loci',
-                                         color_lable = 'Amp. Rate\nThreshold'
+                                         color_lable = 'Amp. Rate\nThreshold',
+                                         model = 'glm' # 'lm'
 ){
   
   registerDoMC(detectCores())
   
-  coverage_by_marker_by_sample = get_ReadDepth_coverage(ampseq_object, variable = by, plot = FALSE)[[1]]
+  coverage_by_marker_by_sample = get_ReadDepth_coverage(ampseq_object, variable = strata, plot = FALSE)[[1]]
+  
+  names(coverage_by_marker_by_sample) = c('Sample_id', 'Strata', 'Markers', 'Read_depth')
   
   coverage_by_marker_by_sample = left_join(coverage_by_marker_by_sample, ampseq_object@metadata[,c('Sample_id', sample_concentration)], by = 'Sample_id')
   
@@ -10751,406 +12036,614 @@ get_ampseq_limit_of_detection = function(ampseq_object,
   
   
   # Performance across markers
-  markers_performance = NULL
   
-  for(threshold in read_depth_thresholds){
+  if(for_markers){
     
-    markers_performance = rbind(markers_performance,
-                                coverage_by_marker_by_sample %>%
-                                  mutate(RD_Threshold = threshold,
-                                         AmpSuccess = as.integer(Read_depth >= threshold)))
+    markers_performance = NULL
     
-    # for(marker in unique(coverage_by_marker_by_sample$Markers)){
-    #   
-    #   markers_performance = rbind(markers_performance,
-    #                               coverage_by_marker_by_sample %>%
-    #                                 filter(Markers == marker) %>%
-    #                                 mutate(RD_Threshold = threshold,
-    #                                        median_RD = median(Read_depth),
-    #                                        mean_RD = mean(Read_depth),
-    #                                        Total_RD = sum(Read_depth),
-    #                                        AmpRate = sum(Read_depth >= threshold)/n(),
-    #                                        AmpSuccess = as.integer(Read_depth >= threshold)))
-    #   
-    # }
+    for(threshold in read_depth_thresholds){
+      
+      markers_performance = rbind(markers_performance,
+                                  coverage_by_marker_by_sample %>%
+                                    mutate(RD_Threshold = threshold,
+                                           AmpSuccess = as.integer(Read_depth >= threshold)))
+      
+      # for(marker in unique(coverage_by_marker_by_sample$Markers)){
+      #   
+      #   markers_performance = rbind(markers_performance,
+      #                               coverage_by_marker_by_sample %>%
+      #                                 filter(Markers == marker) %>%
+      #                                 mutate(RD_Threshold = threshold,
+      #                                        median_RD = median(Read_depth),
+      #                                        mean_RD = mean(Read_depth),
+      #                                        Total_RD = sum(Read_depth),
+      #                                        AmpRate = sum(Read_depth >= threshold)/n(),
+      #                                        AmpSuccess = as.integer(Read_depth >= threshold)))
+      #   
+      # }
+      
+    }
     
-  }
-  
-  # Defining logistic model accross markers
-  
-  marker_predicted_model = 
-    foreach(Pop = unique(markers_performance$Population),
-            .combine = rbind) %do% {
-              foreach(RD_Thres = read_depth_thresholds,
-                      .combine = rbind)%do%{
-                        foreach(marker = ampseq_object@markers$amplicon,
-                                .combine = rbind)%dopar% {
-                                  
-                                  # Fit the model and get coeficients
-                                  
-                                  
-                                  glm_model = glm(AmpSuccess ~ Concentration, family = quasibinomial, data = markers_performance %>% filter(RD_Threshold == RD_Thres, Population == Pop, Markers == marker))
-                                  
-                                  newdata = data.frame(Concentration = seq(0, max(markers_performance$Concentration, na.rm = T), length.out=100))
-                                  
-                                  preddat = predict(glm_model, newdata = newdata,  se.fit=TRUE)
-                                  
-                                  coefs = data.frame(t(coefficients(glm_model)))
-                                  
-                                  data.frame(
-                                    Marker = marker,
-                                    Concentration = seq(0, max(markers_performance$Concentration, na.rm = T), length.out=100),
-                                    AmpSuccess = exp(preddat$fit) / (1 + exp(preddat$fit)),
-                                    lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
-                                    upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
-                                    RD_Threshold = RD_Thres,
-                                    Population = Pop,
-                                    Coef_Intercept = coefs$X.Intercept.,
-                                    Coef_Concentration = coefs$Concentration
+    # Defining logistic model accross markers
+    
+    # Pop = 'Guyana'
+    # RD_Thres = 10
+    # marker = 'PVP01_0109700_1'
+    
+    marker_predicted_model = 
+      foreach(Pop = unique(markers_performance$Strata),
+              .combine = rbind) %do% {
+                foreach(RD_Thres = read_depth_thresholds,
+                        .combine = rbind)%do%{
+                          foreach(marker = ampseq_object@markers$amplicon,
+                                  .combine = rbind)%dopar% {
                                     
-                                  )
-                                  
-                                }
-                      }
-            }
-  
-  # Calculating LOD and confidence intervals
-  marker_LOD_Values = foreach(
-    Pop = unique(markers_performance$Population), 
-    .combine = rbind
-  ) %do% {
-    foreach(
-      RD_Thres = read_depth_thresholds,
+                                    # Fit the model and get coefficients
+                                    
+                                    
+                                    glm_model = glm(AmpSuccess ~ Concentration, family = quasibinomial, data = markers_performance %>% filter(RD_Threshold == RD_Thres, Strata == Pop, Markers == marker))
+                                    
+                                    if(is.null(upper_limit_marker_model)){
+                                      
+                                      upper_limit_marker_model = max(markers_performance$Concentration, na.rm = T)
+                                      
+                                    }
+                                    
+                                    if(is.null(nObs_marker_model)){
+                                      
+                                      nObs_marker_model = 100
+                                      
+                                    }
+                                    
+                                    newdata = data.frame(Concentration = seq(0, upper_limit_marker_model, length.out = nObs_marker_model))
+                                    
+                                    preddat = predict(glm_model, newdata = newdata,  se.fit=TRUE)
+                                    
+                                    coefs = data.frame(t(coefficients(glm_model)))
+                                    
+                                    data.frame(
+                                      Marker = marker,
+                                      Concentration = seq(0, upper_limit_marker_model, length.out = nObs_marker_model),
+                                      AmpSuccess = exp(preddat$fit) / (1 + exp(preddat$fit)),
+                                      lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
+                                      upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
+                                      RD_Threshold = RD_Thres,
+                                      Strata = Pop,
+                                      Coef_Intercept = coefs$X.Intercept.,
+                                      Coef_Concentration = coefs$Concentration
+                                      
+                                    )
+                                    
+                                  }
+                        }
+              }
+    
+    # Calculating LOD and confidence intervals
+    marker_LOD_Values = foreach(
+      Pop = unique(markers_performance$Strata), 
       .combine = rbind
-    )%do%{
+    ) %do% {
       foreach(
-        AmpRate = AmpRate_Thresholds,
+        RD_Thres = read_depth_thresholds,
         .combine = rbind
       )%do%{
         foreach(
-          marker = ampseq_object@markers$amplicon,
+          AmpRate = AmpRate_Thresholds,
           .combine = rbind
-        )%dopar%{
-          
-          marker_summary = markers_performance %>% 
-            filter(RD_Threshold == RD_Thres, Population == Pop, Markers == marker) %>%
-            summarise(AmpRate = sum(AmpSuccess)/n(),
-                      Median = median(Read_depth),
-                      Mean = mean(Read_depth),
-                      Total_RD = sum(Read_depth),
-                      q25 = quantile(Read_depth, .25),
-                      q75 = quantile(Read_depth, .75),
-                      sd = sd(Read_depth),
-                      IQR = IQR(Read_depth))
-          
-          temp_marker_predicted_model = marker_predicted_model %>% 
-            filter(Population == Pop,
-                   RD_Threshold == RD_Thres,
-                   Marker == marker)
-          
-          Intercept = temp_marker_predicted_model %>% 
-            filter(Population == Pop,
-                   RD_Threshold == RD_Thres,
-                   Marker == marker) %>%
-            select(Coef_Intercept) %>% unlist()
-          
-          Intercept = mean(Intercept, na.rm = TRUE)
-          
-          Concentration = temp_marker_predicted_model %>%
-            filter(Population == Pop,
-                   RD_Threshold == RD_Thres,
-                   Marker == marker) %>%
-            select(Coef_Concentration) %>% unlist
-          
-          Concentration = mean(Concentration, na.rm = T)
-          
-          # Get LOD
-          
-          LOD = ((log(AmpRate / (1 - AmpRate)) - Intercept) / Concentration)
-          
-          
-          
-          if(LOD > 0.001 & LOD < 10000 & Concentration > 0){
+        )%do%{
+          foreach(
+            marker = ampseq_object@markers$amplicon,
+            .combine = rbind
+          )%dopar%{
             
-            glm_model = glm(AmpSuccess ~ Concentration, family = quasibinomial, data = markers_performance %>% filter(RD_Threshold == RD_Thres, Population == Pop, Markers == marker))
+            marker_summary = markers_performance %>% 
+              filter(RD_Threshold == RD_Thres, Strata == Pop, Markers == marker) %>%
+              summarise(AmpRate = sum(AmpSuccess)/n(),
+                        Median = median(Read_depth),
+                        Mean = mean(Read_depth),
+                        Total_RD = sum(Read_depth),
+                        q25 = quantile(Read_depth, .25),
+                        q75 = quantile(Read_depth, .75),
+                        sd = sd(Read_depth),
+                        IQR = IQR(Read_depth))
             
-            # Get the lower limit of the LOD Value
+            temp_marker_predicted_model = marker_predicted_model %>% 
+              filter(Strata == Pop,
+                     RD_Threshold == RD_Thres,
+                     Marker == marker)
             
-            LowerLim_LOD = ceiling(LOD)
+            Intercept = temp_marker_predicted_model %>% 
+              filter(Strata == Pop,
+                     RD_Threshold == RD_Thres,
+                     Marker == marker) %>%
+              select(Coef_Intercept) %>% unlist()
             
-            predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
-            LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+            Intercept = mean(Intercept, na.rm = TRUE)
             
-            if(min(temp_marker_predicted_model$upper, na.rm = T) < AmpRate){
+            Concentration = temp_marker_predicted_model %>%
+              filter(Strata == Pop,
+                     RD_Threshold == RD_Thres,
+                     Marker == marker) %>%
+              select(Coef_Concentration) %>% unlist
+            
+            Concentration = mean(Concentration, na.rm = T)
+            
+            # Get LOD
+            
+            LOD = ((log(AmpRate / (1 - AmpRate)) - Intercept) / Concentration)
+            
+            
+            
+            if(LOD > 0.001 & LOD < 10000 & Concentration > 0){
               
-              for(presision in 10^(-(0:digits))){
+              glm_model = glm(AmpSuccess ~ Concentration, family = quasibinomial, data = markers_performance %>% filter(RD_Threshold == RD_Thres, Strata == Pop, Markers == marker))
+              
+              # Get the lower limit of the LOD Value
+              
+              LowerLim_LOD = ceiling(LOD)
+              
+              predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
+              LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+              
+              if(min(temp_marker_predicted_model$upper, na.rm = T) < AmpRate){
                 
-                while(LowerLim_AmpRate >= AmpRate & LowerLim_LOD > 0){
-                  LowerLim_LOD = LowerLim_LOD - presision
+                for(precision in 10^(-(0:digits))){
+                  
+                  while(LowerLim_AmpRate >= AmpRate & LowerLim_LOD > 0){
+                    LowerLim_LOD = LowerLim_LOD - precision
+                    predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
+                    LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                    
+                  }
+                  
+                  LowerLim_LOD = LowerLim_LOD + precision
+                  
                   predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
                   LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
                   
                 }
                 
-                LowerLim_LOD = LowerLim_LOD + presision
+              }else{
                 
-                predSup = predict(glm_model, newdata = data.frame('Concentration' = (LowerLim_LOD)), se.fit = TRUE)
-                LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                LowerLim_LOD = NA
                 
               }
               
-            }else{
+              # Get the upper limit of the LOD Value
               
-              LowerLim_LOD = NA
+              UpperLim_LOD = ceiling(LOD)
               
-            }
-            
-            # Get the upper limit of the LOD Value
-            
-            UpperLim_LOD = ceiling(LOD)
-            
-            predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
-            UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
-            
-            
-            if(max(temp_marker_predicted_model$lower, na.rm = T) > AmpRate){
+              predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
+              UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
               
-              for(presision in 10^(-(0:digits))){
+              
+              if(max(temp_marker_predicted_model$lower, na.rm = T) > AmpRate){
                 
-                while(UpperLim_AmpRate <= AmpRate){
-                  UpperLim_LOD = UpperLim_LOD + presision
+                for(precision in 10^(-(0:digits))){
+                  
+                  while(UpperLim_AmpRate <= AmpRate){
+                    UpperLim_LOD = UpperLim_LOD + precision
+                    predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
+                    UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                    
+                  }
+                  
+                  UpperLim_LOD = UpperLim_LOD - precision
+                  
                   predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
                   UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
                   
                 }
                 
-                UpperLim_LOD = UpperLim_LOD - presision
+              }else{
                 
-                predInf = predict(glm_model, newdata = data.frame('Concentration' = (UpperLim_LOD)), se.fit = TRUE)
-                UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                UpperLim_LOD = NA
                 
               }
               
+              
             }else{
               
+              LOD = NA
+              LowerLim_LOD = NA
               UpperLim_LOD = NA
               
             }
             
+            # Store LOD values
             
-          }else{
-            
-            LOD = NA
-            LowerLim_LOD = NA
-            UpperLim_LOD = NA
+            data.frame(
+              Marker = marker,
+              Strata = Pop,
+              RD_Threshold = RD_Thres,
+              AmpRate_Threshold = AmpRate,
+              LOD = LOD,
+              LowerLim_LOD = LowerLim_LOD,
+              UpperLim_LOD = UpperLim_LOD,
+              AmpRate = marker_summary$AmpRate,
+              Median = marker_summary$Median,
+              Mean = marker_summary$Mean,
+              Total_RD = marker_summary$Total_RD,
+              q25 = marker_summary$q25,
+              q75 = marker_summary$q75,
+              sd = marker_summary$sd,
+              IQR = marker_summary$IQR
+            )
             
           }
-          
-          # Store LOD values
-          
-          data.frame(
-            Marker = marker,
-            Population = Pop,
-            RD_Threshold = RD_Thres,
-            AmpRate_Threshold = AmpRate,
-            LOD = LOD,
-            LowerLim_LOD = LowerLim_LOD,
-            UpperLim_LOD = UpperLim_LOD,
-            AmpRate = marker_summary$AmpRate,
-            Median = marker_summary$Median,
-            Mean = marker_summary$Mean,
-            Total_RD = marker_summary$Total_RD,
-            q25 = marker_summary$q25,
-            q75 = marker_summary$q75,
-            sd = marker_summary$sd,
-            IQR = marker_summary$IQR
-          )
-          
-        }
-      }}}
+        }}}
+    
+    # Plotting LOD across markers
+    
+    plot_LOD_by_marker = marker_LOD_Values %>%
+      ggplot(aes(x = factor(RD_Threshold), y = log2(LOD))) +
+      geom_jitter(aes(color = factor(RD_Threshold), size = Median), width = .1, alpha = .25) +
+      geom_line(aes(group = Marker), linetype = 2, alpha = 0.025)+
+      geom_hline(yintercept = log2(c(1, 10, 100, 500, 1000))) +
+      scale_y_continuous(breaks = log2(c(1, 10, 100, 500, 1000)), labels = c(1, 10, 100, 500, 1000))+
+      theme_minimal()+
+      theme(legend.position = 'none')+
+      facet_grid(AmpRate_Threshold ~ Strata)
+    
+  }
   
-  # Plotting LOD across markers
-  
-  plot_LOD_by_marker = marker_LOD_Values %>%
-    ggplot(aes(x = factor(RD_Threshold), y = log2(LOD), size = Median)) +
-    geom_jitter(aes(color = factor(RD_Threshold)), width = .1, alpha = .25) +
-    geom_line(aes(group = Marker), linetype = 2, alpha = 0.025)+
-    geom_hline(yintercept = log2(c(1, 10, 100, 500, 1000))) +
-    scale_y_continuous(breaks = log2(c(1, 10, 100, 500, 1000)), labels = c(1, 10, 100, 500, 1000))+
-    theme_minimal()+
-    theme(legend.position = 'none')+
-    facet_grid(AmpRate_Threshold ~ Population)
   
   # Performance across samples
   
-  sample_performance = NULL
-  
-  for(threshold in read_depth_thresholds){
+  if(for_procedure){
     
-    sample_performance = rbind(sample_performance,
-                               coverage_by_marker_by_sample %>%
-                                 dplyr::summarise(RD_Threshold = threshold,
-                                                  Population = unique(.[.[['Sample_id']] == Sample_id,][[by]]),
-                                                  Concentration = unique(Concentration),
-                                                  median_RD = median(Read_depth),
-                                                  AmpRate = sum(Read_depth >= threshold) / nrow(ampseq_object@markers),
-                                                  .by = Sample_id))
+    sample_performance = NULL
     
-  }
-  
-  sample_performance %<>% 
-    filter(!is.na(Concentration))%>%
-    mutate(
-      log_Concentration = log2(Concentration),
-      log_OR_AmplRate = log2((AmpRate + 1 / nrow(ampseq_object@markers)) / (1 - (AmpRate + 1 / nrow(ampseq_object@markers))))
-    )
-  
-  predicted_model = NULL
-  LOD_Values = NULL
-  
-  
-  for(Pop in unique(sample_performance$Population)){
-    for(RD_Thres in read_depth_thresholds){
+    for(threshold in read_depth_thresholds){
       
-      # Fit the model and get coeficients
-      
-      lm_model = lm(log_OR_AmplRate~log_Concentration, data = sample_performance %>% filter(RD_Threshold == RD_Thres, Population == Pop))
-      
-      newdata = data.frame(log_Concentration = seq(1, max(sample_performance$log_Concentration), 0.1))
-      
-      preddat = predict(lm_model, newdata = newdata,  se.fit=TRUE)
-      
-      coefs = data.frame(t(coefficients(lm_model)))
-      
-      predicted_model = rbind(predicted_model, 
-                              data.frame(log_Concentration = seq(1, max(sample_performance$log_Concentration), 0.1),
-                                         AmpRate = exp(preddat$fit) / (1 + exp(preddat$fit)),
-                                         lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
-                                         upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
-                                         RD_Threshold = RD_Thres,
-                                         Population = Pop
-                              ))
-      
-      # Get LOD values and cofident intervals 
-      
-      for(AmpRate in AmpRate_Thresholds){
+      sample_performance = rbind(sample_performance,
+                                 coverage_by_marker_by_sample %>%
+                                   dplyr::summarise(RD_Threshold = threshold,
+                                                    Strata = unique(.[.[['Sample_id']] == Sample_id,][['Strata']]),
+                                                    Concentration = unique(Concentration),
+                                                    median_RD = median(Read_depth),
+                                                    AmpRate = sum(Read_depth >= threshold) / nrow(ampseq_object@markers),
+                                                    .by = Sample_id))
+    }
+    
+    sample_performance %<>% 
+      filter(!is.na(Concentration))%>%
+      mutate(
+        log_Concentration = log2(Concentration),
+        log_OR_AmplRate = log2((AmpRate + 1 / nrow(ampseq_object@markers)) / (1 - (AmpRate + 1 / nrow(ampseq_object@markers)))),
         
-        # Get LOD
-        
-        LOD = 2^((log(AmpRate / (1 - AmpRate)) - coefs$X.Intercept.)/coefs$log_Concentration)
-        
-        
-        if(LOD > 0.001 & LOD < 10000 & coefs$log_Concentration > 0.1){
+        log_OR_AmplRate = case_when(
+          is.na(log_OR_AmplRate) ~ nrow(ampseq_object@markers),
+          is.infinite(log_OR_AmplRate) ~ nrow(ampseq_object@markers),
+          .default = log_OR_AmplRate
+        )
+      )
+    
+    predicted_model = NULL
+    LOD_Values = NULL
+    
+    if(model == 'lm'){
+      
+      for(Pop in unique(sample_performance$Strata)){
+        for(RD_Thres in read_depth_thresholds){
           
-          # Get the lower limit of the LOD Value
+          # Fit the model and get coeficients
           
-          LowerLim_LOD = ceiling(LOD)
+          lm_model = lm(log_OR_AmplRate~log_Concentration, data = sample_performance %>% 
+                          filter(RD_Threshold == RD_Thres, 
+                                 Strata == Pop#, log_OR_AmplRate >= nrow(ampseq_object@markers) + 1
+                          )
+          )
           
-          predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
-          LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+          newdata = data.frame(log_Concentration = seq(1, max(sample_performance$log_Concentration), 0.1))
           
-          for(presision in 10^(-(0:digits))){
+          preddat = predict(lm_model, newdata = newdata,  se.fit=TRUE)
+          
+          coefs = data.frame(t(coefficients(lm_model)))
+          
+          predicted_model = rbind(predicted_model, 
+                                  data.frame(log_Concentration = seq(1, max(sample_performance$log_Concentration), 0.1),
+                                             AmpRate = exp(preddat$fit) / (1 + exp(preddat$fit)),
+                                             lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
+                                             upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
+                                             RD_Threshold = RD_Thres,
+                                             Strata = Pop
+                                  ))
+          
+          # Get LOD values and cofident intervals 
+          
+          for(AmpRate in AmpRate_Thresholds){
             
-            while(LowerLim_AmpRate >= AmpRate & LowerLim_LOD > 0){
-              LowerLim_LOD = LowerLim_LOD - presision
+            # Get LOD
+            
+            LOD = 2^((log(AmpRate / (1 - AmpRate)) - coefs$X.Intercept.)/coefs$log_Concentration)
+            
+            
+            if(LOD > 0.001 & LOD < 10000 & coefs$log_Concentration > 0.1){
+              
+              # Get the lower limit of the LOD Value
+              
+              LowerLim_LOD = ceiling(LOD)
+              
               predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
               LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
               
-            }
-            
-            LowerLim_LOD = LowerLim_LOD + presision
-            
-            predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
-            LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
-            
-          }
-          
-          # Get the upper limit of the LOD Value
-          
-          UpperLim_LOD = ceiling(LOD)
-          
-          predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
-          UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
-          
-          
-          for(presision in 10^(-(0:digits))){
-            
-            while(UpperLim_AmpRate <= AmpRate){
-              UpperLim_LOD = UpperLim_LOD + presision
+              for(precision in 10^(-(0:digits))){
+                
+                while(LowerLim_AmpRate >= AmpRate & LowerLim_LOD > 0){
+                  LowerLim_LOD = LowerLim_LOD - precision
+                  predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
+                  LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                  
+                }
+                
+                LowerLim_LOD = LowerLim_LOD + precision
+                
+                predSup = predict(lm_model, newdata = data.frame(log_Concentration = log2(LowerLim_LOD)), se.fit = TRUE)
+                LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                
+              }
+              
+              # Get the upper limit of the LOD Value
+              
+              UpperLim_LOD = ceiling(LOD)
+              
               predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
               UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
               
+              
+              for(precision in 10^(-(0:digits))){
+                
+                while(UpperLim_AmpRate <= AmpRate){
+                  UpperLim_LOD = UpperLim_LOD + precision
+                  predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
+                  UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                  
+                }
+                
+                UpperLim_LOD = UpperLim_LOD - precision
+                
+                predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
+                UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                
+              }
+              
+              # Store LOD values
+              
+              LOD_Values = rbind(LOD_Values,
+                                 data.frame(
+                                   Strata =  Pop,
+                                   RD_Threshold = RD_Thres,
+                                   AmpRate_Threshold = AmpRate,
+                                   LOD = LOD,
+                                   LowerLim_LOD = LowerLim_LOD,
+                                   UpperLim_LOD = UpperLim_LOD
+                                 )
+              )
+              
+            }else{
+              
+              LOD_Values = rbind(LOD_Values,
+                                 data.frame(
+                                   Strata =  Pop,
+                                   RD_Threshold = RD_Thres,
+                                   AmpRate_Threshold = AmpRate,
+                                   LOD = NA,
+                                   LowerLim_LOD = NA,
+                                   UpperLim_LOD = NA
+                                 )
+              )
+              
             }
-            
-            UpperLim_LOD = UpperLim_LOD - presision
-            
-            predInf = predict(lm_model, newdata = data.frame(log_Concentration = log2(UpperLim_LOD)), se.fit = TRUE)
-            UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
             
           }
           
-          # Store LOD values
-          
-          LOD_Values = rbind(LOD_Values,
-                             data.frame(
-                               Population =  Pop,
-                               RD_Threshold = RD_Thres,
-                               AmpRate_Threshold = AmpRate,
-                               LOD = LOD,
-                               LowerLim_LOD = LowerLim_LOD,
-                               UpperLim_LOD = UpperLim_LOD
-                             )
-          )
-          
-        }else{
-          
-          LOD_Values = rbind(LOD_Values,
-                             data.frame(
-                               Population =  Pop,
-                               RD_Threshold = RD_Thres,
-                               AmpRate_Threshold = AmpRate,
-                               LOD = NA,
-                               LowerLim_LOD = NA,
-                               UpperLim_LOD = NA
-                             )
-          )
           
         }
-        
       }
       
+    }else if(model == 'glm'){
+      
+      for(Pop in unique(sample_performance$Strata)){
+        for(RD_Thres in read_depth_thresholds){
+          
+          for(AmpRate_Threshold in AmpRate_Thresholds){
+            
+            #stop()
+            # Fit the model and get coeficients
+            
+            glm_model = glm(AmpRate ~ Concentration, 
+                            family = 'quasibinomial', 
+                            data = sample_performance %>% 
+                              filter(RD_Threshold == RD_Thres, Strata == Pop) %>% 
+                              mutate(AmpRate = as.integer(AmpRate >= AmpRate_Threshold))
+            )
+            
+            
+            newdata = data.frame(Concentration = seq(1, max(sample_performance$Concentration), 0.1))
+            
+            preddat = predict(glm_model, newdata = newdata,  se.fit=TRUE)
+            
+            coefs = data.frame(t(coefficients(glm_model)))
+            
+            predicted_model = 
+              rbind(predicted_model,
+                    data.frame(
+                      Concentration = seq(1, max(sample_performance$Concentration), 0.1),
+                      AmpRate = exp(preddat$fit) / (1 + exp(preddat$fit)),
+                      lower = exp(preddat$fit - 1.96 * preddat$se.fit) / (1 + exp(preddat$fit - 1.96 * preddat$se.fit)),
+                      upper= exp(preddat$fit + 1.96 * preddat$se.fit) / (1 + exp(preddat$fit + 1.96 * preddat$se.fit)),
+                      RD_Threshold = RD_Thres,
+                      Strata = Pop,
+                      Coef_Intercept = coefs$X.Intercept.,
+                      Coef_Concentration = coefs$Concentration))
+            
+            # Get LOD values and confident intervals 
+            
+            # Get LOD
+            
+            LOD = ((log(AmpRate_Threshold / (1 - AmpRate_Threshold)) - coefs$X.Intercept.) / coefs$Concentration)
+            
+            
+            if(LOD > 0.001 & LOD < 10000 & coefs$Concentration > 0){
+              
+              # Get the lower limit of the LOD Value
+              
+              LowerLim_LOD = ceiling(LOD)
+              
+              predSup = predict(glm_model, newdata = data.frame(Concentration = LowerLim_LOD), se.fit = TRUE)
+              LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+              
+              for(precision in 10^(-(0:digits))){
+                
+                while(LowerLim_AmpRate >= AmpRate_Threshold & LowerLim_LOD > 0){
+                  LowerLim_LOD = LowerLim_LOD - precision
+                  predSup = predict(glm_model, newdata = data.frame(Concentration = LowerLim_LOD), se.fit = TRUE)
+                  LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                  
+                }
+                
+                LowerLim_LOD = LowerLim_LOD + precision
+                
+                predSup = predict(glm_model, newdata = data.frame(Concentration = LowerLim_LOD), se.fit = TRUE)
+                LowerLim_AmpRate = exp(predSup$fit + 1.96 * predSup$se.fit) / (1 + exp(predSup$fit + 1.96 * predSup$se.fit))
+                
+              }
+              
+              # Get the upper limit of the LOD Value
+              
+              UpperLim_LOD = floor(LOD)
+              
+              predInf = predict(glm_model, newdata = data.frame(Concentration = UpperLim_LOD), se.fit = TRUE)
+              UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+              
+              
+              for(precision in 10^(-(0:digits))){
+                
+                while(UpperLim_AmpRate <= AmpRate_Threshold){
+                  UpperLim_LOD = UpperLim_LOD + precision
+                  predInf = predict(glm_model, newdata = data.frame(Concentration = UpperLim_LOD), se.fit = TRUE)
+                  UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                  
+                }
+                
+                UpperLim_LOD = UpperLim_LOD - precision
+                
+                predInf = predict(glm_model, newdata = data.frame(Concentration = UpperLim_LOD), se.fit = TRUE)
+                UpperLim_AmpRate = exp(predInf$fit - 1.96 * predInf$se.fit) / (1 + exp(predInf$fit - 1.96 * predInf$se.fit))
+                
+              }
+              
+              # Store LOD values
+              
+              LOD_Values = rbind(LOD_Values,
+                                 data.frame(
+                                   Strata =  Pop,
+                                   RD_Threshold = RD_Thres,
+                                   AmpRate_Threshold = AmpRate_Threshold,
+                                   LOD = LOD,
+                                   LowerLim_LOD = LowerLim_LOD,
+                                   UpperLim_LOD = UpperLim_LOD
+                                 ))
+              
+            }else{
+              
+              LOD_Values = rbind(LOD_Values,
+                                 data.frame(
+                                   Strata =  Pop,
+                                   RD_Threshold = RD_Thres,
+                                   AmpRate_Threshold = AmpRate_Threshold,
+                                   LOD = NA,
+                                   LowerLim_LOD = NA,
+                                   UpperLim_LOD = NA
+                                 )
+              )
+              
+            }
+            
+          }
+          
+          
+        }
+      }
       
     }
+    
+    
+    
+    # Plot LOD
+    
+    if(model == 'lm'){
+      
+      plot_LOD = sample_performance %>%
+        filter(RD_Threshold %in% read_depth_thresholds) %>%
+        ggplot(aes(x = log2(Concentration), y = AmpRate)) +
+        geom_point() +
+        geom_line(data = predicted_model, aes(x = log_Concentration, y = AmpRate)) +
+        geom_ribbon(data = predicted_model, aes(x = log_Concentration, ymin = lower, ymax = upper), 
+                    linetype = 2, color = 'firebrick3', fill = 'firebrick3', alpha = .3) +
+        geom_vline(data = LOD_Values, aes(xintercept = log2(LOD), color = as.character(AmpRate_Threshold)))+
+        facet_grid(Strata ~ RD_Threshold) +
+        theme_bw() +
+        scale_x_continuous(breaks = log2(c(1, 10, 100, 1000)), labels = c(1, 10, 100, 1000)) +
+        labs(x = x_lable,
+             y = y_lable,
+             color = color_lable)
+      
+    }else if(model == 'glm'){
+      
+      plot_LOD = sample_performance %>%
+        filter(RD_Threshold %in% read_depth_thresholds) %>%
+        ggplot(aes(x = log2(Concentration), y = AmpRate)) +
+        geom_point() +
+        geom_line(data = predicted_model, aes(x = log2(Concentration), y = AmpRate)) +
+        geom_ribbon(data = predicted_model, aes(x = log2(Concentration), ymin = lower, ymax = upper), 
+                    linetype = 2, color = 'firebrick3', fill = 'firebrick3', alpha = .3) +
+        geom_vline(data = LOD_Values, aes(xintercept = log2(LOD), color = as.character(AmpRate_Threshold)))+
+        facet_grid(Strata ~ RD_Threshold) +
+        theme_bw() +
+        scale_x_continuous(breaks = log2(c(1, 10, 100, 1000)), labels = c(1, 10, 100, 1000)) +
+        labs(x = x_lable,
+             y = y_lable,
+             color = color_lable)
+      
+    }
+    
   }
   
-  # Plot LOD
-  
-  plot_LOD = sample_performance %>%
-    filter(RD_Threshold %in% read_depth_thresholds) %>%
-    ggplot(aes(x = log2(Concentration), y = AmpRate)) +
-    geom_point() +
-    geom_line(data = predicted_model, aes(x = log_Concentration, y = AmpRate)) +
-    geom_ribbon(data = predicted_model, aes(x = log_Concentration, ymin = lower, ymax = upper), 
-                linetype = 2, color = 'firebrick3', fill = 'firebrick3', alpha = .3) +
-    geom_vline(data = LOD_Values, aes(xintercept = log2(LOD), color = as.character(AmpRate_Threshold)))+
-    facet_grid(Population ~ RD_Threshold) +
-    theme_bw() +
-    scale_x_continuous(breaks = log2(c(1, 10, 100, 1000)), labels = c(1, 10, 100, 1000)) +
-    labs(x = x_lable,
-         y = y_lable,
-         color = color_lable)
-  
-  return(list(
-    markers_performance = markers_performance,
-    marker_LOD_Values = marker_LOD_Values,
-    marker_predicted_model,
-    plot_LOD_by_marker = plot_LOD_by_marker,
-    sample_performance = sample_performance,
-    predicted_model = predicted_model,
-    LOD_Values = LOD_Values,
-    plot_LOD = plot_LOD))
-  
-  
+  if(for_markers & !for_procedure){
+    
+    return(list(
+      markers_performance = markers_performance,
+      marker_LOD_Values = marker_LOD_Values,
+      marker_predicted_model = marker_predicted_model,
+      plot_LOD_by_marker = plot_LOD_by_marker))
+    
+  }else if(!for_markers & for_procedure){
+    
+    return(list(
+      sample_performance = sample_performance,
+      predicted_model = predicted_model,
+      LOD_Values = LOD_Values,
+      plot_LOD = plot_LOD))
+    
+  }else if(for_markers & for_procedure){
+    
+    return(list(
+      markers_performance = markers_performance,
+      marker_LOD_Values = marker_LOD_Values,
+      marker_predicted_model = marker_predicted_model,
+      plot_LOD_by_marker = plot_LOD_by_marker,
+      sample_performance = sample_performance,
+      predicted_model = predicted_model,
+      LOD_Values = LOD_Values,
+      plot_LOD = plot_LOD))
+    
+  }else{
+    
+    return(coverage_by_marker_by_sample)
+    
+  }
   
 }
 
@@ -11291,10 +12784,22 @@ setMethod("remove_filtered_asvs", signature(obj = "ampseq"),
 
 ## cigar_strings2fasta ----
 
-cigar_strings2fasta = function(obj, ref_fasta, cigar_string_col = 'CIGAR', amplicon_col = 'Amplicon'){
+cigar_strings2fasta = function(obj, 
+                               ref_fasta, 
+                               cigar_string_col = 'CIGAR', 
+                               amplicon_col = 'Amplicon', 
+                               format = 'data.frame' # 'list', 'DNAStringSet'
+                               ){
   
-  ref_fasta_seqs = Biostrings::readDNAStringSet(ref_fasta)
-  
+  if(class(ref_fasta) == "DNAStringSet"){
+    
+    ref_fasta_seqs = ref_fasta
+    
+  }else{
+    
+    ref_fasta_seqs = Biostrings::readDNAStringSet(ref_fasta)
+    
+  }
   
   if(sum(grepl('(/|-|:)', names(ref_fasta_seqs))) > 0){
     
@@ -11303,10 +12808,35 @@ cigar_strings2fasta = function(obj, ref_fasta, cigar_string_col = 'CIGAR', ampli
     
   }
   
-  cigar_string2fasta = function(cigar_string, ref_fasta_seq){
+  if(format %in% c('data.frame', 'DNAStringSet')){
     
-    if(cigar_string == '.'){ # Sequence of interest is equal to the reference
-      seq_of_interest = ref_fasta_seq
+    seq_format = 'compact'
+    
+  }else if(format == 'list'){
+    
+    seq_format = 'split'
+    
+  }
+  
+  cigar_string2fasta = function(cigar_string, ref_fasta_seq, seq_format = 'compact'){
+    
+    if(is.na(cigar_string)){
+      
+      seq_of_interest = NA
+      
+    }else if(cigar_string == '.'){ # Sequence of interest is equal to the reference
+      
+      if(seq_format == 'split'){
+        
+        seq_of_interest = unlist(strsplit(ref_fasta_seq, ''))
+        
+      }else if(seq_format == 'compact'){
+        
+        seq_of_interest = ref_fasta_seq
+        
+      }
+      
+      
     }else{ # Sequence of interest is different to the reference
       
       positions = unlist(str_extract_all(cigar_string, '\\d+')) # collect all polymorphic positions from the cigar string
@@ -11368,7 +12898,11 @@ cigar_strings2fasta = function(obj, ref_fasta, cigar_string_col = 'CIGAR', ampli
         
       }
       
-      seq_of_interest = paste(seq_of_interest, collapse = '')
+      if(seq_format == 'compact'){
+        
+        seq_of_interest = paste(seq_of_interest, collapse = '')
+        
+      }
       
     }
     
@@ -11384,14 +12918,26 @@ cigar_strings2fasta = function(obj, ref_fasta, cigar_string_col = 'CIGAR', ampli
     Amplicon = obj[[amplicon_col]][i]
     ref_fasta_seq = as.character(ref_fasta_seqs[[Amplicon]])
     
-    fasta_seq = cigar_string2fasta(cigar_string, ref_fasta_seq)
+    fasta_seq = cigar_string2fasta(cigar_string, ref_fasta_seq, seq_format)
     
     if(length(fasta_seq) == 0){
       stop(paste0('CIGAR string ', cigar_string, ' in Amplicon ', Amplicon, ' do not produced a Fasta sequence'))
     }
     
-    fasta_seqs =
-      rbind(fasta_seqs, data.frame(Amplicon = Amplicon, CIGAR = cigar_string, fasta = fasta_seq))
+    if(format == 'data.frame'){
+      
+      fasta_seqs =
+        rbind(fasta_seqs, data.frame(Amplicon = Amplicon, CIGAR = cigar_string, fasta = fasta_seq))
+      
+    }else if(format == 'list'){
+      
+      fasta_seqs[[Amplicon]] = fasta_seq
+    
+    }else if(format == 'DNAStringSet'){
+      
+      fasta_seqs = DNAStringSet(c(as.character(fasta_seqs), as.character(fasta_seq)))
+      
+    }
 
   }
   
@@ -11400,8 +12946,8 @@ cigar_strings2fasta = function(obj, ref_fasta, cigar_string_col = 'CIGAR', ampli
 }
 
 
-
-pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha = 0.05, method = 'exact'){
+# pairwise_euclidean----
+pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha = 0.05, method = 'exact', pairs = NULL){
   library(parallel)
   library(doMC)
   library(svMisc)
@@ -11421,7 +12967,9 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
   
   gt = gsub(':\\d+', '', gt)
   
-  pairs = as.data.frame(t(combn(rownames(gt), 2)))
+  if(is.null(pairs)){
+    pairs = as.data.frame(t(combn(rownames(gt), 2)))  
+  }
   
   s = round(seq(1,nrow(pairs)+1, length.out=n+1))
   low = s[w]
@@ -11496,7 +13044,7 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
         
       }
       
-      names(estimate) = c('nDif', 'nLoci', 'euDist', 'Lower_euDist', 'Upper_euDist')
+      names(estimate) = c('nDiff', 'nLoci', 'euDist', 'Lower_euDist', 'Upper_euDist')
       
       data.frame(Yi = Yi_id, Yj = Yj_id, estimate)
       
@@ -11555,7 +13103,7 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
         
       }
       
-      names(estimate) = c('nDif', 'nLoci', 'euDist', 'Lower_euDist', 'Upper_euDist')
+      names(estimate) = c('nDiff', 'nLoci', 'euDist', 'Lower_euDist', 'Upper_euDist')
       
       
       progress(round(100*pair/nrow(pairs)))
@@ -11571,7 +13119,388 @@ pairwise_euclidean = function(obj = NULL, parallel = TRUE, w = 1, n = 100, alpha
 }
 
 
+## pairwise_NucDiff----
 
+pairwise_NucDiff = function(obj = NULL, 
+                            parallel = TRUE, 
+                            w = 1, 
+                            n = 1, 
+                            ref_amp_fasta,
+                            pairs = NULL,
+                            by_marker = FALSE
+){
+  library(parallel)
+  library(doMC)
+  library(svMisc)
+  
+  fasta_references = Biostrings::readDNAStringSet(ref_amp_fasta)
+  
+  if(sum(grepl('(/|-|:)', names(fasta_references))) > 0){
+    
+    names(fasta_references) = gsub('(/|-|:)', '_', names(fasta_references))
+    print('The cigar and ampseq formats do not allows the symbols "-", "/", nor ":" in the name of the amplicons. All these symbols will be replaced by "_" in the cigar table.')
+    
+  }
+  
+  gt = gsub(':\\d+', '', obj@gt)
+  markers_table = obj@markers
+  
+  if(is.null(pairs)){
+    pairs = as.data.frame(t(combn(rownames(gt), 2)))
+  }
+    
+  s = round(seq(1,nrow(pairs)+1, length.out=n+1))
+  low = s[w]
+  high = s[w+1]-1
+  
+  pairs = pairs[low:high,]
+  
+  get_NucDiff = function(x, y, markers_table, fasta_references, by_marker = by_marker){
+    
+    # Convert all cigar string for each marker in each sample into a fasta sequence
+    
+    x_cigars = data.frame(CIGAR = x, Amplicon = markers_table$amplicon)
+    
+    x_fastas = cigar_strings2fasta(obj = x_cigars, ref_fasta = fasta_references, format = 'list')
+    
+    y_cigars = data.frame(CIGAR = y, Amplicon = markers_table$amplicon)
+    
+    y_fastas = cigar_strings2fasta(obj = y_cigars, ref_fasta = fasta_references, format = 'list')
+    
+    # Remove missing fastas in both samples 
+    
+    x_missings = is.na(x_fastas)
+    y_missings = is.na(y_fastas)
+    
+    x_cigars = x_cigars[!x_missings & !y_missings,]
+    y_cigars = y_cigars[!x_missings & !y_missings,]
+    
+    x_cigar_INDELs = unlist(sapply(x_cigars[,1], 
+                            function(marker){gsub('(\\.|(\\d+[ATGC]){0,})', '', marker)}))
+    
+    #x_cigar_INDELs = str_extract_all(x_cigar_INDELs, '\\d+(D|I)=[ATGC]+')
+    
+    names(x_cigar_INDELs) = x_cigars[,2]
+    
+    y_cigar_INDELs = unlist(sapply(y_cigars[,1], 
+                                   function(marker){gsub('(\\.|(\\d+[ATGC]){0,})', '', marker)}))
+    
+    #y_cigar_INDELs = str_extract_all(y_cigar_INDELs, '\\d+(D|I)=[ATGC]+')
+    
+    names(y_cigar_INDELs) = y_cigars[,2]
+    
+    x_fastas = x_fastas[!x_missings & !y_missings]
+    y_fastas = y_fastas[!x_missings & !y_missings]
+    
+    if(by_marker){
+      
+      estimate = NULL
+      
+      for(marker in names(x_fastas)){
+        
+        x_fastas_marker  = x_fastas[[marker]]
+        y_fastas_marker  = y_fastas[[marker]]
+        
+        x_cigar_INDELs_marker = x_cigar_INDELs[[marker]]
+        y_cigar_INDELs_marker = y_cigar_INDELs[[marker]]
+        
+        if(nchar(x_cigar_INDELs_marker) > 0 | nchar(y_cigar_INDELs_marker) > 0){
+          
+          indel_positions = sort(unique(
+            c(as.integer(unlist(str_extract_all(x_cigar_INDELs_marker, '\\d+'))),
+              as.integer(unlist(str_extract_all(y_cigar_INDELs_marker, '\\d+'))))
+          ))
+          
+          x_cigar_INDELs_marker_pos = NULL
+          y_cigar_INDELs_marker_pos = NULL
+          
+          for(position in indel_positions){
+            x_cigar_INDELs_marker_pos = c(x_cigar_INDELs_marker_pos, str_extract(x_cigar_INDELs_marker, paste0(position, '(D|I)=[ATGC]+')))
+            y_cigar_INDELs_marker_pos = c(y_cigar_INDELs_marker_pos, str_extract(y_cigar_INDELs_marker, paste0(position, '(D|I)=[ATGC]+')))
+            
+          }
+          
+          x_cigar_INDELs_marker_pos[is.na(x_cigar_INDELs_marker_pos)] = ''
+          y_cigar_INDELs_marker_pos[is.na(y_cigar_INDELs_marker_pos)] = ''
+          
+          nDiffINDELs = sum(x_cigar_INDELs_marker_pos != y_cigar_INDELs_marker_pos)
+          nINDELs = length(indel_positions)
+          
+        }else{
+          
+          nDiffINDELs = 0
+          nINDELs = 0
+          
+        }
+        
+        # Identify indels (MODIFY THE WAY IT COUNT DELETIONS AND ICLUDE THE FIRST POSITION OF AN INSERTION INTO THE SNV COUNT)
+        
+        x_indels = x_fastas_marker == '' | nchar(x_fastas_marker) > 1
+        y_indels = y_fastas_marker == '' | nchar(y_fastas_marker) > 1
+        
+        # Measure number of nucleotide differences
+        
+        NucDiff_x_y = sum((x_fastas_marker != y_fastas_marker) &
+                            !x_indels & !y_indels)
+        
+        nNucSites = sum(!x_indels & !y_indels)
+        
+        IndelLength = sum(x_indels | y_indels)
+        
+        nTotalSites = length(x_fastas_marker)
+        
+        estimate = rbind(
+          estimate,
+          data.frame(
+            Marker = marker,
+            nVSites = NucDiff_x_y + nDiffINDELs,
+            NucDiff = NucDiff_x_y,
+            nNucSites = nNucSites,
+            nDiffINDELs = nDiffINDELs,
+            nINDELs = nINDELs,
+            TotalIndelLength = IndelLength,
+            nTotalSites = nTotalSites
+        ))
+        
+      }
+      
+    }else{
+      
+      # Concatenate all fastas in both samples
+      
+      x_merged_fastas = unlist(x_fastas)
+      y_merged_fastas = unlist(y_fastas)
+      
+      # Identify indels (MODIFY THE WAY IT COUNT DELETIONS AND ICLUDE THE FIRST POSITION OF AN INSERTION INTO THE SNV COUNT)
+      
+      x_indels = x_merged_fastas == '' | nchar(x_merged_fastas) > 1
+      y_indels = y_merged_fastas == '' | nchar(y_merged_fastas) > 1
+      
+      # Measure number of nucleotide differences
+      
+      NucDiff_x_y = sum((x_merged_fastas != y_merged_fastas) &
+                          !x_indels & !y_indels)
+      
+      nNucSites = sum(!x_indels & !y_indels)
+      
+      # Measure number of indel differences
+      
+      markers_with_INDELS = x_cigar_INDELs != '' | y_cigar_INDELs != ''
+      
+      x_cigar_INDELs = x_cigar_INDELs[markers_with_INDELS]
+      y_cigar_INDELs = y_cigar_INDELs[markers_with_INDELS]
+      
+      x_marker_indel_pos = unlist(sapply(names(x_cigar_INDELs), function(marker){
+        paste0(marker, ';', unlist(str_extract_all(x_cigar_INDELs[marker], '\\d+')))
+      }))
+      
+      x_marker_indel_pos = x_marker_indel_pos[!grepl(';$', x_marker_indel_pos)]
+      
+      x_marker_indel = paste(unlist(sapply(names(x_cigar_INDELs), function(marker){
+        
+        if(x_cigar_INDELs[marker] != ''){
+          
+          marker_positions = unlist(str_extract_all(x_cigar_INDELs[marker], '\\d+(I|D)=[ATGC]+'))
+          
+          paste(paste0(marker, ';', marker_positions), collapse = '/')
+        }
+        
+      })), collapse = '/')
+      
+      
+      y_marker_indel_pos = unlist(sapply(names(y_cigar_INDELs), function(marker){
+        paste0(marker, ';', unlist(str_extract_all(y_cigar_INDELs[marker], '\\d+')))
+      }))
+      
+      y_marker_indel_pos = y_marker_indel_pos[!grepl(';$', y_marker_indel_pos)]
+      
+      y_marker_indel = paste(unlist(sapply(names(y_cigar_INDELs), function(marker){
+        
+        if(y_cigar_INDELs[marker] != ''){
+          
+          marker_positions = unlist(str_extract_all(y_cigar_INDELs[marker], '\\d+(I|D)=[ATGC]+'))
+          
+          paste(paste0(marker, ';', marker_positions), collapse = '/')
+        }
+        
+      })), collapse = '/')
+      
+      marker_indel_positions = unique(c(
+        x_marker_indel_pos,
+        y_marker_indel_pos
+      ))
+      
+      marker_indel_positions = marker_indel_positions[!grepl(';$', marker_indel_positions)]
+      
+      x_cigar_INDELs_marker_pos = NULL
+      y_cigar_INDELs_marker_pos = NULL
+      
+      for(marker_indel_position in marker_indel_positions){
+        
+        x_cigar_INDELs_marker_pos = c(x_cigar_INDELs_marker_pos, str_extract(x_marker_indel, paste0(marker_indel_position, '(D|I)=[ATGC]+')))
+        y_cigar_INDELs_marker_pos = c(y_cigar_INDELs_marker_pos, str_extract(y_marker_indel, paste0(marker_indel_position, '(D|I)=[ATGC]+')))
+        
+      }
+      
+      x_cigar_INDELs_marker_pos[is.na(x_cigar_INDELs_marker_pos)] = ''
+      y_cigar_INDELs_marker_pos[is.na(y_cigar_INDELs_marker_pos)] = ''
+      
+      nDiffINDELs = sum(x_cigar_INDELs_marker_pos != y_cigar_INDELs_marker_pos)
+      nINDELs = length(marker_indel_positions)
+      
+      IndelLength = sum(x_indels | y_indels) # This Value is incorrect
+      
+      nTotalSites = length(x_merged_fastas)
+      
+      estimate = data.frame(
+        nVSites = NucDiff_x_y + nDiffINDELs,
+        NucDiff = NucDiff_x_y,
+        nNucSites = nNucSites,
+        nDiffINDELs = nDiffINDELs,
+        nINDELs = nINDELs,
+        TotalIndelLength = IndelLength,
+        nTotalSites = nTotalSites
+      )
+      
+    }
+    
+    
+    
+    return(estimate)
+  }
+  
+  if(parallel){
+    registerDoMC(detectCores())
+    pairwise_df = foreach(pair = 1:nrow(pairs), .combine = 'rbind') %dopar% {
+      
+      Yi_id = pairs[pair, 1]
+      Yj_id = pairs[pair, 2]
+      
+      Yi = split_clones(genotype = gt[Yi_id,], genotype_name = Yi_id)
+      
+      Yj = split_clones(genotype = gt[Yj_id,], genotype_name = Yj_id)
+      
+      estimate = NULL
+      for(haplotype_i in 1:nrow(Yi)){
+        for(haplotype_j in 1:nrow(Yj)){
+          
+          estimate = rbind(estimate,
+                           get_NucDiff(x = Yi[haplotype_i,],
+                                       y = Yj[haplotype_j,],
+                                       markers_table = markers_table,
+                                       fasta_references = fasta_references,
+                                       by_marker = by_marker
+                           ))
+          
+          
+        }
+      }
+      
+      if(sum(is.na(estimate[,'nVSites'])) > 0){
+        
+        estimate = estimate[1,]
+        
+      }else{
+        
+        estimate = estimate[which.min(estimate[,'nVSites']),]
+        
+      }
+      
+      data.frame(Yi = Yi_id, Yj = Yj_id, estimate)
+      
+    }
+    
+  }else{
+    
+    pairwise_df = NULL
+    
+    for(pair in 1:nrow(pairs)){
+      
+      Yi_id = pairs[pair, 1]
+      Yj_id = pairs[pair, 2]
+      
+      Yi = split_clones(genotype = gt[Yi_id,], genotype_name = Yi_id)
+      
+      Yj = split_clones(gt[Yj_id,], Yj_id)
+      
+      estimate = NULL
+      for(haplotype_i in 1:nrow(Yi)){
+        for(haplotype_j in 1:nrow(Yj)){
+          
+          if(by_marker){
+            
+            estimate[[paste('hap_i_', haplotype_i, '_vs_hap_j_', haplotype_j)]] = get_NucDiff(x = Yi[haplotype_i,],
+                                                                                              y = Yj[haplotype_j,],
+                                                                                              markers_table = markers_table,
+                                                                                              fasta_references = fasta_references,
+                                                                                              by_marker = by_marker
+            )
+            
+          }else{
+            
+            estimate = rbind(estimate,
+                             get_NucDiff(x = Yi[haplotype_i,],
+                                         y = Yj[haplotype_j,],
+                                         markers_table = markers_table,
+                                         fasta_references = fasta_references,
+                                         by_marker = by_marker
+                             ))
+            
+          }
+        }
+      }
+      
+      if(by_marker){
+        
+        if(length(estimate) > 1){
+          
+          nVSites = unlist(sapply(names(estimate), function(comparison){
+            
+            sum(estimate[[comparison]][,'nVSites'], na.rm = T)
+            
+          }))
+          
+          estimate = estimate[[which.min(nVSites)]]
+          
+        }else{
+          
+          estimate = estimate[[1]]
+          
+        }
+        
+        
+        
+      }else{
+        
+        if(sum(is.na(estimate[,'nVSites'])) > 0){
+          
+          estimate = estimate[1,]
+          
+        }else{
+          
+          estimate = estimate[which.min(estimate[,'nVSites']),]
+          
+        }
+        
+      }
+      
+      
+      
+      
+      progress(round(100*pair/nrow(pairs)))
+      
+      pairwise_df = rbind(pairwise_df, data.frame(Yi = Yi_id, Yj = Yj_id, estimate))
+      
+    }
+    
+  }
+  
+  return(pairwise_df)
+  
+}
+
+
+## split_clones----
 
 split_clones = function(genotype, genotype_name = NULL){
   
@@ -11593,24 +13522,51 @@ split_clones = function(genotype, genotype_name = NULL){
                               paste0(genotype_name, '_C', 1:max_nAlleles),
                               names(genotype)
                             ))
-  for(clone in 1:max_nAlleles){
-    splited_genotype[clone, ] = gsub("_.+", "", genotype)
+  
+  alleles = unlist(strsplit(genotype, '_'))
+  cigar_pattern = grepl('(^\\d+([ATGC]|(I|D)=[ATGC]+)|^\\.$)', alleles)
+  
+  if(sum(cigar_pattern) > 0 & sum(cigar_pattern) == sum(!is.na(alleles))){
     
-    genotype = gsub("^\\d+", "", genotype)
-    genotype = gsub("^_", "", genotype)
-    
-    if(clone > 1){
+    for(clone in 1:max_nAlleles){
+      splited_genotype[clone, ] = gsub("_.+", "", genotype)
       
-      splited_genotype[clone, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] = splited_genotype[1, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] 
+      genotype = gsub('(^(\\d+([ATGC]|(I|D)=[ATGC]+))+|^\\.)', '', genotype)
+      genotype = gsub('^_', '', genotype)
+      
+      if(clone > 1){
+        
+        splited_genotype[clone, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] = splited_genotype[1, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] 
+        
+      }
+      
+    }
+    
+  }else{
+    
+    for(clone in 1:max_nAlleles){
+      splited_genotype[clone, ] = gsub("_.+", "", genotype)
+      
+      genotype = gsub("^\\d+", "", genotype)
+      genotype = gsub("^_", "", genotype)
+      
+      if(clone > 1){
+        
+        splited_genotype[clone, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] = splited_genotype[1, splited_genotype[clone, ] == '' & !is.na(splited_genotype[clone, ])] 
+        
+      }
       
     }
     
   }
   
+  
   return(splited_genotype)
   
 }
 
+
+## get_cigar_alleles----
 get_cigar_alleles = function(ampseq_object, 
                              from = 'gt', # 'asv_table'
                              as = 'vector', # 'table', 'list'
@@ -11747,8 +13703,8 @@ consistency_between_gt_and_asvtab = function(ampseq_object){
 
 consistency_between_seqs_and_cigars = function(obj, ref_fasta){
   
-  test_fasta = cigar_strings2fasta(obj@asv_table, 
-                                   ref_fasta = '~/Documents/Github/MHap-Analysis/docs/reference/Pviv_P01/PvGTSeq249_refseqs.fasta'
+  test_fasta = cigar_strings2fasta(obj = obj@asv_table, 
+                                   ref_fasta = ref_fasta
   )
   cigars_not_in_fastas = which(!(test_fasta$fasta %in% as.character(obj@asv_seqs)))
   fastas_not_in_cigars = which(!(as.character(obj@asv_seqs) %in% test_fasta$fasta))

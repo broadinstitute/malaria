@@ -10,7 +10,7 @@ task asv_filtering {
 
 		# Metadata columns
 		File sample_metadata
-		String? metadata_variable1_name = 'Countr'
+		String? metadata_variable1_name = 'Country'
 		String? metadata_variable2_name
 		String? metadata_latitude_name = 'Latitude'
 		String? metadata_longitude_name = 'Longitude'
@@ -103,7 +103,7 @@ task asv_filtering {
 		-asv2cigar_files '~{asv2cigar_dir}' \
 		-asv_seq_files '~{asv_seq_dir}' \
 		-zero_read_sample_list '~{zero_read_sample_list_dir}' \
-		-o '${out_prefix}' \
+		-o "${out_prefix}_ampseq_object_f" \
 		-markers markersTable.csv \
 		-sample_id_pattern '~{sample_id_pat}' \
 		~{"-min_abd " + min_abd} \
@@ -134,7 +134,7 @@ task asv_filtering {
 	>>>
 	
 	output {
-		File ampseq_object_o = glob("Results/*.xlsx")
+		File ampseq_object_o = glob("Results/*_ampseq_object_f.xlsx")[0]
 	}
 	runtime {
 		cpu: 1

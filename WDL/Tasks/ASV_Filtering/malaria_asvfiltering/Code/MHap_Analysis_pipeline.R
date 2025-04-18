@@ -1977,7 +1977,7 @@ if(!is.null(flanking_INDEL_formula)){
     print(paste0(n_flanking_INDEL_alleles, ' allele(s) matches the criteria to identify products with flanking INDELs'))
     # mask flanking_INDEL
 
-    ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = flanking_INDEL_formula, ref_fasta = amplicon_fasta)
+    ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = 'Variant_in_STR == TRUE', ref_fasta = amplicon_fasta)
     ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = flanking_INDEL_formula, ref_fasta = amplicon_fasta)
 
     # flanking_INDEL_stats2 = get_ASVs_attributes(ampseq_object,  ref_fasta = amplicon_fasta)
@@ -3561,6 +3561,12 @@ if(PerformanceReport == TRUE){
   print("Leaving render script")
 }
 
+# 13. VCF format generation ----
+
+vcf_format = ampseq2vcf(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref_fasta = ref_fasta)
+
+ampseq_object@vcf_like = vcf_format
+
 # if data was imported as cigar tables and no additional steps were provided
 if((!is.null(cigar_paths)|!is.null(cigar_files)) & 
    # is.null(ibd_thres) & 
@@ -3591,7 +3597,7 @@ if((!is.null(cigar_paths)|!is.null(cigar_files)) &
   }
 }
 
-# 13. Printing Drug Resistance surveillance report ----
+# 14. Printing Drug Resistance surveillance report ----
 
 if(Drug_Surveillance_Report){
   
