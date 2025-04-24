@@ -51,9 +51,25 @@ task amplicon_denoising {
         set -euxo pipefail
 
         # INPUT STRINGS
-        if [ -n "~{sample_ids}" ]; then 
-           sample_ids_string=$(IFS=" "; echo "~{sep=' ' sample_ids}")
-           sample_ids_a=(${sample_ids_string})
+        if [[ "~{sep=' ' sample_ids}" != '' ]]; then
+           #sample_ids=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+           #sample_ids_a=(${sample_ids_string[*]})
+
+           sample_ids_t=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+           echo "Sample IDs: ${sample_ids_t}"
+           read -r -a paths <<< "${sample_ids_t}"
+
+           # Loop through each element
+           sample_ids_string=()
+           i=1
+           for sample_id in "${paths[@]}"; do
+              echo "Sample ID: ${sample_id}"
+              sample_ids_string[$i]="${sample_id}"
+              i=$((i + 1))
+           done
+           echo "Echoing sample_ids_string"
+           echo "${sample_ids_string[@]}"
+           sample_ids_a=(${sample_ids_string[*]})
         else
            sample_ids=$(IFS=" "; echo "~{sep=' ' fastq1s}")
            echo "Sample IDs: ${sample_ids}"
@@ -61,21 +77,21 @@ task amplicon_denoising {
 
            # Loop through each element
            sample_ids_string=()
-           i=0
+           i=1
            for path in "${paths[@]}"; do
               echo "Processing ${path}"
               filename=$(basename "${path}") # Get the file name
               echo "Filename: ${filename}"
-              sample_id="${filename%%_*}" # Remove everything after first underscore
+              sample_id="${filename%%_R1_001.fastq.gz}"
+              #sample_id="${filename%%_*}" # Remove everything after first underscore
               echo "Sample ID: ${sample_id}"
-              i=$((i + 1))
               sample_ids_string[$i]="${sample_id}"
+              i=$((i + 1))
            done
            echo "Echoing sample_ids_string"
            echo "${sample_ids_string[@]}"
            sample_ids_a=(${sample_ids_string[*]})
         fi
-
 
         fastq1s_string=$(IFS=" "; echo "~{sep=' ' fastq1s}")
         fastq2s_string=$(IFS=" "; echo "~{sep=' ' fastq2s}")
@@ -91,11 +107,6 @@ task amplicon_denoising {
         adaptor_rem2s_a=(${adaptor_rem2s_string})
         primer_rem1s_a=(${primer_rem1s_string})
         primer_rem2s_a=(${primer_rem2s_string})
-
-        # Add compatibility with the automatic name generator
-        #for i in "${!sample_ids_a[@]}"; do
-        #  sample_ids_a[$i]="${sample_ids_a[$i]%_S*_L001}"
-        #done
 
         # Write data to the CSV
         echo "sample_ids,fastq1s,fastq2s,adaptor_rem1s,adaptor_rem2s,primer_rem1s,primer_rem2s" > samples_tmp.csv

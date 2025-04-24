@@ -2,6 +2,7 @@ version 1.0
 
 task prepare_reference_files {
 	input {
+		Array[String]? sample_ids
 		File panel_info
 		File reference_genome
 		File? reference_amplicons
@@ -16,6 +17,24 @@ task prepare_reference_files {
 	export TMPDIR=tmp
 	set -euxo pipefail
 	
+#	if [[ "~{sep=' ' sample_ids}" != '' ]]; then
+#		sample_ids_t=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+#		echo "Sample IDs: ${sample_ids_t}"
+#		read -r -a paths <<< "${sample_ids_t}"
+#
+#		#Loop through each element
+#		sample_ids_string=()
+#		i=1
+#		for sample_id in "${paths[@]}"; do
+#			echo "Sample ID: ${sample_id}"
+#			sample_ids_string[$i]="${sample_id}"
+#			i=$((i + 1))
+#		done
+#		echo "Echoing sample_ids_string"
+#		echo "${sample_ids_string[@]}"
+#		sample_ids_a=(${sample_ids_string[*]})
+#	fi
+
 	###################################################################
 	# Need to check for byte-order mark for interoperability purposes #
 	###################################################################

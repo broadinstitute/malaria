@@ -4039,6 +4039,7 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                   
                   if(length(removed_alleles) > 0){
                     
+                    
                     gt_ad = sapply(gt_masked[,mhap], function(Sample_id){
                       sum(as.integer(gsub(':', '',unlist(str_extract_all(Sample_id, ':\\d+')))), na.rm = T)
                     }, simplify = T)
@@ -4087,14 +4088,47 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                                         asv_table[['CIGAR_masked']] %in% removed_alleles
                                         ,][['CIGAR_masked']]) > 0){
                       
-                      asv_table =
+                      
+                      asv_table2 =
                         asv_table[!(asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
                                   !is.na(asv_table[['Amplicon']]) &
                                                         asv_table[['CIGAR_masked']] %in% removed_alleles)
                                 ,]
                       
+                      nrow(asv_table2)
+                      
+                      asv_seqs = obj@asv_seqs[names(obj@asv_seqs) %in% asv_table2[['hapid']]]
+                      asv_seqs_masked = obj@asv_seqs_masked[names(obj@asv_seqs_masked) %in% asv_table2[['hapid']]]
+                      
+                      
+                      if(sum(names(asv_seqs) != names(asv_seqs_masked)) > 0){
+                        stop('masked and unmasked fastas with different names')
+                      }
+                      
+                      if(length(asv_seqs) != length(asv_seqs_masked)){
+                        stop('masked and unmasked fastas with different length')
+                      }
+                      
+                      asv_table =
+                        asv_table[!(asv_table[['Amplicon']] == unique(ASVs_attributes_table_temp[['MHap']]) &
+                                      !is.na(asv_table[['Amplicon']]) &
+                                      asv_table[['CIGAR_masked']] %in% removed_alleles)
+                                  ,]
+                      
                       obj@asv_seqs = obj@asv_seqs[names(obj@asv_seqs) %in% asv_table[['hapid']]]
                       obj@asv_seqs_masked = obj@asv_seqs_masked[names(obj@asv_seqs_masked) %in% asv_table[['hapid']]]
+                      
+                      if(length(slot(obj, 'asv_seqs')) != length(slot(obj, 'asv_seqs_masked'))){
+                        stop('masked and unmasked fastas with different length')
+                      }
+
+                      if(sum(names(slot(obj, 'asv_seqs')) != names(slot(obj, 'asv_seqs_masked'))) > 0){
+                        stop('masked and unmasked fastas with different length')
+                      }
+                      
+                      
+                      
+                      
 
                     }
                     
@@ -4109,9 +4143,23 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
               
             }
             
-            obj@asv_seqs_masked = cigar_strings2fasta(obj = ampseq_object@asv_table, ref_fasta = ref_fasta, cigar_string_col = 'CIGAR_masked', amplicon_col = 'Amplicon', format = 'DNAStringSet')
+            #stop('')
             
-            names(obj@asv_seqs_masked) = names(obj@asv_seqs)
+            asv_seqs_masked = cigar_strings2fasta(obj = asv_table, ref_fasta = ref_fasta, cigar_string_col = 'CIGAR_masked', amplicon_col = 'Amplicon', format = 'DNAStringSet')
+            
+            
+            if(length(slot(obj, 'asv_seqs')) != length(asv_seqs_masked)){
+              stop('masked and unmasked fastas with different length')
+            }
+            
+            names(asv_seqs_masked) = asv_table$hapid
+            
+            if(sum(names(slot(obj, 'asv_seqs')) != names(asv_seqs_masked)) > 0){
+              stop('masked and unmasked fastas with different length')
+            }
+            
+            
+            obj@asv_seqs_masked = asv_seqs_masked
 
             obj@gt = gt_masked
             obj@asv_table = asv_table

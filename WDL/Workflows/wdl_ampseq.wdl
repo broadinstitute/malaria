@@ -40,6 +40,7 @@ workflow ampseq {
 
     call prepare_reference_files_t.prepare_reference_files as t_000_prepare_reference_files {
         input:
+            sample_ids = sample_ids,
             panel_info = panel_info,
             reference_genome = reference_genome,
             reference_amplicons = reference_amplicons,
@@ -130,7 +131,7 @@ workflow ampseq {
 
     output {
         # PREPARE REFERENCE FILES
-        #File reference_out = t_000_prepare_reference_files.reference_o
+        File reference_out = t_000_prepare_reference_files.reference_o
         #File panel_bedfile_out = t_000_prepare_reference_files.panel_bedfile_o
         #File forward_primers_out = t_000_prepare_reference_files.forward_primers_o
         #File reverse_primers_out = t_000_prepare_reference_files.reverse_primers_o
