@@ -4389,8 +4389,9 @@ locus_amplification_rate = function(ampseq_object, threshold = .65, update_loci 
     ))
     
     for(pop in unique(ampseq_object@metadata[['Strata']])){
-      temp_ampseq_object = filter_samples(ampseq_object,
-                                          v = (ampseq_object@metadata[['Strata']] == pop)
+      temp_ampseq_object = filter_samples(obj = ampseq_object,
+                                          v = (ampseq_object@metadata[['Strata']] == pop),
+                                          update_cigars = FALSE
       )
       
       if(sum((ampseq_object@metadata[['Strata']] == pop)) == 1){

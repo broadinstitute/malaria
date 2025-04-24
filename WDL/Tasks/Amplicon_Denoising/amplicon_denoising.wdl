@@ -133,7 +133,7 @@ task amplicon_denoising {
                     -id "~{matchIDs}" \
                     -mC "~{max_consist}" \
                     -wA "~{omegaA}" \
-                    -pl "~{pool}" \
+                    --pool \
                     -jC "~{justConcatenate}" \
                     -mM "~{maxMismatch}" \
                     -s "~{saveRdata}" \
