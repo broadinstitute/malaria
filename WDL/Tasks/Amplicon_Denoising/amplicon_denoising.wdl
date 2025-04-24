@@ -23,7 +23,7 @@ task amplicon_denoising {
         String matchIDs = "0" # Whether to match IDs on fastqs
         Int max_consist = 10 # Maximum number of mismatches in overlap region
         Float omegaA = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 # Alpha parameter for consensus quality score
-        Boolean pool = false # Whether to pool samples for denoising
+        String pool = "pseudo" # Whether to pool samples for denoising
         Int justConcatenate = 0 # Whether to just concatenate reads without merging
         Int maxMismatch = 0 # Maximum number of mismatches allowed during merging
         String saveRdata = "" # Whether to save the intermediate R data files
@@ -133,7 +133,7 @@ task amplicon_denoising {
                     -id "~{matchIDs}" \
                     -mC "~{max_consist}" \
                     -wA "~{omegaA}" \
-                    --pool \
+                    -pl "~{pool}" \
                     -jC "~{justConcatenate}" \
                     -mM "~{maxMismatch}" \
                     -s "~{saveRdata}" \

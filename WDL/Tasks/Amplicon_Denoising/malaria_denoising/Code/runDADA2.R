@@ -42,13 +42,6 @@ if (!require("viridisLite")) {
 # Custom filtering, denoising parameters (if not default) can be provided as a separate config file?
 parser <- ArgumentParser()
 parser$add_argument("-csv", "--input_csv", help="Input csv file with all parameters")
-#parser$add_argument("-b", "--sample_ids", nargs="+", help="Samples names")
-#parser$add_argument("-f1", "--orig_f", nargs="+", help="Forward fastq files before any processing (required)")
-#parser$add_argument("-f2", "--orig_r", nargs="+", help="Reverse fastq files before any processing (required)")
-#parser$add_argument("-p1", "--fnFs", nargs="+", help="Forward fastq files after primer removal (required)")
-#parser$add_argument("-p2", "--fnRs", nargs="+", help="Reverse fastq files after primer removal (required)")
-#parser$add_argument("-a1", "--adap_f", nargs="+", help="Forward fastq files after adaptor removal (required)")
-#parser$add_argument("-a2", "--adap_r", nargs="+", help="Reverse fastq files after adaptor removal (required)")
 parser$add_argument("-c", "--class", help="Class specifying 'parasite' or 'vector' (required if '--default' is specified)")
 parser$add_argument("-d", "--work_dir", help="Working directory path for writing all dada2 output files")
 parser$add_argument("-o", "--output_filename", help="output tab-separated filename (required)")
@@ -60,7 +53,7 @@ parser$add_argument("-tQ", "--truncQ", help="Truncate reads to first occurence o
 parser$add_argument("-id", "--matchIDs", type="integer", help="Match ids on fastqs to make sure reads on forward and reverse end are in same order")
 parser$add_argument("-mC", "--max_consist", type="integer", help="Maximum cycles for error model until consistency. If no convergence, error values at max_consist cycle are used")
 parser$add_argument("-wA", "--omega_a", type="double", help="P-value threshold in sample inference for forming a new partition")
-parser$add_argument("-pl", "--pool", action='store_true', default=FALSE, help="Optionally pool samples together for denoising")
+parser$add_argument("-pl", "--pool", default="false", help="Optionally pool samples together for denoising")
 parser$add_argument("-jC", "--justConcatenate", type="integer", help="Specify whether ASVs need to be concatenated with Ns instead of merging")
 parser$add_argument("-mM", "--maxMismatch", type="integer", help="Specify the maximum number of mismatches allowed during merging")
 parser$add_argument("--bimera", action='store_true', help="Optionally output list of sequences identified as bimeras")
@@ -96,7 +89,12 @@ class = args$class
 justConcatenate <- args$justConcatenate
 bimera = args$bimera
 maxMismatch = args$maxMismatch
-pool = args$pool
+pool <- switch(tolower(args$pool),
+  "true" = TRUE,
+  "false" = FALSE,
+  "pseudo" = "pseudo",
+  stop("Invalid value for --pool: must be 'true', 'false', or 'pseudo'")
+)
 
 # DADA2 and Filtering parameters
 maxEE <- args$maxEE
