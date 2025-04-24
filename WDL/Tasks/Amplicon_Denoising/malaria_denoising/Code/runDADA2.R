@@ -60,6 +60,7 @@ parser$add_argument("-tQ", "--truncQ", help="Truncate reads to first occurence o
 parser$add_argument("-id", "--matchIDs", type="integer", help="Match ids on fastqs to make sure reads on forward and reverse end are in same order")
 parser$add_argument("-mC", "--max_consist", type="integer", help="Maximum cycles for error model until consistency. If no convergence, error values at max_consist cycle are used")
 parser$add_argument("-wA", "--omega_a", type="double", help="P-value threshold in sample inference for forming a new partition")
+parser$add_argument("-pl", "--pool", action='store_true', default=FALSE, help="Optionally pool samples together for denoising")
 parser$add_argument("-jC", "--justConcatenate", type="integer", help="Specify whether ASVs need to be concatenated with Ns instead of merging")
 parser$add_argument("-mM", "--maxMismatch", type="integer", help="Specify the maximum number of mismatches allowed during merging")
 parser$add_argument("--bimera", action='store_true', help="Optionally output list of sequences identified as bimeras")
@@ -95,6 +96,7 @@ class = args$class
 justConcatenate <- args$justConcatenate
 bimera = args$bimera
 maxMismatch = args$maxMismatch
+pool = args$pool
 
 # DADA2 and Filtering parameters
 maxEE <- args$maxEE
@@ -286,9 +288,9 @@ names(derepRs) <- sample_ids
 
 #Run core DADA2 algorithm
 print("starting dada2 for forward reads...")
-dadaFs <- dada(derepFs, err=errF, selfConsist=selfConsist, multithread=TRUE, verbose=TRUE, OMEGA_A=omega_a)
+dadaFs <- dada(derepFs, err=errF, selfConsist=selfConsist, multithread=TRUE, verbose=TRUE, OMEGA_A=omega_a, pool=pool)
 print("starting dada2 for reverse reads...")
-dadaRs <- dada(derepRs, err=errR, selfConsist=selfConsist, multithread=TRUE, verbose=TRUE, OMEGA_A=omega_a)
+dadaRs <- dada(derepRs, err=errR, selfConsist=selfConsist, multithread=TRUE, verbose=TRUE, OMEGA_A=omega_a, pool=pool)
 
 # Merge reads
 print("merging paired ends...")

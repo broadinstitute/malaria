@@ -23,6 +23,7 @@ task amplicon_denoising {
         String matchIDs = "0" # Whether to match IDs on fastqs
         Int max_consist = 10 # Maximum number of mismatches in overlap region
         Float omegaA = 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 # Alpha parameter for consensus quality score
+        Boolean pool = false # Whether to pool samples for denoising
         Int justConcatenate = 0 # Whether to just concatenate reads without merging
         Int maxMismatch = 0 # Maximum number of mismatches allowed during merging
         String saveRdata = "" # Whether to save the intermediate R data files
@@ -83,7 +84,6 @@ task amplicon_denoising {
               filename=$(basename "${path}") # Get the file name
               echo "Filename: ${filename}"
               sample_id="${filename%%_R1_001.fastq.gz}"
-              #sample_id="${filename%%_*}" # Remove everything after first underscore
               echo "Sample ID: ${sample_id}"
               sample_ids_string[$i]="${sample_id}"
               i=$((i + 1))
@@ -133,6 +133,7 @@ task amplicon_denoising {
                     -id "~{matchIDs}" \
                     -mC "~{max_consist}" \
                     -wA "~{omegaA}" \
+                    -pl "~{pool}" \
                     -jC "~{justConcatenate}" \
                     -mM "~{maxMismatch}" \
                     -s "~{saveRdata}" \
