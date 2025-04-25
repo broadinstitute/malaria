@@ -138,7 +138,7 @@ task asv_filtering {
 	}
 	runtime {
 		cpu: 1
-		memory: "40 GiB"
+		memory: "100 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3 
