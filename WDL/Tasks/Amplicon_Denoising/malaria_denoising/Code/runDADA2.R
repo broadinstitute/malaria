@@ -348,20 +348,20 @@ print("Counting reads through the pipeline...")
 reads_report <- data.frame()
 for(sample.name in names(track[,1])) {
   print(paste("Processing sample:", sample.name))
-  orig_f <- unlist(strsplit(args$orig_f, " "))[grep(sample.name, unlist(strsplit(args$orig_f, " ")))]
-  orig_r <- unlist(strsplit(args$orig_r, " "))[grep(sample.name, unlist(strsplit(args$orig_r, " ")))]
+  orig_f <- unlist(strsplit(args$orig_f, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$orig_f, " ")))]
+  orig_r <- unlist(strsplit(args$orig_r, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$orig_r, " ")))]
   print(paste("Original files:", orig_f, orig_r))
   orig_f_reads = count_reads(orig_f)
   orig_r_reads = count_reads(orig_r)
 
-  adap_f <- unlist(strsplit(args$adap_f, " "))[grep(sample.name, unlist(strsplit(args$adap_f, " ")))]
-  adap_r <- unlist(strsplit(args$adap_r, " "))[grep(sample.name, unlist(strsplit(args$adap_r, " ")))]  
+  adap_f <- unlist(strsplit(args$adap_f, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$adap_f, " ")))]
+  adap_r <- unlist(strsplit(args$adap_r, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$adap_r, " ")))]  
   print(paste("Adaptor removed files:", adap_f, adap_r))
   adap_f_reads = count_reads(adap_f)
   adap_r_reads = count_reads(adap_r)
 
-  prim_f <- unlist(strsplit(args$fnFs, " "))[grep(sample.name, unlist(strsplit(args$fnFs, " ")))]
-  prim_r <- unlist(strsplit(args$fnRs, " "))[grep(sample.name, unlist(strsplit(args$fnRs, " ")))]
+  prim_f <- unlist(strsplit(args$fnFs, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$fnFs, " ")))]
+  prim_r <- unlist(strsplit(args$fnRs, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$fnRs, " ")))]
   print(paste("Primer removed files:", prim_f, prim_r))
   prim_f_reads = count_reads(prim_f)
   prim_r_reads = count_reads(prim_r)
