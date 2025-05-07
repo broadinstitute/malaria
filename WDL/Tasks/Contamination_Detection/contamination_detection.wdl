@@ -60,6 +60,9 @@ task contamination_detection {
 		File missing_files = "missing_files.tsv"
 		File? contamination_detection_sample_cards = "Report_Cards.tar.gz"
 		File? contamination_detection_report = "Results/ci_report_layouting.html"
+		Int minreads_threshold_o = minreads_threshold
+		Int contamination_threshold_o = contamination_threshold
+		Int primer_distance_threshold_o = primer_distance_threshold
 	}
 	runtime {
 		cpu: 1

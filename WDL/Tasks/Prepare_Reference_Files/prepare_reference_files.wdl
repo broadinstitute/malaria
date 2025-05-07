@@ -10,31 +10,16 @@ task prepare_reference_files {
 		File? forward_primers_file
 		File? reverse_primers_file
 		File? path_to_snv
+
+		Array[File] fastq1s
+		Array[File] fastq2s
+		File? barcodes_index
+		File sample_metadata
 	}
 	command <<<
-	# FUTURE DEVELOPMENT: 
-	# 1 MAKE REFERENCE_OUT OPTIONAL. SKIP THE GENERATION OF THE REFERENCE FILE IF PROVIDED BY USER.
 	export TMPDIR=tmp
 	set -euxo pipefail
 	
-#	if [[ "~{sep=' ' sample_ids}" != '' ]]; then
-#		sample_ids_t=$(IFS=" "; echo "~{sep=' ' sample_ids}")
-#		echo "Sample IDs: ${sample_ids_t}"
-#		read -r -a paths <<< "${sample_ids_t}"
-#
-#		#Loop through each element
-#		sample_ids_string=()
-#		i=1
-#		for sample_id in "${paths[@]}"; do
-#			echo "Sample ID: ${sample_id}"
-#			sample_ids_string[$i]="${sample_id}"
-#			i=$((i + 1))
-#		done
-#		echo "Echoing sample_ids_string"
-#		echo "${sample_ids_string[@]}"
-#		sample_ids_a=(${sample_ids_string[*]})
-#	fi
-
 	###################################################################
 	# Need to check for byte-order mark for interoperability purposes #
 	###################################################################
@@ -54,20 +39,50 @@ task prepare_reference_files {
 	###################################################################
 	echo "Creating amplicon panel bed file."
 	has_primers() { awk 'NR==1 {exit !(NF > 3)}' "$1"; }
-	if has_primers ~{panel_info}; then
+
+	if [[ "~{forward_primers_file}" != '' && "~{reverse_primers_file}" != '' ]]; then
+		echo "Custom primers provided. Using custom primers."
+	elif has_primers ~{panel_info}; then
 		echo "Panel info file contains primer information"
-		cut -f1,4,5 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed
+		cut -f1,2,3 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
 	else
-		echo "Panel info file does not contain primer information."
-		if [[ "~{forward_primers_file}" == ''  || "~{reverse_primers_file}" == '' ]]; then
-			echo "No primer files were provided. Please either provide primer information in panel_info or the forward_primers_file and reverse_primers_file."
-			exit 1
-		else
-			tail -n +2 ~{panel_info} | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
-		fi
+		echo "No primer files were provided. Please either provide primer information in panel_info or the forward_primers_file and reverse_primers_file."
+		exit 1
 	fi
 
-	echo "Created amplicon panel bed file."
+	###################################################################
+	# Make reference fasta file if reference not provided by user     #
+	###################################################################
+	echo "Checking for reference files."
+	if [[ "~{reference_amplicons}" != '' ]]; then
+		echo "Amplicon reference file provided."
+		cp ~{reference_amplicons} reference.fasta
+	elif [[ "~{reference_amplicons}" == '' && "~{reference_genome}" != '' && "~{panel_info}" != '' ]]; then
+		echo "Amplicon reference file not provided. Reference genome and amplicon panel info file provided."
+		echo "Creating amplicon reference file."
+		bedtools getfasta -fi ~{reference_genome} -bed amplicon_panel.bed -fo reference_tmp.fasta
+		echo "Created amplicon reference file."
+		echo "Matching names to target_id in panel info."
+		awk '
+		BEGIN { FS=OFS="\t" }
+		NR==FNR {
+			if (FNR == 1) next;   # Skip header line in primers.tsv
+			target_id[++i] = $6;
+			next
+		}
+		/^>/ {
+			print ">" target_id[++j];
+			next
+		}
+		{ print }
+		' "~{panel_info}" reference_tmp.fasta > reference.fasta	
+	else
+		echo "Neither reference file provided nor reference genome and amplicon panel info file provided."
+		echo "Please provide any of these files to run the pipeline."
+		exit 1
+	fi
+
+	echo "Finished checking for reference files."
 
 	###################################################################
 	# Make reference fasta file if reference not provided by user     #
@@ -91,6 +106,21 @@ task prepare_reference_files {
 	###################################################################
 	# Make forward and reverse primer files from panel_info           #
 	###################################################################
+	make_primers_from_panelinfo() {
+		local input_tsv=$1
+		local output_fasta=$2
+		local seq_column=$3
+
+		awk -v col="$seq_column" '
+		BEGIN { FS=OFS="\t" }
+		FNR == 1 { next }  # skip header
+		{
+		print ">" $6
+		print $col
+		}
+		' "$input_tsv" > "$output_fasta"
+	}
+
 	echo "Checking for primer files."
 	if [[ "~{forward_primers_file}" != '' ]]; then
 		echo "Forward primers file provided."
@@ -101,13 +131,11 @@ task prepare_reference_files {
 			echo "Creating forward primers file."
 
 			# Create forward primer fasta from panel_info
-			awk -F'\t' '{print $1 "\t" $2 "\t" $4-1}' ~{panel_info} | tail -n +2 > primers_fw.bed
-			bedtools getfasta -fo primers_fw.fasta -fi ~{reference_genome} -bed primers_fw.bed
-			
+			make_primers_from_panelinfo ~{panel_info} primers_fw.fasta 4
 			echo "Created forward primers file."
-			rm primers_fw.bed
 		else
 			echo "Panel info file does not contain primer information"
+			exit 1
 		fi
 	else
 		echo "Neither forward primers file provided nor reference genome provided."
@@ -123,15 +151,12 @@ task prepare_reference_files {
 			echo "Creating reverse primers file."
 
 			# Create reverse primer fasta from panel_info
-			sed 's/\r//' ~{panel_info} | awk -F"\t" '{print $1 "\t" $5 "\t" $3 "\t\t\t-"}' | tail -n +2 > primers_rv.bed
-			bedtools getfasta -s -fo primers_rv.fasta -fi ~{reference_genome} -bed primers_rv.bed #Reverse complement
-
+			make_primers_from_panelinfo ~{panel_info} primers_rv.fasta 5
 			echo "Created reverse primers file."
-			rm primers_rv.bed
 		else
 			echo "Panel info file does not contain primer information"
+			exit 1
 		fi
-
 	else
 		echo "Neither reverse primers file provided nor reference genome and amplicon panel info file provided."
 		echo "Please provide any of these files to run the pipeline."
@@ -172,6 +197,96 @@ task prepare_reference_files {
 	python /Code/check_input_headers.py -i ~{panel_info} \
 		--ref_genome ~{reference_genome} \
 		~{if defined(reference_amplicons) then "--ref_amplicons_provided" else ""}
+
+	#####################################################
+	# Make bioinformatics_info.json			    #
+	#####################################################
+
+	fastq1s_string=$(IFS=" "; echo "~{sep=' ' fastq1s}")
+	fastq1s_a=(${fastq1s_string})
+	echo "ampseq.fastq1s" > samples_tmp.csv
+	for i in "${!fastq1s_a[@]}"; do
+		echo "${fastq1s_a[i]##*/}" >> samples_tmp.csv
+	done
+
+	python /Code/add_entry_to_json.py samples_tmp.csv config.json
+
+	fastq2s_string=$(IFS=" "; echo "~{sep=' ' fastq2s}")
+	fastq2s_a=(${fastq2s_string})
+	echo "ampseq.fastq2s" > samples_tmp.csv
+	for i in "${!fastq2s_a[@]}"; do
+		echo "${fastq2s_a[i]##*/}" >> samples_tmp.csv
+	done
+
+	python /Code/add_entry_to_json.py samples_tmp.csv config.json
+
+	echo "ampseq.panel_info" > samples_tmp.csv
+	panel_info_tmp="~{panel_info}"
+	echo "${panel_info_tmp##*/}" >> samples_tmp.csv
+	python /Code/add_entry_to_json.py samples_tmp.csv config.json
+
+	echo "ampseq.reference_genome" > samples_tmp.csv
+	reference_genome_tmp="~{reference_genome}"
+	echo "${reference_genome_tmp##*/}" >> samples_tmp.csv
+	python /Code/add_entry_to_json.py samples_tmp.csv config.json
+
+	echo "ampseq.sample_metadata" > samples_tmp.csv
+	sample_metadata_tmp="~{sample_metadata}"
+	echo "${sample_metadata_tmp##*/}" >> samples_tmp.csv
+	python /Code/add_entry_to_json.py samples_tmp.csv config.json
+
+	if [[ "~{reference_amplicons}" != '' ]]; then
+		echo "ampseq.reference_amplicons" > samples_tmp.csv
+		reference_amplicons_tmp="~{reference_amplicons}"
+		echo "${reference_amplicons_tmp##*/}" >> samples_tmp.csv
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
+	if [[ "~{reference_amplicons_2}" != '' ]]; then
+		echo "ampseq.reference_amplicons_2" > samples_tmp.csv
+		reference_amplicons_2_tmp="~{reference_amplicons_2}"
+		echo "${reference_amplicons_2_tmp##*/}" >> samples_tmp.csv
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
+	if [[ "~{forward_primers_file}" != '' ]]; then
+		echo "ampseq.forward_primers_file" > samples_tmp.csv
+		forward_primers_file_tmp="~{forward_primers_file}"
+		echo "${forward_primers_file_tmp##*/}" >> samples_tmp.csv
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
+	if [[ "~{reverse_primers_file}" != '' ]]; then
+		echo "ampseq.reverse_primers_file" > samples_tmp.csv
+		reverse_primers_file_tmp="~{reverse_primers_file}"
+		echo "${reverse_primers_file_tmp##*/}" >> samples_tmp.csv
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
+	if [[ "~{path_to_snv}" != '' ]]; then
+		echo "ampseq.path_to_snv" > samples_tmp.csv
+		path_to_snv_tmp="~{path_to_snv}"
+		echo "${path_to_snv_tmp##*/}" >> samples_tmp.csv
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
+	if [[ "~{sep=' ' sample_ids}" != '' ]]; then
+		echo "ampseq.sample_ids" > samples_tmp.csv
+		sample_ids_string=$(IFS=" "; echo "~{sep=' ' sample_ids}")
+		sample_ids_a=(${sample_ids_string})
+		for i in "${!sample_ids_a[@]}"; do
+			echo "${sample_ids_a[i]}" >> samples_tmp.csv
+		done
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
+	if [[ "~{barcodes_index}" != '' ]]; then
+		echo "ampseq.barcodes_index" > samples_tmp.csv
+		barcodes_index_tmp="~{barcodes_index}"
+		echo "${barcodes_index_tmp##*/}" >> samples_tmp.csv
+		python /Code/add_entry_to_json.py samples_tmp.csv config.json
+	fi
+
 	>>>
 
 	output {
@@ -182,6 +297,7 @@ task prepare_reference_files {
 		File? forward_primers_CI_o = "primers_fw_CI.fasta"
 		File? reverse_primers_CI_o = "primers_rv_CI.fasta"
 		File markers_table_o = "markers_table.csv"
+		File bioinformatics_json_o = "config.json"
 	}
 
 	runtime {
@@ -191,7 +307,7 @@ task prepare_reference_files {
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
-		docker: "jorgeamaya/fileprep_ampseq:v_0_0_2"
+		docker: "jorgeamaya/fileprep_ampseq:v_0_0_3"
 	}
 }
 

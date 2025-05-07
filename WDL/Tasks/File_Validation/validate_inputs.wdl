@@ -45,6 +45,7 @@ task validate_fastqs {
     output {
         File fastq1_o = fq1_prefix + ".fastq.gz"
         File fastq2_o = fq2_prefix + ".fastq.gz"
+        Boolean use_validated_fastqs_o = use_validated_fastqs
     }
     
     runtime {
