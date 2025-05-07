@@ -1,13 +1,14 @@
 #!/bin/r env
 
 library(argparse)
-library(stringr)
-library(rmarkdown)
 
 # 1.ARGUMENTS -----
 parser = ArgumentParser()
 
 # 1.Paths to references and functions -----
+
+parser$add_argument("-xmx", "--xmx",
+		    help="Maximum memory to be used by the script. Default is 1000 MB")
 
 parser$add_argument("-wd", "--wd", 
                     help="Path to input and output files or folders")
@@ -216,6 +217,15 @@ parser$add_argument("-poly_quantile", "--poly_quantile", default = 'null',
 
 print("starting to parse variables")
 args = parser$parse_args()
+
+xmx = as.integer(args$xmx)
+mem = paste0("-Xmx", xmx, "g")
+
+print(paste0('Available memory Xmx: ', mem))
+options(java.parameters = mem)
+
+library(stringr)
+library(rmarkdown)
 
 # 2.Paths to references and functions----
 

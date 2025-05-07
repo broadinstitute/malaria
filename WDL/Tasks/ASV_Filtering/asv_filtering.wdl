@@ -63,6 +63,16 @@ task asv_filtering {
 		export TMPDIR=tmp
 		set -euxo pipefail
 
+		# Get amount of memory to use:
+		mem_available=$(free -g | grep '^Mem' | awk '{print $2}')
+		mem_max=$((mem_available-2))
+		
+		if [[ ${mem_max} -lt 2 ]] ; then
+			mem_max=2
+		fi
+
+		echo "Available memory: ${mem_max} GiB"
+
 		# Create directories - required for MHap script
 		mkdir -p Results/
 		mkdir -p Results/~{cigar_variants_dir}
@@ -95,6 +105,7 @@ task asv_filtering {
 		root_dir=$(pwd)
 		echo "Applying filters to ASVs..."
 		Rscript /Code/MHap_Analysis_pipeline.R \
+		-xmx "${mem_max}" \
 		-fd "~{fd}" \
 		-wd "$root_dir/~{wd}" \
 		-rd "$root_dir/~{rd}" \
@@ -143,6 +154,6 @@ task asv_filtering {
 		bootDiskSizeGb: 10
 		preemptible: 3 
 		maxRetries: 1
-		docker: 'jorgeamaya/asvfilters:v_0_0_2'
+		docker: 'jorgeamaya/asvfilters:v_0_0_3'
 	}
 }
