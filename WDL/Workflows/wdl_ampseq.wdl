@@ -177,13 +177,14 @@ workflow ampseq {
     }
 
     output {
+        File panel_info_out = panel_info
         # PREPARE REFERENCE FILES
         #File reference_out = t_000_prepare_reference_files.reference_o
         #File panel_bedfile_out = t_000_prepare_reference_files.panel_bedfile_o
         #File forward_primers_out = t_000_prepare_reference_files.forward_primers_o
         #File reverse_primers_out = t_000_prepare_reference_files.reverse_primers_o
         #File markers_table_out = t_000_prepare_reference_files.markers_table_o
-        File bioinformatics_json_out = t_000_prepare_reference_files.bioinformatics_json_o
+        #File bioinformatics_json_out = t_000_prepare_reference_files.bioinformatics_json_o
 
         # VALIDATE FASTQS
         #Array[File] fastq1_out = t_001_validate_fastqs.fastq1_o
@@ -214,11 +215,10 @@ workflow ampseq {
         #File ZeroReadsSampleList_f = t_004_amplicon_denoising.ZeroReadsSampleList_o
 
         # ASV Filtering
- #       File ampseq_object_f = t_005_asv_filtering.ampseq_object_o
+        File ampseq_object_f = t_005_asv_filtering.ampseq_object_o
+	File microhaplotypes_f = t_005_asv_filtering.microhaplotypes_o
 
 	# COMPLETE JSON FILE
-	File config_json_f = t_006_complete_json.bioinformatics_json_o
+	File bioinformatics_info_json_out = t_006_complete_json.bioinformatics_info_json_o
     }
 }
-
-

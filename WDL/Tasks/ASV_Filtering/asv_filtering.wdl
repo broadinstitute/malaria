@@ -131,10 +131,14 @@ task asv_filtering {
 		
 		echo 'Finished filtering ASVs!'
 
+		Rscript /Code/excel_to_microhaplotypes_info.R \
+		--ex "Results/${out_prefix}_ampseq_object_f.xlsx" \
+
 	>>>
 	
 	output {
 		File ampseq_object_o = glob("Results/*_ampseq_object_f.xlsx")[0]
+		File microhaplotypes_o = "microhaplotype_info.tsv"
 
 		String ampseq_export_format_o = ampseq_export_format
 		String metadata_variable1_name_o = metadata_variable1_name
@@ -160,6 +164,6 @@ task asv_filtering {
 		bootDiskSizeGb: 10
 		preemptible: 3 
 		maxRetries: 1
-		docker: 'jorgeamaya/asvfilters:v_0_0_2'
+		docker: 'jorgeamaya/asvfilters:v_0_0_4'
 	}
 }

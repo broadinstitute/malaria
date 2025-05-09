@@ -221,10 +221,12 @@ task complete_json {
 	echo "~{locus_ampl_rate}" >> samples_tmp.csv
 	python /Code/add_entry_to_json.py samples_tmp.csv config.json
 
+	mv config.json bioinformatics_info.json
+
 	>>>
 
 	output {
-		File bioinformatics_json_o = "config.json"
+		File bioinformatics_info_json_o = "bioinformatics_info.json"
 	}
 
 	runtime {

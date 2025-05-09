@@ -44,7 +44,7 @@ task prepare_reference_files {
 		echo "Custom primers provided. Using custom primers."
 	elif has_primers ~{panel_info}; then
 		echo "Panel info file contains primer information"
-		cut -f1,2,3 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
+		cut -f2,3,4 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
 	else
 		echo "No primer files were provided. Please either provide primer information in panel_info or the forward_primers_file and reverse_primers_file."
 		exit 1
@@ -131,7 +131,7 @@ task prepare_reference_files {
 			echo "Creating forward primers file."
 
 			# Create forward primer fasta from panel_info
-			make_primers_from_panelinfo ~{panel_info} primers_fw.fasta 4
+			make_primers_from_panelinfo ~{panel_info} primers_fw.fasta 5
 			echo "Created forward primers file."
 		else
 			echo "Panel info file does not contain primer information"
@@ -151,7 +151,7 @@ task prepare_reference_files {
 			echo "Creating reverse primers file."
 
 			# Create reverse primer fasta from panel_info
-			make_primers_from_panelinfo ~{panel_info} primers_rv.fasta 5
+			make_primers_from_panelinfo ~{panel_info} primers_rv.fasta 6
 			echo "Created reverse primers file."
 		else
 			echo "Panel info file does not contain primer information"
