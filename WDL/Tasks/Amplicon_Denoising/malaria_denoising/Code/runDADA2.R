@@ -26,9 +26,9 @@ if (!require("argparse")) {
   library("argparse")
 }
 
-if (!require("viridisLite")) {
-  install.packages("viridis", repos="http://cran.rstudio.com/")
-  library("viridis")
+  if (!require("viridis")) {
+    install.packages("viridis", repos="http://cran.rstudio.com/")
+    library("viridis")
 }
 
 #qprofile <- function(fastq, work_dir) {
@@ -60,7 +60,7 @@ parser$add_argument("--bimera", action='store_true', help="Optionally output lis
 args <- parser$parse_args()
 
 ########################################
-# 	PARSE PARAMETERS               #
+# PARSE PARAMETERS               #
 ########################################
 
 # Read the input csv file
@@ -75,7 +75,7 @@ args$adap_f = paste(input_data$adaptor_rem1s, sep = " ")
 args$adap_r = paste(input_data$adaptor_rem2s, sep = " ")
 
 # Universal parameters
-sample_ids = unlist(strsplit(args$sample_ids, " ")) 
+sample_ids = unlist(strsplit(args$sample_ids, " "))
 work_dir = args$work_dir
 output_filename = args$output_filename
 save_run = args$save_run
@@ -135,6 +135,12 @@ if (class == "parasite") {
   } else {
     minLen = as.numeric(minLen)
   }
+  # Added maxMismatch handling for parasite class
+if (is.null(maxMismatch)||maxMismatch == '') {
+  maxMismatch = 0
+  } else {
+  maxMismatch = as.numeric(maxMismatch)
+  }
 
   # Parameters for Denoising
   if (is.null(max_consist)||max_consist == '') {
@@ -185,13 +191,13 @@ if (class == "parasite") {
   } else {
     justConcatenate = as.logical(as.numeric(justConcatenate))
   }
-  
+
   if (is.null(maxMismatch)||maxMismatch == '') {
     maxMismatch=30
   } else {
     maxMismatch = as.numeric(maxMismatch)
   }
-  
+
 } else {
   stop("Please provide valid option for the '--class' argument")
 }
@@ -204,15 +210,15 @@ if (dirname(output_filename) != ".") {
 
 #Datatable to summarize parmeters
 parameter_df <- data.frame(maxEE=maxEE,
-	trimRight=trimRight,
-	minLen=minLen,
-	truncQ=truncQ,
-	matchIDs=matchIDs,
-	max_consist=max_consist,
-	randomize=randomize,
-	selfConsist=selfConsist,
-	OMEGA_A=omega_a,
-	justConcatenate=justConcatenate)
+trimRight=trimRight,
+minLen=minLen,
+truncQ=truncQ,
+matchIDs=matchIDs,
+max_consist=max_consist,
+randomize=randomize,
+selfConsist=selfConsist,
+OMEGA_A=omega_a,
+justConcatenate=justConcatenate)
 
 print(parameter_df)
 
@@ -222,7 +228,7 @@ print(parameter_df)
 
 # List files and sample names
 if (length(fnFs) == 0 || length(fnFs) != length(fnRs)) {
-	stop("fastq files incomplete or not found")
+stop("fastq files incomplete or not found")
 }
 
 #TO DELETE? THESE PLOTS ARE CURRENTLY NOT BEING USED. DISCUSS WITH UCSF TEAM
@@ -239,16 +245,16 @@ names(filtRs) <- sample_ids
 
 ## Filter read
 if (filter == TRUE) {
-	print("filtering samples...")
-	out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
-	maxN=0, maxEE=maxEE, trimRight=trimRight, truncQ=truncQ, minLen=minLen,
-	rm.phix=TRUE, compress=TRUE, multithread=TRUE, verbose=TRUE,
-	matchIDs=matchIDs)
-	print("filtering done!")
+print("filtering samples...")
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs,
+maxN=0, maxEE=maxEE, trimRight=trimRight, truncQ=truncQ, minLen=minLen,
+rm.phix=TRUE, compress=TRUE, multithread=TRUE, verbose=TRUE,
+matchIDs=matchIDs)
+print("filtering done!")
 } else {
-	print("skipping filter except mandatory removal of N's... ")
-	out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncQ=c(0,0), maxN=0, rm.phix=TRUE,
-	compress=TRUE, multithread=TRUE, verbose=TRUE, matchIDs=matchIDs)
+print("skipping filter except mandatory removal of N's... ")
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncQ=c(0,0), maxN=0, rm.phix=TRUE,
+compress=TRUE, multithread=TRUE, verbose=TRUE, matchIDs=matchIDs)
 }
 
 # Report and Correct for samples with zero reads after filter
@@ -315,13 +321,13 @@ if(bimera) {
     quote=FALSE, sep="\t", row.names=FALSE)
 } else {
   print("skipping Bimera identification..")
-}
+  seqtab.nochim <- seqtab
+
 
 # Track reads through the pipeline
 print("tracking reads through the pipeline...")
 getN <- function(x) sum(getUniques(x))
 track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
-# If processing a single sample, remove the sapply calls: e.g. replace sapply(dadaFs, getN) with getN(dadaFs)
 colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
 rownames(track) <- sample_ids
 
@@ -330,17 +336,17 @@ reads_report = data.frame()
 count_reads <- function(file_path) {
 
   print(paste("Counting reads in file:", file_path))
-  gz_conn <- gzfile(file_path, "r")  
+  gz_conn <- gzfile(file_path, "r")
   read_count <- 0
-  
+
   # Iterate over the lines in the file
   while (length(line <- readLines(gz_conn, n = 4)) > 0) {
     if (length(line) == 4 && substr(line[1], 1, 1) == "@") {
       read_count <- read_count + 1
     }
   }
-  
-  close(gz_conn)  
+
+  close(gz_conn)
   return(read_count)
 }
 
@@ -355,7 +361,7 @@ for(sample.name in names(track[,1])) {
   orig_r_reads = count_reads(orig_r)
 
   adap_f <- unlist(strsplit(args$adap_f, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$adap_f, " ")))]
-  adap_r <- unlist(strsplit(args$adap_r, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$adap_r, " ")))]  
+  adap_r <- unlist(strsplit(args$adap_r, " "))[grepl(paste0("/", sample.name), unlist(strsplit(args$adap_r, " ")))]
   print(paste("Adaptor removed files:", adap_f, adap_r))
   adap_f_reads = count_reads(adap_f)
   adap_r_reads = count_reads(adap_r)
@@ -365,7 +371,7 @@ for(sample.name in names(track[,1])) {
   print(paste("Primer removed files:", prim_f, prim_r))
   prim_f_reads = count_reads(prim_f)
   prim_r_reads = count_reads(prim_r)
-  
+
   reads_report = rbind(reads_report,
                        data.frame(sample.name,
                                   orig_f_reads,
@@ -376,13 +382,12 @@ for(sample.name in names(track[,1])) {
                                   prim_r_reads))
 }
 
-stopifnot(names(track[,1]) == reads_report$sample_ids)
-rownames(reads_report) = reads_report$sample_ids
-reads_report = data.matrix(reads_report)
-
-track = cbind(track, data.matrix(reads_report))
-original_discarded = track[,"orig_f_reads"] - track[,"adap_f_reads"] 
-adaptor_discarded = track[,"adap_f_reads"] - track[,"prim_f_reads"] 
+stopifnot(names(track[,1]) == reads_report$sample.name)
+rownames(reads_report) = reads_report$sample.name
+reads_report_matrix <- data.matrix(reads_report[, -1])  
+track = cbind(track, reads_report_matrix)
+original_discarded = track[,"orig_f_reads"] - track[,"adap_f_reads"]
+adaptor_discarded = track[,"adap_f_reads"] - track[,"prim_f_reads"]
 primer_discarded = track[,"prim_f_reads"] - track[,"filtered"]
 filtered_discarded = track[,"filtered"] - track[,"denoisedF"]
 merged_discarded = track[,"denoisedF"] - track[,"merged"]
@@ -397,10 +402,10 @@ sink()
 #Subset the table to the desired experiments
 #samples_order = read.csv(path_to_flist, sep = ",", header = FALSE)$V1
 #track_plot = as.data.frame(track[, c("merged", "merged_discarded", "filtered_discarded", "primer_discarded", "adaptor_discarded", "original_discarded")])
-#track_plot = track_plot[row.names(track_plot) %in% samples_order,] 
+#track_plot = track_plot[row.names(track_plot) %in% samples_order,]
 #
-#track_plot <- track_plot[order(-track_plot[,1], 
-#                               -track_plot[,2], 
+#track_plot <- track_plot[order(-track_plot[,1],
+#                               -track_plot[,2],
 #                               -track_plot[,3],
 #                               -track_plot[,4],
 #                               -track_plot[,5],
@@ -409,8 +414,8 @@ sink()
 #
 #track_plot_per = sweep(track_plot, 1, rowSums(track_plot), "/")
 #
-#track_plot_per <- track_plot_per[order(-track_plot_per[,1], 
-#                               -track_plot_per[,2], 
+#track_plot_per <- track_plot_per[order(-track_plot_per[,1],
+#                               -track_plot_per[,2],
 #                               -track_plot_per[,3],
 #                               -track_plot_per[,4],
 #                               -track_plot_per[,5],
