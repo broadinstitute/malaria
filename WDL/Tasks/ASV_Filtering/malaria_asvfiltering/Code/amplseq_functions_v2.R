@@ -414,8 +414,11 @@ read_cigar_tables = function(paths = NULL,
     
   }
   
-  metadata = data.frame(Sample_id = gsub("^.+/|_S\\d+$","",cigar_table[['Sample_id']]),
-                        order_in_plate = as.integer(gsub("^S|_$","",str_extract(cigar_table[['Sample_id']], "(S\\d+$|S\\d+_)"))), typeofSamp = NA)
+  metadata = data.frame(Sample_id = gsub("^.*/([^/]+_S\\d+).*", "\\1", cigar_table[['Sample_id']]),
+			order_in_plate = as.integer(gsub("^S|_$","",str_extract(cigar_table[['Sample_id']], "(S\\d+$|S\\d+_)"))), typeofSamp = NA)
+
+  #metadata = data.frame(Sample_id = gsub("^.+/|_S\\d+$","",cigar_table[['Sample_id']]),
+  #                      order_in_plate = as.integer(gsub("^S|_$","",str_extract(cigar_table[['Sample_id']], "(S\\d+$|S\\d+_)"))), typeofSamp = NA)
   
   if(!is.null(paths)){
     
