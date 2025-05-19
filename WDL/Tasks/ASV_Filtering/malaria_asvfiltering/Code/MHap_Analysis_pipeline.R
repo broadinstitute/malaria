@@ -214,7 +214,7 @@ parser$add_argument("-poly_quantile", "--poly_quantile", default = 'null',
                     help="Quantile to define polyclonal samples if this parameter is included in poly_formula")
 
 # 2.DEFINING AND CHECKING VARIABLES ----
-
+print("WATERMARK1")
 print("starting to parse variables")
 args = parser$parse_args()
 
@@ -1651,6 +1651,15 @@ if(!is.null(off_target_formula)){
     print(paste0(n_off_target_alleles, ' allele(s) matches the criteria to define off-target products'))
     ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = off_target_formula, ref_fasta = amplicon_fasta)
     
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in off-target products')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
   }else{
     
     print('No allele matches the criteria to define off-target products')
@@ -1987,8 +1996,25 @@ if(!is.null(flanking_INDEL_formula)){
     print(paste0(n_flanking_INDEL_alleles, ' allele(s) matches the criteria to identify products with flanking INDELs'))
     # mask flanking_INDEL
 
-    ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = 'Variant_in_STR == TRUE', ref_fasta = amplicon_fasta)
+    # ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = 'Variant_in_STR == TRUE', ref_fasta = amplicon_fasta)
+    
+    # if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+    #   stop('masked and unmasked fastas with different length Variant_in_STR')
+    # }
+    
+    # if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+    #   stop('masked and unmasked fastas with different length')
+    # }
+    
     ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = flanking_INDEL_formula, ref_fasta = amplicon_fasta)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length flanking_INDEL')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
 
     # flanking_INDEL_stats2 = get_ASVs_attributes(ampseq_object,  ref_fasta = amplicon_fasta)
     # while(sum(flanking_INDEL_stats2$flanking_INDEL) > 0){
@@ -2331,6 +2357,14 @@ if(!is.null(SNV_in_homopolymer_formula)){
     # masking SNVs in homopolymers
     ampseq_object = mask_alt_alleles(ampseq_object, mask_formula = SNV_in_homopolymer_formula, ref_fasta = amplicon_fasta, homopolymer_length = homopolymer_length)
     
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length SNV_in_homopolymer')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
     print('gt_masked generated')
     
   }else{
@@ -2667,6 +2701,14 @@ if(!is.null(INDEL_in_homopolymer_formula)){
     
     # masking INDELs in homopolymers
     ampseq_object = mask_alt_alleles(obj = ampseq_object, mask_formula = INDEL_in_homopolymer_formula, ref_fasta = amplicon_fasta, homopolymer_length = homopolymer_length)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length INDEL_in_homopolymer')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
     
     print('gt_masked generated')
   }else{
@@ -3016,9 +3058,19 @@ if(!is.null(bimera_formula)){
     
     print(paste0(n_bimera_alleles, ' allele(s) matches the criteria to identify bimeras'))
     
+    
+    #stop('bimera detection')
     # masking INDELs in homopolymers
     ampseq_object = mask_alt_alleles(obj = ampseq_object, mask_formula = bimera_formula, ref_fasta = amplicon_fasta, homopolymer_length = homopolymer_length)
 
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length bimeras')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
     print('gt_masked generated')
   }else{
     print('No allele matches the criteria to identify bimera')
@@ -3327,6 +3379,14 @@ if(!is.null(PCR_errors_formula)){
     # removing PCR_errors_alleles
     ampseq_object = mask_alt_alleles(obj = ampseq_object, mask_formula = PCR_errors_formula, ref_fasta = amplicon_fasta)
     
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length PCR_errors')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
     print('gt_masked generated')
   }else{
     print('No allele matches the criteria to identify PCR_errors')
@@ -3421,6 +3481,14 @@ if(PerformanceReport == TRUE){
   # Read Depth coverage by the whole dataset or by Run for controls
   ampseq_object_controls = filter_samples(ampseq_object, v = ampseq_object@metadata$typeofSamp == 'Controls')
   
+  if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+    stop('masked and unmasked fastas with different length in removing controls')
+  }
+  
+  if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+    stop('masked and unmasked fastas with different length')
+  }
+  
   ReadDepth_coverage_by_run_controls = get_ReadDepth_coverage(ampseq_object = ampseq_object_controls, variable = "Run")
 }
 
@@ -3428,6 +3496,14 @@ if(PerformanceReport == TRUE){
 print('Removing Controls for further steps')
 
 ampseq_object = filter_samples(ampseq_object, v = ampseq_object@metadata$typeofSamp == 'Samples')
+
+if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+  stop('masked and unmasked fastas with different length in selecting samples of interest')
+}
+
+if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+  stop('masked and unmasked fastas with different length')
+}
 
 if(PerformanceReport){
   ampseq_object@controls[['gt']] = ampseq_object_controls@gt
@@ -3446,10 +3522,26 @@ if(!is.null(var_filter)){
       ampseq_object = filter_samples(ampseq_object,
                                      ampseq_object@metadata[[filters[[temp_filter]][1]]] %in% strsplit(filters[[temp_filter]][3],',')[[1]])
       
+      if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+        stop('masked and unmasked fastas with different length in off-target products in samples to keep')
+      }
+      
+      if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+        stop('masked and unmasked fastas with different length')
+      }
+      
     }else if(toupper(filters[[temp_filter]][2]) == 'REMOVE'){
   
       ampseq_object = filter_samples(ampseq_object,
                                      !(ampseq_object@metadata[[filters[[temp_filter]][1]]] %in% strsplit(filters[[temp_filter]][3],',')[[1]]))
+      
+      if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+        stop('masked and unmasked fastas with different length in samples to remove')
+      }
+      
+      if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+        stop('masked and unmasked fastas with different length')
+      }
       
     }
   }
@@ -3463,16 +3555,49 @@ if(!is.null(locus_ampl_rate)){
   
   if(!is.null(Variable1)){
     ampseq_object = locus_amplification_rate(ampseq_object, threshold = locus_ampl_rate, strata = Variable1)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in locus_amprate1')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
   }else{
     ampseq_object = locus_amplification_rate(ampseq_object, threshold = locus_ampl_rate)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in locus_amprate2')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
   }
   
 }else{ ##[TODO: Delete loci_amplification_rate application]
   
   if(!is.null(Variable1)){
     ampseq_object = locus_amplification_rate(ampseq_object, threshold = 0.65, strata = Variable1)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in locus_amprate3')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
   }else{
     ampseq_object = locus_amplification_rate(ampseq_object, threshold = 0.65) 
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in locus_amprate4')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
   }
 }
 
@@ -3482,16 +3607,49 @@ print("measuring amplification rate by sample")
 if(!is.null(sample_ampl_rate)){
   if(!is.null(Variable1)){
     ampseq_object = sample_amplification_rate(ampseq_object, threshold = sample_ampl_rate, strata = Variable1)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in sample_amp_rate 1')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
+    
   }else{
     ampseq_object = sample_amplification_rate(ampseq_object, threshold = sample_ampl_rate)  
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in off-target products sample_amp_rate2')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
   }
   
 }else{ # [TODO:] Delete sample_amplification_rate application
   
   if(!is.null(Variable1)){
     ampseq_object = sample_amplification_rate(ampseq_object, threshold = 0.80, strata = Variable1)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in sample_amprate3')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
   }else{
-    ampseq_object = sample_amplification_rate(ampseq_object, threshold = 0.80)  
+    ampseq_object = sample_amplification_rate(ampseq_object, threshold = 0.80)
+    
+    if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
+      stop('masked and unmasked fastas with different length in sample_ampe_rate4')
+    }
+    
+    if(sum(names(slot(ampseq_object, 'asv_seqs')) != names(slot(ampseq_object, 'asv_seqs_masked'))) > 0){
+      stop('masked and unmasked fastas with different length')
+    }
   }
 
 }
