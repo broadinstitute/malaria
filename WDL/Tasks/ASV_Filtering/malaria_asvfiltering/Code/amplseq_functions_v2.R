@@ -1840,13 +1840,20 @@ read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
         
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
         
-      }else if(sheet %in% c('metadata', 'loci_performance', 'vcf_like')){
+      }else if(sheet %in% c('metadata', 'loci_performance')){
+        temp_sheet = readWorksheet(temp_wb, sheet = sheet)
+        temp_sheet_rownames = temp_sheet[,1]
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, sheet, check = TRUE) = temp_sheet
+
+      }else if(sheet %in% c('vcf_like')){
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_rownames = paste0(temp_sheet[,1], '_', temp_sheet[,2])
         rownames(temp_sheet) = temp_sheet_rownames
         
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
-        
+
       }else if(sheet == 'markers'){
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         if (any(is.na(temp_sheet[['distance']]))){
@@ -1942,10 +1949,18 @@ read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
         
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
         
-      }else if(sheet %in% c('metadata.csv', 'loci_performance.csv', 'vcf_like.csv')){
+      }else if(sheet %in% c('metadata.csv', 'loci_performance.csv')){
         
         temp_sheet = read.csv(file.path(file, sheet))
         temp_sheet_rownames = temp_sheet[,1]
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
+
+      }else if(sheet %in% c('vcf_like.csv')){
+        
+        temp_sheet = read.csv(file.path(file, sheet))
+        temp_sheet_rownames = paste0(temp_sheet[,1], '_', temp_sheet[,2])
         rownames(temp_sheet) = temp_sheet_rownames
         
         slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
@@ -2052,7 +2067,7 @@ read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
         
         slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
         
-      }else if(sheet %in% c('metadata.tsv', 'loci_performance.tsv', 'vcf_like.tsv')){
+      }else if(sheet %in% c('metadata.tsv', 'loci_performance.tsv')){
         
         temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
         temp_sheet_rownames = temp_sheet[,1]
@@ -2060,6 +2075,14 @@ read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
         
         slot(ampseq_object, gsub('.tsv','',sheet), check = TRUE) = temp_sheet
         
+      }else if(sheet %in% c('vcf_like.tsv')){
+        
+        temp_sheet = read.csv(file.path(file, sheet))
+        temp_sheet_rownames = paste0(temp_sheet[,1], '_', temp_sheet[,2])
+        rownames(temp_sheet) = temp_sheet_rownames
+        
+        slot(ampseq_object, gsub('.csv','',sheet), check = TRUE) = temp_sheet
+
       }else if(sheet == 'markers.tsv'){
         
         temp_sheet = read.table(file.path(file, sheet), header = T, sep = sep)
@@ -6391,7 +6414,7 @@ drug_resistant_haplotypes = function(ampseq_object,
                            ncol = length(gene_ids),
                            dimnames = list(rownames(loci_aa_table),
                                            gene_ids))
-  
+
   print("Defining aa haplotypes and phenotype respect to the presence of resistant alleles")
   for(gene in gene_ids){ # For each gene
     
@@ -7350,7 +7373,7 @@ drug_resistant_haplotypes = function(ampseq_object,
       }else if(grepl('Gene .+ did not amplify', Phenotype)){
         10
       }else{
-	10
+        10
       }
 
     }, simplify = T))

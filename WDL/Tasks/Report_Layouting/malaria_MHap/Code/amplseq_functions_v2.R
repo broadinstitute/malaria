@@ -1846,7 +1846,7 @@ read_ampseq = function(file = NULL, format = 'excel', sep = '\t'){
         rownames(temp_sheet) = temp_sheet_rownames
         
         slot(ampseq_object, sheet, check = TRUE) = temp_sheet
-        
+
       }else if(sheet %in% c('vcf_like')){
         temp_sheet = readWorksheet(temp_wb, sheet = sheet)
         temp_sheet_rownames = paste0(temp_sheet[,1], '_', temp_sheet[,2])
@@ -6414,7 +6414,7 @@ drug_resistant_haplotypes = function(ampseq_object,
                            ncol = length(gene_ids),
                            dimnames = list(rownames(loci_aa_table),
                                            gene_ids))
-  browser()
+
   print("Defining aa haplotypes and phenotype respect to the presence of resistant alleles")
   for(gene in gene_ids){ # For each gene
     
@@ -7372,10 +7372,10 @@ drug_resistant_haplotypes = function(ampseq_object,
         9
       }else if(grepl('Gene .+ did not amplify', Phenotype)){
         10
-      }else {
+      }else{
         10
       }
-      
+
     }, simplify = T))
     
     genotype_phenotype_match$color_pal = sample(col_vector, nrow(genotype_phenotype_match))
