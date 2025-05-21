@@ -2265,6 +2265,8 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
   asv_table = ampseq_object@asv_table
   gt_ampseq = ampseq_object@gt
   
+  #sum(duplicated(markers$amplicon))
+  
   reference_genome = readDNAStringSet(ref_fasta)
   
   names(reference_genome) = gsub(' \\| .+', '', names(reference_genome))
@@ -2373,6 +2375,27 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
                                                INFO = NA, 
                                                FORMAT = NA))
         
+        
+        if(sum(duplicated(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'))) > 0){stop()}
+        
+        if(!is.null(loci_table)){
+          if(sum(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_') %in%
+                 paste(loci_table$CHROM, loci_table$POS, sep = '_')
+          ) > 0){
+            
+            repeated_positions = paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_') %in%
+              paste(loci_table$CHROM, loci_table$POS, sep = '_')
+            
+            amplicon_loci_table = amplicon_loci_table[!repeated_positions,]
+            
+          }else{
+            
+            repeated_positions = NULL
+          }  
+        }else{
+          repeated_positions = NULL
+        }
+        
       }
       
       amplicon_gt = NULL
@@ -2381,162 +2404,82 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
       
       for(Sample_id in rownames(gt_ampseq)){
         
-        Sample_amplicon_gt = gt_ampseq[Sample_id, amplicon]
-        
-        if(Sample_id %in% monoclonals){
+        if(nrow(amplicon_loci_table) > 0){
           
-          Sample_amplicon_gt = gsub('_.+', '', Sample_amplicon_gt)
+          Sample_amplicon_gt = gt_ampseq[Sample_id, amplicon]
           
-          if(is.na(Sample_amplicon_gt)){
+          if(Sample_id %in% monoclonals){
             
-            sample_vcf_gt = NULL
+            Sample_amplicon_gt = gsub('_.+', '', Sample_amplicon_gt)
             
-            for(position in amplicon_loci_table$POS){
-              sample_vcf_gt = c(sample_vcf_gt,
-                                paste0('./.:', 
-                                       paste(rep(0,
-                                                 length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1
-                                       ), collapse = ','), ':0'))
-            }
-            
-          }else if(grepl('\\.', Sample_amplicon_gt)){
-            
-            sample_vcf_gt = NULL
-            
-            for(position in amplicon_loci_table$POS){
-              sample_vcf_gt = c(sample_vcf_gt,
-                                paste0('0/0:', 
-                                       paste(c(gsub('^\\.:', '', Sample_amplicon_gt),
-                                               rep(0,
-                                                   length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
-                                               )), collapse = ','), ':', gsub('^\\.:', '', Sample_amplicon_gt)))
-            }
-            
-          }else{
-            
-            sample_positions = data.frame(amplicon_POS = unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '\\d+')),
-                                          POS = as.integer(unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '\\d+'))) + 
-                                            markers[markers$amplicon == amplicon,][['start']] - 1,
-                                          ALT = unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '[DI]?=?[ATGC]+')),
-                                          read_depth = gsub('^.+:', '',Sample_amplicon_gt)
-            )
-            
-            sample_vcf_gt = NULL
-            
-            for(position in amplicon_loci_table$POS){
+            if(is.na(Sample_amplicon_gt)){
               
-              if(position %in% sample_positions$POS){
-                
-                GT = cigar_position_variants[
-                  cigar_position_variants[['cigar']] == gsub(':\\d+', '', Sample_amplicon_gt) &
-                    cigar_position_variants[['POS']] == sample_positions[sample_positions$POS == position,][['POS']] &
-                    cigar_position_variants[['ALT']] == sample_positions[sample_positions$POS == position,][['ALT']],][['ALT_label']]
-                
-                if(length(GT) == 0){
-                  GT = '.'
-                  print('Cigar string not in Cigar table')
-                }
-                
-                AD = rep(0,
-                         length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1)
-                
-                AD[as.integer(GT) + 1] = gsub('^.+:', '', Sample_amplicon_gt)
-                
-                
-                sample_vcf_gt = c(sample_vcf_gt,
-                                  paste0(GT, '/', GT,':', 
-                                         paste(AD, collapse = ','), ':', gsub('^.+:', '', Sample_amplicon_gt)))
-                
-              }else{
-                
-                sample_vcf_gt = c(sample_vcf_gt,
-                                  paste0('0/0:', 
-                                         paste(c(gsub('^.+:', '', Sample_amplicon_gt),
-                                                 rep(0,
-                                                     length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
-                                                 )), collapse = ','), ':', gsub('^.+:', '', Sample_amplicon_gt)))
-                
-              }
-              
-            }
-            
-          }
-          
-          sample_vcf_gt = matrix(sample_vcf_gt,
-                                 nrow = nrow(amplicon_loci_table),
-                                 ncol = 1,
-                                 dimnames = list(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'),
-                                                 Sample_id))
-          
-        }else if(Sample_id %in% polyclonals){
-          
-          nclones = ampseq_object@metadata[ampseq_object@metadata$Sample_id == Sample_id,][['max_nAlleles']]
-          
-          clones_amplicon_gt = unlist(strsplit(Sample_amplicon_gt, '_'))
-          
-          if(length(clones_amplicon_gt) < nclones){
-            
-            clones_amplicon_gt = c(clones_amplicon_gt, rep(clones_amplicon_gt[1], nclones - length(clones_amplicon_gt)))
-            
-          }
-          
-          sample_vcf_gt = NULL
-          
-          for(clone in 1:nclones){
-            
-            Clone_amplicon_gt = clones_amplicon_gt[clone]
-            
-            if(grepl('\\.', Clone_amplicon_gt)){
-              
-              clone_vcf_gt = NULL
+              sample_vcf_gt = NULL
               
               for(position in amplicon_loci_table$POS){
-                clone_vcf_gt = c(clone_vcf_gt,
-                                 paste0('0:', 
-                                        paste(c(gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt),
-                                                rep(0,
-                                                    length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
-                                                )), collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                sample_vcf_gt = c(sample_vcf_gt,
+                                  paste0('./.:', 
+                                         paste(rep(0,
+                                                   length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1
+                                         ), collapse = ','), ':0'))
+              }
+              
+            }else if(grepl('\\.', Sample_amplicon_gt)){
+              
+              sample_vcf_gt = NULL
+              
+              for(position in amplicon_loci_table$POS){
+                sample_vcf_gt = c(sample_vcf_gt,
+                                  paste0('0/0:', 
+                                         paste(c(gsub('^\\.:', '', Sample_amplicon_gt),
+                                                 rep(0,
+                                                     length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                 )), collapse = ','), ':', gsub('^\\.:', '', Sample_amplicon_gt)))
               }
               
             }else{
               
-              sample_positions = data.frame(amplicon_POS = unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '\\d+')),
-                                            POS = as.integer(unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '\\d+'))) + 
+              sample_positions = data.frame(amplicon_POS = unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '\\d+')),
+                                            POS = as.integer(unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '\\d+'))) + 
                                               markers[markers$amplicon == amplicon,][['start']] - 1,
-                                            ALT = unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '[DI]?=?[ATGC]+')),
-                                            read_depth = gsub('^.+:', '',Clone_amplicon_gt)
+                                            ALT = unlist(str_extract_all(gsub(':\\d+', '',Sample_amplicon_gt), '[DI]?=?[ATGC]+')),
+                                            read_depth = gsub('^.+:', '',Sample_amplicon_gt)
               )
               
-              clone_vcf_gt = NULL
+              sample_vcf_gt = NULL
               
               for(position in amplicon_loci_table$POS){
                 
                 if(position %in% sample_positions$POS){
                   
                   GT = cigar_position_variants[
-                    cigar_position_variants[['cigar']] == gsub(':\\d+', '', Clone_amplicon_gt) &
+                    cigar_position_variants[['cigar']] == gsub(':\\d+', '', Sample_amplicon_gt) &
                       cigar_position_variants[['POS']] == sample_positions[sample_positions$POS == position,][['POS']] &
                       cigar_position_variants[['ALT']] == sample_positions[sample_positions$POS == position,][['ALT']],][['ALT_label']]
+                  
+                  if(length(GT) == 0){
+                    GT = '.'
+                    print('Cigar string not in Cigar table')
+                  }
                   
                   AD = rep(0,
                            length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1)
                   
-                  AD[as.integer(GT) + 1] = gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)
+                  AD[as.integer(GT) + 1] = gsub('^.+:', '', Sample_amplicon_gt)
                   
                   
-                  clone_vcf_gt = c(clone_vcf_gt,
-                                   paste0(GT,':', 
-                                          paste(AD, collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                  sample_vcf_gt = c(sample_vcf_gt,
+                                    paste0(GT, '/', GT,':', 
+                                           paste(AD, collapse = ','), ':', gsub('^.+:', '', Sample_amplicon_gt)))
                   
                 }else{
                   
-                  clone_vcf_gt = c(clone_vcf_gt,
-                                   paste0('0:', 
-                                          paste(c(gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt),
-                                                  rep(0,
-                                                      length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
-                                                  )), collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                  sample_vcf_gt = c(sample_vcf_gt,
+                                    paste0('0/0:', 
+                                           paste(c(gsub('^.+:', '', Sample_amplicon_gt),
+                                                   rep(0,
+                                                       length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                   )), collapse = ','), ':', gsub('^.+:', '', Sample_amplicon_gt)))
                   
                 }
                 
@@ -2544,27 +2487,111 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
               
             }
             
-            clone_vcf_gt = matrix(clone_vcf_gt,
-                                  nrow = nrow(amplicon_loci_table),
-                                  ncol = 1,
-                                  dimnames = list(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'),
-                                                  paste0(Sample_id, '_C', clone)))
+            sample_vcf_gt = matrix(sample_vcf_gt,
+                                   nrow = nrow(amplicon_loci_table),
+                                   ncol = 1,
+                                   dimnames = list(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'),
+                                                   Sample_id))
             
-            sample_vcf_gt = cbind(sample_vcf_gt, clone_vcf_gt)
+          }else if(Sample_id %in% polyclonals){
+            
+            nclones = ampseq_object@metadata[ampseq_object@metadata$Sample_id == Sample_id,][['max_nAlleles']]
+            
+            clones_amplicon_gt = unlist(strsplit(Sample_amplicon_gt, '_'))
+            
+            if(length(clones_amplicon_gt) < nclones){
+              
+              clones_amplicon_gt = c(clones_amplicon_gt, rep(clones_amplicon_gt[1], nclones - length(clones_amplicon_gt)))
+              
+            }
+            
+            sample_vcf_gt = NULL
+            
+            for(clone in 1:nclones){
+              
+              Clone_amplicon_gt = clones_amplicon_gt[clone]
+              
+              if(grepl('\\.', Clone_amplicon_gt)){
+                
+                clone_vcf_gt = NULL
+                
+                for(position in amplicon_loci_table$POS){
+                  clone_vcf_gt = c(clone_vcf_gt,
+                                   paste0('0:', 
+                                          paste(c(gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt),
+                                                  rep(0,
+                                                      length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                  )), collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                }
+                
+              }else{
+                
+                sample_positions = data.frame(amplicon_POS = unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '\\d+')),
+                                              POS = as.integer(unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '\\d+'))) + 
+                                                markers[markers$amplicon == amplicon,][['start']] - 1,
+                                              ALT = unlist(str_extract_all(gsub(':\\d+', '',Clone_amplicon_gt), '[DI]?=?[ATGC]+')),
+                                              read_depth = gsub('^.+:', '',Clone_amplicon_gt)
+                )
+                
+                clone_vcf_gt = NULL
+                
+                for(position in amplicon_loci_table$POS){
+                  
+                  if(position %in% sample_positions$POS){
+                    
+                    GT = cigar_position_variants[
+                      cigar_position_variants[['cigar']] == gsub(':\\d+', '', Clone_amplicon_gt) &
+                        cigar_position_variants[['POS']] == sample_positions[sample_positions$POS == position,][['POS']] &
+                        cigar_position_variants[['ALT']] == sample_positions[sample_positions$POS == position,][['ALT']],][['ALT_label']]
+                    
+                    AD = rep(0,
+                             length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ','))) + 1)
+                    
+                    AD[as.integer(GT) + 1] = gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)
+                    
+                    
+                    clone_vcf_gt = c(clone_vcf_gt,
+                                     paste0(GT,':', 
+                                            paste(AD, collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                    
+                  }else{
+                    
+                    clone_vcf_gt = c(clone_vcf_gt,
+                                     paste0('0:', 
+                                            paste(c(gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt),
+                                                    rep(0,
+                                                        length(unlist(str_split(amplicon_loci_table[amplicon_loci_table$POS == position,][['ALT']], ',')))
+                                                    )), collapse = ','), ':', gsub('^\\d+[DI]?=?[ATGC]+:', '', Clone_amplicon_gt)))
+                    
+                  }
+                  
+                }
+                
+              }
+              
+              clone_vcf_gt = matrix(clone_vcf_gt,
+                                    nrow = nrow(amplicon_loci_table),
+                                    ncol = 1,
+                                    dimnames = list(paste(amplicon_loci_table$CHROM, amplicon_loci_table$POS, sep = '_'),
+                                                    paste0(Sample_id, '_C', clone)))
+              
+              sample_vcf_gt = cbind(sample_vcf_gt, clone_vcf_gt)
+              
+            }
+            
+          }else{
+            sample_vcf_gt = NULL
+            
+            print(paste0('Sample_ID ', Sample_id, ' not in monoclonal or polyclonal list,\nthis sample will be omited in the output'))
             
           }
           
-        }else{
-          sample_vcf_gt = NULL
+          amplicon_gt = cbind(amplicon_gt, sample_vcf_gt)
           
-          print(paste0('Sample_ID ', Sample_id, ' not in monoclonal or polyclonal list,\nthis sample will be omited in the output'))
+          if(sum(duplicated(colnames(amplicon_gt))) > 0){
+            stop('Duplicated ID')
+          }
           
-        }
-        
-        amplicon_gt = cbind(amplicon_gt, sample_vcf_gt)
-        
-        if(sum(duplicated(colnames(amplicon_gt))) > 0){
-          stop('Duplicated ID')
         }
         
       }
@@ -2575,6 +2602,8 @@ ampseq2vcf = function(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref
     }
     
   }
+  
+  if(sum(duplicated(paste(loci_table$CHROM, loci_table$POS, sep = '_'))) > 0 ){stop()}
   
   loci_table[['ID']] = '.'
   loci_table[['INFO']] = '.'
@@ -3811,15 +3840,31 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                         for(sample in 1:nrow(gt_masked)){
                           
                           
-                          if(grepl(paste0('(^|_)',replaced_pattern, ':'), gt_masked[sample,mhap])){
+                          if(grepl(paste0('^',replaced_pattern, ':'), gt_masked[sample,mhap])){
                             
-                            sample_replaced_pattern = str_extract(gt_masked[sample,mhap], paste0('(^|_)',replaced_pattern, ':'))
+                            sample_replaced_pattern = str_extract(gt_masked[sample,mhap], paste0('^',replaced_pattern, ':'))
                             sample_replacement_pattern = gsub(replaced_pattern, temp_replacement_allele[i], sample_replaced_pattern)
                             
-                            gt_masked[sample,mhap] = gsub(sample_replaced_pattern, sample_replacement_pattern, gt_masked[sample,mhap])
+                            temp_genotype = gsub(paste0('^', sample_replaced_pattern), sample_replacement_pattern, gt_masked[sample,mhap])
+                            
+                            if(grepl('198A\\.', temp_genotype)){stop()}
+                            
+                            gt_masked[sample,mhap] = temp_genotype
 
+                          }else if(grepl(paste0('_',replaced_pattern, ':'), gt_masked[sample,mhap])){
+                            
+                            sample_replaced_pattern = str_extract(gt_masked[sample,mhap], paste0('_',replaced_pattern, ':'))
+                            sample_replacement_pattern = gsub(replaced_pattern, temp_replacement_allele[i], sample_replaced_pattern)
+                            
+                            temp_genotype = gsub(sample_replaced_pattern, sample_replacement_pattern, gt_masked[sample,mhap])
+                            
+                            if(grepl('198A\\.', temp_genotype)){stop()}
+                            
+                            gt_masked[sample,mhap] = temp_genotype
+                            
                           }    
-
+                          
+                          
 
                         }
                         
@@ -3846,6 +3891,8 @@ setMethod("mask_alt_alleles", signature(obj = "ampseq"),
                         gt_masked[sample, mhap] = paste(paste(sample_alleles$sample_allele, sample_alleles$sample_allele_readdepth, sep = ':'), collapse = '_')
                         
                       }
+                      
+                      if(grepl('198A\\.', gt_masked[sample,mhap])){stop()}
                       
                     }
                     

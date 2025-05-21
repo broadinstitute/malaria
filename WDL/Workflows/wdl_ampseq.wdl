@@ -31,12 +31,8 @@ workflow ampseq {
 
         # Parameters for Denoising and ASV filtering
         File sample_metadata
+
     }
-    #FUTURE DEVELOPMENT
-    # 1 CLEAN DOCKERFILES
-    # 2 REMOVE File sample_metadata. USERS WILL ALWAYS GET THIS WRONG.
-    # 3 ADD FEATURE TO DOWN SAMPLE FILES
-    # 4 DISCONTINUE THE MARKERS TABLE?
 
     call prepare_reference_files_t.prepare_reference_files as t_000_prepare_reference_files {
         input:
@@ -127,6 +123,21 @@ workflow ampseq {
             ASV_to_CIGAR = t_004_amplicon_denoising.ASV_to_CIGAR_o,
             ZeroReadsSampleList = t_004_amplicon_denoising.ZeroReadsSampleList_o,
             ReadAttrition = t_004_amplicon_denoising.ReadAttrition_o
+    }
+
+    call asv_filtering_t.asv_filtering as t_005_asv_filtering {
+        input:
+            sample_metadata = sample_metadata,
+            panel_bedfile = panel_bedfile,
+            reference_amplicons = reference,
+            markersTable = markers_table,      
+            reference_genome = reference_genome,
+            CIGARVariants = CIGARVariants_Bfilter,
+            ASVTable = ASVTable,
+            ASVSeqs = ASVSeqs,
+            ASV_to_CIGAR = ASV_to_CIGAR,
+            ZeroReadsSampleList = ZeroReadsSampleList,
+            ReadAttrition = ReadAttrition
     }
 
     output {
