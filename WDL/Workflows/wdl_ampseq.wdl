@@ -125,21 +125,6 @@ workflow ampseq {
             ReadAttrition = t_004_amplicon_denoising.ReadAttrition_o
     }
 
-    call asv_filtering_t.asv_filtering as t_005_asv_filtering {
-        input:
-            sample_metadata = sample_metadata,
-            panel_bedfile = panel_bedfile,
-            reference_amplicons = reference,
-            markersTable = markers_table,      
-            reference_genome = reference_genome,
-            CIGARVariants = CIGARVariants_Bfilter,
-            ASVTable = ASVTable,
-            ASVSeqs = ASVSeqs,
-            ASV_to_CIGAR = ASV_to_CIGAR,
-            ZeroReadsSampleList = ZeroReadsSampleList,
-            ReadAttrition = ReadAttrition
-    }
-
     output {
         # PREPARE REFERENCE FILES
         File reference_out = t_000_prepare_reference_files.reference_o
