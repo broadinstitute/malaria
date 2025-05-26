@@ -83,7 +83,7 @@ task amplicon_denoising {
               echo "Processing ${path}"
               filename=$(basename "${path}") # Get the file name
               echo "Filename: ${filename}"
-              sample_id="${filename%%_R1_001.fastq.gz}"
+              sample_id=$(echo "${filename}" | sed -E 's/_L[0-9]+_R1_[0-9]+\.fastq\.gz$//')
               echo "Sample ID: ${sample_id}"
               sample_ids_string[$i]="${sample_id}"
               i=$((i + 1))

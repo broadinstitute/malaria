@@ -31,6 +31,7 @@ workflow ampseq {
 
         # Parameters for Denoising and ASV filtering
         File sample_metadata
+
     }
 
     call prepare_reference_files_t.prepare_reference_files as t_000_prepare_reference_files {

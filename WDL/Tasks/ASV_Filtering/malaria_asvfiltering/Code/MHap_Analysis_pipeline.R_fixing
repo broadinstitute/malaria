@@ -1,5 +1,5 @@
 #!/bin/r env
-
+if(TRUE){
 library(argparse)
 
 # 1.ARGUMENTS -----
@@ -217,6 +217,7 @@ parser$add_argument("-poly_quantile", "--poly_quantile", default = 'null',
 
 print("starting to parse variables")
 args = parser$parse_args()
+args$xmx = 13
 xmx = as.integer(args$xmx)
 mem = paste0("-Xmx", xmx, "g")
 
@@ -229,65 +230,79 @@ library(rmarkdown)
 # 2.Paths to references and functions----
 
 # Working directory
+args$wd = '/Users/jar4142/Desktop/Tester_Repo_Hackathon_Original/Gambia_Bug/cromwell-executions/ampseq/f91a2a09-66a0-4aa3-b6ba-e8de1dc89bb4/call-t_005_asv_filtering/execution/Results'
 wd = gsub("/$", "", args$wd)
 
 print(paste0('wd: ', wd))
 setwd(wd) 
 
 # Tools or functions directory
+args$fd = "~/Desktop/malaria/WDL/Tasks/Report_Layouting/malaria_MHap/Code/"
 fd = gsub("/$", "", args$fd)
 print(paste0('fd: ', fd))
 
 # Reference files directory
+args$rd = '/Users/jar4142/Desktop/Tester_Repo_Hackathon_Original/Gambia_Bug/cromwell-executions/ampseq/f91a2a09-66a0-4aa3-b6ba-e8de1dc89bb4/call-t_005_asv_filtering/execution/references'
 rd = gsub("/$", "", args$rd)
 print(paste0('rd: ', rd))
 
 # 2.Upload of raw data----
 # Upload cigar files, asv_tables and zero_read_files
 cigar_paths = args$cigar_paths
+args$cigar_paths = 'null'
 cigar_paths = if(cigar_paths == 'null' || cigar_paths == ''){NULL}else{file.path(wd, cigar_paths)}
 print(paste0('cigar_paths: ', cigar_paths))
 
+args$cigar_files = 'cigar_variants/'
 cigar_files = args$cigar_files
 cigar_files = if(cigar_files == 'null' || cigar_files == ''){NULL}else{file.path(wd, cigar_files)}
 print(paste0('cigar_files: ', cigar_files))
 
+args$asv_table_files = 'asv_tables/'
 asv_table_files = args$asv_table_files
 asv_table_files = if(asv_table_files == 'null' || asv_table_files == ''){NULL}else{file.path(wd, asv_table_files)}
 print(paste0('asv_table_files: ', asv_table_files))
 
+args$asv2cigar_files = 'asv2cigar/'
 asv2cigar_files = args$asv2cigar_files
 asv2cigar_files = if(asv2cigar_files == 'null' || asv2cigar_files == ''){NULL}else{file.path(wd, asv2cigar_files)}
 print(paste0('asv2cigar_files: ', asv2cigar_files))
 
+args$asv_seq_files = 'asv_seq/'
 asv_seq_files = args$asv_seq_files
 asv_seq_files = if(asv_seq_files == 'null' || asv_seq_files == ''){NULL}else{file.path(wd, asv_seq_files)}
 print(paste0('asv_seq_files: ', asv_seq_files))
 
+args$zero_read_sample_list = 'zeroReadSampleList/'
 zero_read_sample_list = args$zero_read_sample_list
 zero_read_sample_list = if(zero_read_sample_list == 'null' || zero_read_sample_list == ''){NULL}else{file.path(wd, zero_read_sample_list)}
 print(paste0('zero_read_sample_list: ', zero_read_sample_list))
 
 # Starting ampseq file in json format
+args$ampseq_jsonfile = 'null'
 ampseq_jsonfile = args$ampseq_jsonfile
 ampseq_jsonfile = if(ampseq_jsonfile == 'null' || ampseq_json_file == ''){NULL}else{file.path(wd, ampseq_jsonfile)}
 print(paste0('ampseq_jsonfile: ', ampseq_jsonfile))
 
 # Starting ampseq file in excel format
+args$ampseq_excelfile = 'null'
 ampseq_excelfile = args$ampseq_excelfile
 ampseq_excelfile = if(ampseq_excelfile == 'null' || ampseq_excelfile == ''){NULL}else{file.path(wd, args$ampseq_excelfile)}
 print(paste0('ampseq_excelfile: ', ampseq_excelfile))
 
 # Starting ampseq file in csv format
+args$ampseq_csvfolder = 'null'
 ampseq_csvfolder = args$ampseq_csvfolder
 ampseq_csvfolder = if(ampseq_csvfolder == 'null' || ampseq_csvfolder == ''){NULL}else{file.path(wd, args$ampseq_csvfolder)}
 print(paste0('ampseq_csvfolder: ', ampseq_csvfolder))
 
 # Pattern to differentiate between samples of interest and controls
+args$sample_id_pattern = '.'
 sample_id_pattern = args$sample_id_pattern
 print(paste0('sample_id_pattern: ', sample_id_pattern))
 
 # csv table with markers information
+args$markers = 'markersTable.csv'
 markers = args$markers
 markers = if(markers == 'null' || markers == ''){NULL}else{file.path(rd, markers)}
 print(paste0('markers: ', markers))
@@ -295,24 +310,29 @@ print(paste0('markers: ', markers))
 # 2.Parameters to export data and results----
 
 # output pattern
+args$out = '2025_05_21_ampseq_object_f'
 output = args$out
 print(paste0('output: ', output))
 
 # format to export the ampseq object
+args$ampseq_export_format = 'excel'
 ampseq_export_format = args$ampseq_export_format
 ampseq_export_format = if(ampseq_export_format == 'null'){NULL}else{as.character(ampseq_export_format)}
 
 # 2.Removing or masking ASVs in the genotype table----
 
 # Minimum abundance to call an allele
+args$min_abd = 10
 min_abd = as.integer(args$min_abd)
 print(paste0('min_abd: ', min_abd))
 
 # Minimum ratio to call minor alleles
+args$min_ratio = 0.1
 min_ratio = as.numeric(args$min_ratio)
 print(paste0('min_ratio: ', min_ratio))
 
 # 2.off_target_formula filter ----
+args$off_target_formula = "dVSITES_ij>=0.2"
 off_target_formula = as.character(args$off_target_formula)
 off_target_formula = if(off_target_formula == 'null'){NULL}else{as.character(off_target_formula)}
 
@@ -362,6 +382,7 @@ if(!is.null(off_target_formula)){
 print(paste0('off_target_formula: ', off_target_formula))
 
 # 2.flanking_INDEL_formula filter ----
+args$flanking_INDEL_formula = "flanking_INDEL==TRUE"
 flanking_INDEL_formula = as.character(args$flanking_INDEL_formula)
 flanking_INDEL_formula = if(flanking_INDEL_formula == 'null'){NULL}else{as.character(flanking_INDEL_formula)}
 
@@ -412,10 +433,12 @@ print(paste0('flanking_INDEL_formula: ', flanking_INDEL_formula))
 
 # 2.homopolymer filter parameters ----
 # homopolymer_length
+args$homopolymer_length = 5
 homopolymer_length = as.integer(args$homopolymer_length)
 print(paste0('homopolymer_length: ', homopolymer_length))
 
 # SNV_in_homopolymer_formula filter
+args$SNV_in_homopolymer_formula = 'SNV_in_homopolymer==TRUE'
 SNV_in_homopolymer_formula = as.character(args$SNV_in_homopolymer_formula)
 SNV_in_homopolymer_formula = if(SNV_in_homopolymer_formula == 'null'){NULL}else{as.character(SNV_in_homopolymer_formula)}
 
@@ -464,6 +487,7 @@ if(!is.null(SNV_in_homopolymer_formula)){
 print(paste0('SNV_in_homopolymer_formula: ', SNV_in_homopolymer_formula))
 
 # INDEL_in_homopolymer_formula filter
+args$INDEL_in_homopolymer_formula = 'INDEL_in_homopolymer==TRUE'
 INDEL_in_homopolymer_formula = as.character(args$INDEL_in_homopolymer_formula)
 INDEL_in_homopolymer_formula = if(INDEL_in_homopolymer_formula == 'null'){NULL}else{as.character(INDEL_in_homopolymer_formula)}
 
@@ -512,6 +536,7 @@ if(!is.null(INDEL_in_homopolymer_formula)){
 print(paste0('INDEL_in_homopolymer_formula: ', INDEL_in_homopolymer_formula))
 
 # 2.bimera_formula filter ----
+args$bimera_formula = "bimera==TRUE&h_ij>=0.66"
 bimera_formula = as.character(args$bimera_formula)
 bimera_formula = if(bimera_formula == 'null'){NULL}else{as.character(bimera_formula)}
 
@@ -560,6 +585,7 @@ if(!is.null(bimera_formula)){
 print(paste0('bimera_formula: ', bimera_formula))
 
 # 2.PCR_errors_formula filter ----
+args$PCR_errors_formula = "h_ij>=0.66&h_ijminor>=0.66&p_ij>=0.05"
 PCR_errors_formula = as.character(args$PCR_errors_formula)
 PCR_errors_formula = if(PCR_errors_formula == 'null'){NULL}else{as.character(PCR_errors_formula)}
 
@@ -610,46 +636,54 @@ print(paste0('PCR_errors_formula: ', PCR_errors_formula))
 # 2.Removing samples or loci with low performance----
 
 # sample_ampl_rate
+args$sample_ampl_rate = 0.3
 sample_ampl_rate = as.numeric(args$sample_ampl_rate)
 print(paste0('sample_ampl_rate: ', sample_ampl_rate))
 
 # locus_ampl_rate
-locus_ampl_rate = 0.3
+args$locus_ampl_rate = 0.3
 locus_ampl_rate  = as.numeric(args$locus_ampl_rate)
 print(paste0('locus_ampl_rate: ', locus_ampl_rate))
 
 # 2.Adding metadata----
 
 # metadata
+args$metadata = "metadata.csv"
 metadata_file = as.character(args$metadata)
 metadata_file = if(metadata_file == 'null'){NULL}else{file.path(wd, metadata_file)}
 print(paste0('metadata: ', metadata_file))
 
 # join metadata by
+args$join_by = 'Sample_id'
 join_by = as.character(args$join_by)
 join_by = if(join_by == 'null'){NULL}else{join_by}
 print(paste0('join_by: ', join_by))
 
 # pop
+args$Variable1 = 'Country'
 Variable1 = args$Variable1
 Variable1 = if(Variable1 == 'null'){NULL}else{Variable1}
 print(paste0('Variable1: ', Variable1))
 
 # temporal_population
+args$Variable2 = 'Country'
 Variable2 = args$Variable2
 Variable2 = if(Variable2 == 'null'){NULL}else{Variable2}
 print(paste0('Variable2: ', Variable2))
 
+args$Longitude ="Longitude"
 Longitude = args$Longitude
 Longitude = if(Longitude == 'null'){NULL}else{Longitude}
 print(paste0('Longitude: ', Longitude))
 
+args$Latitude = "Latitude"
 Latitude = args$Latitude
 Latitude = if(Latitude == 'null'){NULL}else{Latitude}
 print(paste0('Latitude: ', Latitude))
 
 # 2.Filtering populations or samples----
 
+args$var_filter ='null'
 var_filter  = args$var_filter
 if(var_filter == 'null'){
   var_filter = NULL
@@ -664,24 +698,29 @@ print(var_filter)
 # 2.Define Reports----
 
 # Performance Report
+args$PerformanceReport = FALSE
 PerformanceReport = as.logical(args$PerformanceReport)
 print(paste0('PerformanceReport: ', PerformanceReport))
 
 # Drug surveillance report
+args$Drug_Surveillance_Report = FALSE
 Drug_Surveillance_Report = as.logical(args$Drug_Surveillance_Report)
 print(paste0('Drug_Surveillance_Report: ', Drug_Surveillance_Report))
 
 # Variants of interest report (in development)
+args$Variants_of_Interest_Report = FALSE
 Variants_of_Interest_Report = as.logical(args$Variants_of_Interest_Report)
 print(paste0('Variants_of_Interest_Report: ', Variants_of_Interest_Report))
 
 # Reports of IBD and Connectivity and IBD and transmission
+args$ibd_thres = 'null'
 ibd_thres = args$ibd_thres
 ibd_thres = if(ibd_thres == 'null'){NULL}else{as.numeric(ibd_thres)}
 print(paste0('ibd_thres: ', ibd_thres))
 
 # Report for complexity of infection
 # poly_formula filter
+args$poly_formula = 'null'
 poly_formula = as.character(args$poly_formula)
 poly_formula = if(poly_formula == 'null'){NULL}else{as.character(poly_formula)}
 
@@ -732,26 +771,32 @@ print(paste0('poly_formula: ', poly_formula))
 
 # 2.Parameters for DSR----
 # Reference gff and fasta files, require to translate DNA cigar formats to aminoacid sequences
+args$ref_gff = 'null'
 ref_gff = args$ref_gff
 ref_gff = if(ref_gff == 'null'){NULL}else{file.path(rd, ref_gff)}
 print(paste0('ref_gff: ', ref_gff))
 
+args$ref_fasta = 'PkPfPmPoPv.fasta'
 ref_fasta = args$ref_fasta
 ref_fasta = if(ref_fasta == 'null'){NULL}else{file.path(rd, ref_fasta)}
 print(paste0('ref_fasta: ', ref_fasta))
 
+args$amplicon_fasta = 'reference.fasta'
 amplicon_fasta = args$amplicon_fasta
 amplicon_fasta = if(amplicon_fasta == 'null'){NULL}else{file.path(rd, amplicon_fasta)}
 print(paste0('amplicon_fasta: ', amplicon_fasta))
 
+args$reference_alleles = 'null'
 reference_alleles = args$reference_alleles
 reference_alleles = if(reference_alleles == 'null'){NULL}else{file.path(rd, reference_alleles)}
 print(paste0('reference_alleles: ', reference_alleles))
 
+args$hap_color_palette = 'auto'
 hap_color_palette = args$hap_color_palette
 print(paste0('hap_color_palette: ', hap_color_palette))
 
 # gene_names
+args$gene_names = 'null'
 gene_names = args$gene_names
 if(gene_names == 'null'){
   gene_names = NULL
@@ -762,6 +807,7 @@ print('gene_names:')
 print(gene_names)
 
 # gene_ids
+args$gene_ids = 'null'
 gene_ids = args$gene_ids
 if(gene_ids == 'null'){
   gene_ids = NULL
@@ -771,6 +817,7 @@ if(gene_ids == 'null'){
 print('gene_ids:')
 print(gene_ids)
 
+args$drugs = 'null'
 drugs = args$drugs
 if(drugs == 'null'){
   drugs = NULL
@@ -780,12 +827,15 @@ if(drugs == 'null'){
 print('drugs: ')
 print(drugs)
 
+args$include_all_drug_markers = F
 include_all_drug_markers = as.logical(args$include_all_drug_markers)
 print(paste0('include_all_drug_markers: ', include_all_drug_markers))
 
+args$na_var_rm = F
 na_var_rm = as.logical(args$na_var_rm)
 print(paste0('na_var_rm: ', na_var_rm))
       
+args$na_hap_rm = F
 na_hap_rm = as.logical(args$na_hap_rm)
 print(paste0('na_hap_rm: ', na_hap_rm))
 
@@ -793,42 +843,51 @@ print(paste0('na_hap_rm: ', na_hap_rm))
 
 # Parameters for UGER
 # nTasks
+args$nTasks = 1
 nTasks = as.integer(args$nTasks)
 print(paste0('nTasks: ', nTasks))
 
 # Task_id
+args$Task_id = NA
 Task_id = as.integer(args$Task_id)
 print(paste0('Task_id: ', Task_id))
 
 # ibd_step
+args$ibd_step = 'null'
 ibd_step = as.character(args$ibd_step)
 print(paste0('ibd_step: ', ibd_step))
 
 # Other IBD parameters
 
 # pairwise_relatedness_table
+args$pairwise_relatedness_table = 'null'
 pairwise_relatedness_table = as.character(args$pairwise_relatedness_table)
 pairwise_relatedness_table = if(pairwise_relatedness_table == 'null'){NULL}else{file.path(wd, pairwise_relatedness_table)}
 print(paste0('pairwise_relatedness_table: ', pairwise_relatedness_table))
 
 # parallel
+args$parallel = FALSE
 parallel = as.logical(args$parallel)
 print(paste0('parallel: ', parallel))
 
 # nchunks
+args$nchunks = 500
 nchunks = as.integer(args$nchunks)
 print(paste0('nchunks: ', nchunks))
 
 # ibd_ncol
+args$ibd_ncol = 4
 ibd_ncol = as.integer(args$ibd_ncol)
 print(paste0('ibd_ncol: ', ibd_ncol))
 
 # pop_levels
+args$pop_levels = NA
 pop_levels = as.integer(args$pop_levels)
 print(paste0('pop_levels: ', pop_levels))
 
 # 2.Parameters for COI report----
 # poly_quantile
+args$poly_quantile = 'null'
 poly_quantile = args$poly_quantile
 poly_quantile = if(poly_quantile == 'null'){NULL}else{as.numeric(poly_quantile)}
 print(paste0('poly_quantile: ', poly_quantile))
@@ -904,7 +963,7 @@ if(!is.null(cigar_paths)|!is.null(cigar_files)){
     print("Finished creating ampseq object!")
   }
 
-  print('Verification 1')
+    print('Verification 1')
   
   print(rownames(cigar_object@cigar_table))
   print(colnames(cigar_object@cigar_table))
@@ -3529,7 +3588,6 @@ print('Verification 3')
 print(rownames(ampseq_object@gt))
 print(colnames(ampseq_object@gt))
 
-
 if(length(slot(ampseq_object, 'asv_seqs')) != length(slot(ampseq_object, 'asv_seqs_masked'))){
   stop('masked and unmasked fastas with different length in selecting samples of interest')
 }
@@ -3697,6 +3755,7 @@ print('Verification 5')
 print(rownames(ampseq_object@gt))
 print(colnames(ampseq_object@gt))
 
+
 # 12. Printing performance report----
 if(PerformanceReport == TRUE){
   
@@ -3773,8 +3832,8 @@ if(PerformanceReport == TRUE){
 }
 
 # 13. VCF format generation ----
-
-vcf_format = ampseq2vcf(ampseq_object, monoclonals = NULL, polyclonals = NULL, ref_fasta = ref_fasta)
+}
+vcf_format = ampseq2vcf(ampseq_object = ampseq_object, monoclonals = NULL, polyclonals = NULL, ref_fasta = ref_fasta)
 
 ampseq_object@vcf_like = vcf_format
 
