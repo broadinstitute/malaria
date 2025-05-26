@@ -142,18 +142,39 @@ task asv_filtering {
 		
 		echo 'Finished filtering ASVs!'
 
+		Rscript /Code/excel_to_microhaplotypes_info.R \
+		--ex "Results/${out_prefix}_ampseq_object_f.xlsx" \
+
 	>>>
 	
 	output {
 		File ampseq_object_o = glob("Results/*_ampseq_object_f.xlsx")[0]
+		File microhaplotypes_o = "microhaplotype_info.tsv"
+
+		String ampseq_export_format_o = ampseq_export_format
+		String metadata_variable1_name_o = metadata_variable1_name
+		String metadata_latitude_name_o = metadata_latitude_name
+		String metadata_longitude_name_o = metadata_longitude_name
+		String sample_id_pat_o = sample_id_pat
+		Int min_abd_o = min_abd
+		Float min_ratio_o = min_ratio
+		String off_target_formula_o = off_target_formula
+		String flanking_INDEL_formula_o = flanking_INDEL_formula
+		Int homopolymer_length_o =  homopolymer_length
+		String SNV_in_homopolymer_formula_o = SNV_in_homopolymer_formula
+		String INDEL_in_homopolymer_formula_o = INDEL_in_homopolymer_formula
+		String bimera_formula_o = bimera_formula
+		String PCR_errors_formula_o = PCR_errors_formula
+		Float sample_ampl_rate_o = sample_ampl_rate
+		Float locus_ampl_rate_o = locus_ampl_rate
 	}
 	runtime {
 		cpu: 1
-		memory: "100 GiB"
+		memory: "10 GiB"
 		disks: "local-disk 10 HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3 
 		maxRetries: 1
-		docker: 'jorgeamaya/asvfilters:v_0_0_5'
+		docker: 'jorgeamaya/asvfilters:v_0_0_6'
 	}
 }

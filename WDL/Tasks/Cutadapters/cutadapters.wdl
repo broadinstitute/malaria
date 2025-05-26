@@ -53,6 +53,9 @@ task cutadapters {
         # Generate a list of trimmed forward and reverse files
         File fastq1_noadapters_o = "Results/~{basename}_val_1.fq.gz"
         File fastq2_noadapters_o = "Results/~{basename}_val_2.fq.gz"
+        Int trim_galore_qvalue_o = trim_galore_qvalue
+        Int trim_galore_length_o = trim_galore_length
+        Int downsample_fraction_o = downsample_fraction
     }
 
     runtime {

@@ -189,6 +189,27 @@ task amplicon_denoising {
         File CIGARVariants_Bfilter_o = "Results/CIGARVariants_Bfilter.out.tsv"
         File ASV_to_CIGAR_o = "Results/ASV_to_CIGAR.out.txt"
         File ZeroReadsSampleList_o = "Results/ZeroReadsSampleList.txt"
+
+        String Class_o = Class
+        String maxEE_o = maxEE
+        String trimRight_o = trimRight
+        Int minLen_o = minLen
+        String truncQ_o = truncQ
+        String matchIDs_o = matchIDs
+        Int max_consist_o = max_consist
+        Float omegaA_o = omegaA
+        String pool_o = pool
+        Int justConcatenate_o = justConcatenate
+        Int maxMismatch_o = maxMismatch
+        String strain_o = strain
+        String strain2_o = strain2
+        String min_reads_o = min_reads
+        String min_samples_o = min_samples
+        String max_snv_dist_o = max_snv_dist
+        String max_indel_dist_o = max_indel_dist
+        Boolean include_failed_o = include_failed
+        Boolean exclude_bimeras_o = exclude_bimeras
+        String polyN_o = polyN
     }
 
     runtime {
