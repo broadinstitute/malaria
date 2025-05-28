@@ -198,9 +198,9 @@ workflow ampseq {
         #Array[File] trimprimersout_r_out = t_003_trimprimers.fastq2_no_primers_o
 
         # CONTAMINATION DETECTION
-#        File? contamination_detection_missing_files_f = t_0001_contamination_detection.missing_files
-#        File? contamination_detection_sample_cards_f = t_0001_contamination_detection.contamination_detection_sample_cards
-#        File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
+        File? contamination_detection_missing_files_f = t_0001_contamination_detection.missing_files
+        File? contamination_detection_sample_cards_f = t_0001_contamination_detection.contamination_detection_sample_cards
+        File? contamination_detection_report_f = t_0001_contamination_detection.contamination_detection_report
 
         # DADA2
         #File ASVBimeras_f = t_004_amplicon_denoising.ASVBimeras_o

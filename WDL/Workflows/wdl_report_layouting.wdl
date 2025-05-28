@@ -22,7 +22,7 @@ workflow report_layouting {
 
 	output {
 		#File? intermediate_report_f = t_001_report_layouting_process.intermediate_report
-		#File? drs_report_f = t_001_report_layouting_process.drs_report
+		File? drs_report_f = t_001_report_layouting_process.drs_report
 		File? drs_minimal_report_f = t_001_report_layouting_process.drs_minimal_report
 		#File? coi_report_f = t_001_report_layouting_process.coi_report
 		#File? ibd_connectivity_report_f = t_001_report_layouting_process.ibd_connectivity_report

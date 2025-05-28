@@ -40,15 +40,18 @@ task prepare_reference_files {
 	echo "Creating amplicon panel bed file."
 	has_primers() { awk 'NR==1 {exit !(NF > 3)}' "$1"; }
 
-	if [[ "~{forward_primers_file}" != '' && "~{reverse_primers_file}" != '' ]]; then
-		echo "Custom primers provided. Using custom primers."
-	elif has_primers ~{panel_info}; then
-		echo "Panel info file contains primer information"
-		cut -f2,3,4 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
-	else
-		echo "No primer files were provided. Please either provide primer information in panel_info or the forward_primers_file and reverse_primers_file."
-		exit 1
-	fi
+	cut -f2,3,4 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
+
+#	if [[ "~{forward_primers_file}" != '' && "~{reverse_primers_file}" != '' ]]; then
+#		echo "Custom primers provided. Using custom primers."
+#		cut -f2,3,4 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
+#	elif has_primers ~{panel_info}; then
+#		echo "Panel info file contains primer information"
+#		cut -f2,3,4 ~{panel_info} | tail -n +2  | awk -v FS='\t' -v OFS='\t' '{print $1, $2-1, $3}' > amplicon_panel.bed	
+#	else
+#		echo "No primer files were provided. Please either provide primer information in panel_info or the forward_primers_file and reverse_primers_file."
+#		exit 1
+#	fi
 
 	###################################################################
 	# Make reference fasta file if reference not provided by user     #

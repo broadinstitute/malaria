@@ -13,20 +13,28 @@ args = parser$parse_args()
 
 excel_file <- args$ex
 
-gt <- read_excel(excel_file, sheet = 1)
-metadata <- read_excel(excel_file, sheet = 2)
-markers <- read_excel(excel_file, sheet = 3)
-loci_performance <- read_excel(excel_file, sheet = 4)
-asv_table <- read_excel(excel_file, sheet = 5)
-asv_seqs <- read_excel(excel_file, sheet = 6)
-asv_seqs_masked <- read_excel(excel_file, sheet = 7)
-vcf_like <- read_excel(excel_file, sheet = 8)
-discarded_loci_gt <- read_excel(excel_file, sheet = 9)
-discarded_loci_loci_performance <- read_excel(excel_file, sheet = 10)
-discarded_samples_gt <- read_excel(excel_file, sheet = 11)
-discarded_samples_metadata <- read_excel(excel_file, sheet = 12)
-controls_gt <- read_excel(excel_file, sheet = 13)
-controls_metadata <- read_excel(excel_file, sheet = 14)
+#gt <- read_excel(excel_file, sheet = 1)
+#metadata <- read_excel(excel_file, sheet = 2)
+#markers <- read_excel(excel_file, sheet = 3)
+#loci_performance <- read_excel(excel_file, sheet = 4)
+#asv_table <- read_excel(excel_file, sheet = 5)
+#asv_seqs <- read_excel(excel_file, sheet = 6)
+#asv_seqs_masked <- read_excel(excel_file, sheet = 7)
+#vcf_like <- read_excel(excel_file, sheet = 8)
+#discarded_loci_gt <- read_excel(excel_file, sheet = 9)
+#discarded_loci_loci_performance <- read_excel(excel_file, sheet = 10)
+#discarded_samples_gt <- read_excel(excel_file, sheet = 11)
+#discarded_samples_metadata <- read_excel(excel_file, sheet = 12)
+#controls_gt <- read_excel(excel_file, sheet = 13)
+#controls_metadata <- read_excel(excel_file, sheet = 14)
+
+sheet_names <- excel_sheets(excel_file)
+data_list <- lapply(c("gt","asv_table","asv_seqs", "asv_seqs_masked"), function(sheet) read_excel(excel_file, sheet = sheet))
+
+gt = data_list[[1]]
+asv_table = data_list[[2]]
+asv_seqs = data_list[[3]]
+asv_seqs_masked = data_list[[4]]
 
 cleaned <- sub("_ampseq_object_f\\.xlsx$", "", basename(excel_file))
 

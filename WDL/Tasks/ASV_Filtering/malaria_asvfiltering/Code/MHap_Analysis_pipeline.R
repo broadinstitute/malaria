@@ -3494,8 +3494,10 @@ if(PerformanceReport == TRUE){
   
   # Read Depth coverage by the whole dataset or by Variable1
   if(is.null(Variable1)){
+    print('Variable1 is NULL, using the whole dataset for Read Depth coverage')
     ReadDepth_coverage = get_ReadDepth_coverage(ampseq_object, variable = NULL)
   }else{
+    print(paste0('Variable1 is ', Variable1, ', using it for Read Depth coverage'))
     ReadDepth_coverage = get_ReadDepth_coverage(ampseq_object, variable = Variable1)
   }
   
