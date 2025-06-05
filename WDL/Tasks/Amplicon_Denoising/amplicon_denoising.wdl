@@ -43,12 +43,7 @@ task amplicon_denoising {
         String polyN = "5"
     }
 
-    if (ceil(length(fastq1s)) <= 100) {
-        Int total_size = ceil(length(fastq1s) * 10)
-    }
-    if (ceil(length(fastq1s)) > 100) {
-        Int total_size = ceil(length(fastq1s) * 30)
-    }
+    Int total_size = ceil(length(fastq1s) * 50)
 
     command <<<
         # FUTURE DEVELOPMENT: 
