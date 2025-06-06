@@ -16,6 +16,9 @@ task prepare_reference_files {
 		File? barcodes_index
 		File sample_metadata
 	}
+
+	Int total_size = ceil(length(fastq1s) * 5)
+
 	command <<<
 	export TMPDIR=tmp
 	set -euxo pipefail
@@ -306,7 +309,7 @@ task prepare_reference_files {
 	runtime {
 		cpu: 1
 		memory: "1 GB"
-		disks: "local-disk 10 HDD"
+		disks: "local-disk " + total_size + " HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
