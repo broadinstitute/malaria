@@ -6100,14 +6100,22 @@ haplotypes_respect_to_reference = function(ampseq_object,
         
         # if the gene is located in the positive strand
         # sort the amplicons in ascending order
-        gene_of_interest_info %<>% arrange(pos)
+        
+        if(nrow(gene_of_interest_info) > 1){
+          gene_of_interest_info %<>% arrange(pos)  
+        }
+        
         amplicons = gene_of_interest_info$amplicon
         
       }else if(strand == '-'){
         
         # if the gene is located in the negative strand
         # sort the amplicons in descending order
-        gene_of_interest_info %<>% arrange(desc(pos))
+        
+        if(nrow(gene_of_interest_info) > 1){
+          gene_of_interest_info %<>% arrange(desc(pos))
+        }
+        
         amplicons = gene_of_interest_info$amplicon
         
       }
@@ -7306,47 +7314,57 @@ drug_resistant_haplotypes = function(ampseq_object,
                                                             haplotype_counts2$var1 == Pop&
                                                             haplotype_counts2$var2 == date,][['sample_count']]
         
-        temp_freq = binconf(allele_count,
-                            total_number_of_alleles,
-                            method = 'exact'
-        )
         
-        temp_prev = binconf(number_of_samples_with_allele,
-                            total_number_of_genotyped_samples,
-                            method = 'exact'
-        )
+        if(total_number_of_alleles > 0 ){
+          temp_freq = binconf(allele_count,
+                              total_number_of_alleles,
+                              method = 'exact'
+          )
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['total_nalleles']] = total_number_of_alleles
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['freq']] = temp_freq[,1]
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['freq_lower']] = temp_freq[,2]
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['freq_upper']] = temp_freq[,3]
+          
+          
+        }
         
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['genotyped_samples']] = total_number_of_genotyped_samples
+        if(total_number_of_genotyped_samples > 0 ){
+          
+          temp_prev = binconf(number_of_samples_with_allele,
+                              total_number_of_genotyped_samples,
+                              method = 'exact'
+          )
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['genotyped_samples']] = total_number_of_genotyped_samples
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['prev']] = temp_prev[,1]
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['prev_lower']] = temp_prev[,2]
+          
+          haplotype_counts[haplotype_counts$gene_ids == gene&
+                             haplotype_counts$var1 == Pop&
+                             haplotype_counts$var2 == date,][['prev_upper']] = temp_prev[,3]
+          
+        }
         
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['total_nalleles']] = total_number_of_alleles
-        
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['freq']] = temp_freq[,1]
-        
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['freq_lower']] = temp_freq[,2]
-        
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['freq_upper']] = temp_freq[,3]
-        
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['prev']] = temp_prev[,1]
-        
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['prev_lower']] = temp_prev[,2]
-        
-        haplotype_counts[haplotype_counts$gene_ids == gene&
-                           haplotype_counts$var1 == Pop&
-                           haplotype_counts$var2 == date,][['prev_upper']] = temp_prev[,3]
         
       }
     }
@@ -7924,34 +7942,41 @@ drug_resistant_haplotypes = function(ampseq_object,
   drug_phenotype_summary$freq = NA
   drug_phenotype_summary$freq_lower = NA
   drug_phenotype_summary$freq_upper = NA
-  
+  #browser()
   
   for(drug in levels(as.factor(drug_phenotype_summary$Drug))){
     for(Pop in levels(as.factor(drug_phenotype_summary[drug_phenotype_summary$Drug == drug,][['var1']]))){
       for(date in levels(as.factor(drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
                                                           drug_phenotype_summary$var1 == Pop,][['var2']]))){
         
-        temp_freq = binconf(drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
-                                                     drug_phenotype_summary$var1 == Pop&
-                                                     drug_phenotype_summary$var2 == date,][['count']],
-                            sum(drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
-                                                         drug_phenotype_summary$var1 == Pop&
-                                                         drug_phenotype_summary$var2 == date,][['count']]),
-                            method = 'exact'
-        )
-        
-        drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
+        numerator = drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
                                  drug_phenotype_summary$var1 == Pop&
-                                 drug_phenotype_summary$var2 == date,][['freq']] = temp_freq[,1]
+                                 drug_phenotype_summary$var2 == date,][['count']]
         
-        drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
-                                 drug_phenotype_summary$var1 == Pop&
-                                 drug_phenotype_summary$var2 == date,][['freq_lower']] = temp_freq[,2]
+        denominator = sum(drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
+                                     drug_phenotype_summary$var1 == Pop&
+                                     drug_phenotype_summary$var2 == date,][['count']])
         
-        drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
-                                 drug_phenotype_summary$var1 == Pop&
-                                 drug_phenotype_summary$var2 == date,][['freq_upper']] = temp_freq[,3]
-        
+        if(denominator > 0 ){
+          
+          temp_freq = binconf(numerator,
+                              denominator,
+                              method = 'exact'
+          )
+          
+          drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
+                                   drug_phenotype_summary$var1 == Pop&
+                                   drug_phenotype_summary$var2 == date,][['freq']] = temp_freq[,1]
+          
+          drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
+                                   drug_phenotype_summary$var1 == Pop&
+                                   drug_phenotype_summary$var2 == date,][['freq_lower']] = temp_freq[,2]
+          
+          drug_phenotype_summary[drug_phenotype_summary$Drug == drug&
+                                   drug_phenotype_summary$var1 == Pop&
+                                   drug_phenotype_summary$var2 == date,][['freq_upper']] = temp_freq[,3]
+          
+        }
         
       }
     }
@@ -8023,24 +8048,27 @@ drug_resistant_haplotypes = function(ampseq_object,
         ssize = sum(drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
                                                  drug_phenotype_summary_sdf$var1 == Pop,][['count']])
         
-        temp_freq = binconf(drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
-                                                         drug_phenotype_summary_sdf$var1 == Pop,][['count']],
-                            ssize,
-                            method = 'exact'
-        )
-        
-        drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
-                                     drug_phenotype_summary_sdf$var1 == Pop,][['ssize']] = ssize
-        
-        drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
-                                     drug_phenotype_summary_sdf$var1 == Pop,][['freq']] = round(temp_freq[,1], 2)
-        
-        drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
-                                     drug_phenotype_summary_sdf$var1 == Pop,][['freq_lower']] = round(temp_freq[,2], 2)
-        
-        drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
-                                     drug_phenotype_summary_sdf$var1 == Pop,][['freq_upper']] = round(temp_freq[,3], 2)
-        
+        if(ssize > 0 ){
+          
+          temp_freq = binconf(drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
+                                                           drug_phenotype_summary_sdf$var1 == Pop,][['count']],
+                              ssize,
+                              method = 'exact'
+          )
+          
+          drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
+                                       drug_phenotype_summary_sdf$var1 == Pop,][['ssize']] = ssize
+          
+          drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
+                                       drug_phenotype_summary_sdf$var1 == Pop,][['freq']] = round(temp_freq[,1], 2)
+          
+          drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
+                                       drug_phenotype_summary_sdf$var1 == Pop,][['freq_lower']] = round(temp_freq[,2], 2)
+          
+          drug_phenotype_summary_sdf[drug_phenotype_summary_sdf$Drug == drug &
+                                       drug_phenotype_summary_sdf$var1 == Pop,][['freq_upper']] = round(temp_freq[,3], 2)
+          
+        }
         
       }
     }
@@ -8048,7 +8076,7 @@ drug_resistant_haplotypes = function(ampseq_object,
     
     drug_phenotype_summary_sdf %<>% filter(!is.na(Longitude), !is.na(Latitude))
     
-    drug_phenotype_summary_sdf %<>% mutate(logssize = log(ssize, 1.3))
+    drug_phenotype_summary_sdf %<>% mutate(logssize = log(ssize, 1.3)+1)
     
     drug_phenotype_summary_sdf %<>% filter(Phenotype == "Mutation(s) associated with a resistant phenotype")
     
