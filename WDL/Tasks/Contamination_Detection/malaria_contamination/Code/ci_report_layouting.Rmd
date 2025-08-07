@@ -1,0 +1,611 @@
+---
+title: "Contamination report of combinatorial indexing plots"
+author: "Jorge Eduardo Amaya Romero"
+date: "2025-04-07"
+output:
+  html_document:
+    toc: yes
+    number_sections: yes
+    toc_float: yes
+    code_folding: show
+editor_options:
+  markdown:
+    wrap: 72
+  chunk_output_type: inline
+params:
+  data_dir: "placeholder"
+  out_dir: "placeholder"
+  path_to_flist: "placeholder"
+  minreads_threshold: "placeholder"
+  contamination_threshold: "placeholder"
+  missing_files: "placeholder"
+---
+
+# INTRODUCTION
+
+This report details the contamination found in 96-wells Illumina plates based on 
+the detection of KELT-tagged reads. WRITE THE REST OF THE TEXT ONCE THE CODE HAS BEEN UPDATED.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r 'Loading libraries and parameters', echo=FALSE, results='hide'}
+if (!require("ggplot2")) {
+  install.packages("ggplot2", repos="http://cran.rstudio.com/")
+  library("ggplot2")
+}
+if (!require("viridisLite")) {
+  install.packages("viridisLite", repos="http://cran.rstudio.com/")
+  library("viridisLite")
+}
+if (!require("reshape2")) {
+   install.packages("reshape2", repos="http://cran.rstudio.com/")
+   library("reshape2")
+}
+if (!require("gridExtra")) {
+  install.packages("gridExtra", repos="http://cran.rstudio.com/")
+  library("gridExtra")
+}
+if (!require("knitr")) {
+  install.packages("knitr", repos="http://cran.rstudio.com/")
+  library("knitr")
+}
+if (!require("gt")) {
+  install.packages("gt", repos="http://cran.rstudio.com/")
+  library("gt")
+}
+if (!require("grid")) {
+  install.packages("grid", repos="http://cran.rstudio.com/")
+  library("grid")
+}
+if (!require("stringr")) {
+  install.packages("stringr", repos="http://cran.rstudio.com/")
+  library("stringr")
+}
+if (!require("tidyverse")) {
+  install.packages("tidyverse", repos="http://cran.rstudio.com/")
+  library("tidyverse")
+}
+
+data_dir = params$data_dir
+out_dir = params$out_dir
+path_to_flist = params$path_to_flist
+minreads_threshold = params$minreads_threshold
+contamination_threshold = params$contamination_threshold
+missing_files = params$missing_files
+
+#MOVE FILES FROM CROMWELL INTO DESKTOP WHEN READY
+#data_dir = "/Users/jar4142/Desktop/Pipeline_v_0_2_Test/SIMPLseq_TEST_CIS43LS/cromwell-executions/ampseq/12e7a23f-61c0-4ce9-b228-c448bb084774/call-t_0001_contamination_detection/execution/Report/Merge/"
+#out_dir = "/Users/jar4142/Desktop/TMP"
+#path_to_flist = "/Users/jar4142/Desktop/Pipeline_v_0_2_Test/SIMPLseq_TEST_CIS43LS/cromwell-executions/ampseq/12e7a23f-61c0-4ce9-b228-c448bb084774/call-t_0001_contamination_detection/inputs/2006367324/barcodes_index_expanded.csv"
+#minreads_threshold = 1000
+#contamination_threshold = 1
+#missing_files = "/Users/jar4142/Desktop/Pipeline_v_0_2_Test/SIMPLseq_TEST_CIS43LS/cromwell-executions/ampseq/12e7a23f-61c0-4ce9-b228-c448bb084774/call-t_0001_contamination_detection/execution/missing_files.tsv"
+
+df = data.frame(sequence = character(),
+                abundance = integer(),
+                forward = integer(),
+                reverse = integer(),
+                nmatch = integer(),
+                nmismatch = integer(),
+                nindel = integer(),
+                prefer = integer(),
+                accept = character(),
+                forward_barcode = character(),
+                reverse_barcode = character(),
+                forward_distance = numeric(),
+                reverse_distance = numeric(),
+                five_prime_end = character(),
+                three_prime_end = character(),
+                match_status = numeric(),
+                insert_size = numeric(),
+                stringsAsFactors = FALSE)
+
+file_list <- list.files(path = data_dir, pattern = "\\.tsv$")
+file_list = file_list[file_list != "bbmergefields.tsv"]
+```
+
+```{r 'Load files with contamination information', echo=FALSE, results='hide'}
+# Loop through each file and append to the data frame row-wise
+# For DADA2_Contamination
+
+for (file in file_list) {
+  file_path = paste0(path = data_dir, file) # current directory assumed
+  print(file_path)
+  data <- read.csv(file_path, sep="\t")     # read file as data frame
+  if (nrow(data) == 0) {
+    next
+  }
+  data$sample_id <- sub("_[^_]*$", "", file)
+  df <- rbind(df, data)           # append data frame to df
+}
+
+#Count the number of reads in each sample. For later use in the productivity flag
+number_of_mergers = as.data.frame(table(df$sample_id))
+
+colnames(number_of_mergers) = c("Sample_Id", "Number_of_mergers")
+rownames(number_of_mergers) = number_of_mergers$Sample_Id
+
+#Remove non KELT mergers
+df <- df[df$insert_size >= 236 & df$insert_size <= 247, ]
+
+#Count the number of reads in each sample. For later use in the productivity flag
+number_of_keltmergers = as.data.frame(table(df$sample_id))
+colnames(number_of_keltmergers) = c("Sample_Id", "Number_of_KELTmerger")
+rownames(number_of_keltmergers) = number_of_keltmergers$Sample_Id
+
+# Create the new column `matched_status_recategorized`
+df$match_status_recategorized <- with(df, ifelse(match_status == "BarcodesMatch", "Uncontaminated",
+                                ifelse(match_status %in% c("ForwardMatch_ReverseMismatch", "ForwardMismatch_ReverseMatch", "BarcodesMismatch"), "Contaminated",
+                                "Sequencing_Error")))
+
+#Add the plate ID
+#df$number <- as.numeric(sub(".*_S(\\d+)", "\\1", df$sample_id))
+barcodes_list = read.csv(path_to_flist, sep = ",", header = TRUE)
+samples_order = as.character(barcodes_list$sample_id)
+
+df$number = match(df$sample_id, barcodes_list$sample_id)
+entries_per_plate <- 96
+num_plates <- ceiling(max(df$number) / entries_per_plate)
+breaks <- seq(0, num_plates * entries_per_plate, by = entries_per_plate)
+df$plate <- cut(df$number, 
+                breaks = breaks, 
+                labels = paste0("Plate_", seq_len(num_plates)), 
+                right = TRUE)
+```
+
+# MISSING AND UNUSABLE FILES
+
+The table lists expected samples' ids not found in the fastq files repository.
+No contamination information could be derived about these sample due to their
+absence. The user is advised to check whether the files are present in the data
+repository and re-upload if necessary.Even if not listed as missing files, 
+additional samples may be absent from subsequent analysis. These files are 
+present in the fastq files repository, but yield unusable data (for example, 
+due to low quality reads). See the unusable files section for further information.
+
+```{r 'Load files with missing information', echo=FALSE}
+if (file.size(missing_files) == 0) {
+   missing <- data.frame(Sample_IDs = "No files missing")
+}else{
+    missing = read.csv(missing_files, header = FALSE)
+    colnames(missing) = "Sample_IDs"
+}
+
+gt(missing) |> 
+  tab_header(md("**List of missing files**"))
+```
+
+Some files, although present in the fastq repository, may have been removed by 
+the pipeline due to absence of usable reads. These files are listed below and 
+removed from subsequent analysis.
+
+```{r 'Find unusuable files', echo=FALSE}
+#Subset the table to the desired experiments
+df = df[df$sample_id %in% samples_order,]
+
+match_status_to_use = "match_status_recategorized"
+
+m_sample_status = table(df[,c("sample_id", match_status_to_use)])
+m_sample_status_melted = melt(m_sample_status, id.vars=c("sample_id", match_status_to_use))
+
+file_list_unusuable = barcodes_list$sample_id[!barcodes_list$sample_id %in% missing$Sample_IDs]
+file_list_unusuable = file_list_unusuable[!file_list_unusuable %in% unique(m_sample_status_melted$sample_id)]
+file_list_unusuable = data.frame(Sample_IDs = file_list_unusuable)
+
+gt(file_list_unusuable) |>
+  tab_header(md("**List of unusable files**"))
+```
+
+# REPORT CARDS GENERATION
+
+Per sample report cards can be retrieved from ```Report_Cards.tar.gz```.
+
+```{r 'flag algorithm', echo=FALSE, results='hide'}
+###################################
+########   FLAG ALGORITHM       ###
+###################################
+#DISAGGREGATED REPORT
+
+missmatch_df = df
+missmatch_df$barcode_pair = paste0(missmatch_df$forward_barcode, "/", missmatch_df$reverse_barcode)
+
+m_sample_status = table(missmatch_df[,c("sample_id", "barcode_pair")])
+m_sample_status_melted = melt(m_sample_status, id.vars=c("sample_id", "barcode_pair"))
+
+m_sample_status_melted_reshaped = as.data.frame.matrix(xtabs(value ~ sample_id + barcode_pair, data = m_sample_status_melted))
+
+m_sample_status_melted_reshaped$sample_id = rownames(m_sample_status_melted_reshaped)
+m_sample_status_melted_reshaped = m_sample_status_melted_reshaped[match(samples_order, m_sample_status_melted_reshaped$sample_id),]
+
+number_of_mergers = number_of_mergers[match(rownames(m_sample_status_melted_reshaped), number_of_mergers$Sample_Id),]
+
+m_sample_status_melted_reshaped$Well_Productivity = number_of_mergers$Number_of_mergers
+m_sample_status_melted_reshaped$Productivity_Flag = m_sample_status_melted_reshaped$Well_Productivity < minreads_threshold
+
+#Adjust table to include samples with no reads
+rows = rownames(m_sample_status_melted_reshaped)
+no_mergers = samples_order[!rows %in% samples_order]
+rows[grep('^NA', rows)] = no_mergers
+rownames(m_sample_status_melted_reshaped) = rows
+
+#Fill the threshold and wrong barcode combinations flags
+Below_Threshold_Flag = vector()
+Wrong_Barcode_Comb_Flag = vector()
+
+# The below threshold flag signals if no barcode was dominant in the well per the
+# threshold provided in contamination_threshold. Wrong barcode flag signals if
+# the most common barcode in the well corresponds or not to the expected barcode
+# for said well.
+
+for (sample in rownames(m_sample_status_melted_reshaped)) {
+  if (!sample %in% no_mergers) {
+    tmp = m_sample_status_melted_reshaped[sample,
+                                            !colnames(m_sample_status_melted_reshaped) %in% c("sample_id", "Productivity_Flag", "Well_Productivity")]
+    forward_barcode = barcodes_list[barcodes_list$sample_id == sample,]$Forward
+    reverse_barcode = barcodes_list[barcodes_list$sample_id == sample,]$Reverse
+    
+    pair = paste0(forward_barcode, "/", reverse_barcode)
+    forward_miss = paste0("NULL", "/", reverse_barcode)
+    reverse_miss = paste0(forward_barcode, "/", "NULL")
+    nulls = paste0("NULL", "/", "NULL")
+    
+    tmp_cont = tmp[,
+                   !colnames(tmp) %in% c(pair, forward_miss, reverse_miss, nulls)]
+
+    contaminated = sum(tmp_cont) > contamination_threshold
+  }else{
+    contaminated = NA
+  }
+  Wrong_Barcode_Comb_Flag = c(Wrong_Barcode_Comb_Flag, contaminated)
+}
+
+m_sample_status_melted_reshaped$Wrong_Barcode_Comb_Flag = Wrong_Barcode_Comb_Flag
+m_sample_status_melted_reshaped$Flagged_well = m_sample_status_melted_reshaped$Wrong_Barcode_Comb_Flag | m_sample_status_melted_reshaped$Productivity_Flag
+
+m_sample_status_melted_reshaped = m_sample_status_melted_reshaped[,
+                                                                  !colnames(m_sample_status_melted_reshaped) %in% c("sample_id")]
+
+m_sample_status_melted_reshaped$Flagged_well[is.na(m_sample_status_melted_reshaped$Flagged_well)] = "Missing Sample Data"
+
+write.table(m_sample_status_melted_reshaped,
+            file=file.path(out_dir, "barcodes_report_bbmerge.tsv"),
+            quote = FALSE,
+            sep = "\t",
+            row.names = TRUE,
+            col.names = TRUE)
+```
+
+```{r 'create report cards', echo=FALSE, results='hide'}
+#reading in source files
+barcode_matches<- read.csv(path_to_flist)
+data<- m_sample_status_melted_reshaped
+
+#creating the 96-well map and matching it to sample name
+numbers<- 1:12
+letters1<- LETTERS[1:8]
+numbers_letters<- paste(rep(letters1, each = length(numbers)), numbers, sep = "")
+barcode_matches$Well<- rep(numbers_letters, nrow(barcode_matches)/96)
+
+barcode_matches<- barcode_matches %>%
+  dplyr::mutate(BarcodePair=paste0(Forward,"/",Reverse)) %>%
+  dplyr::mutate(Row=substr(Well, 1, 1)) %>%
+  dplyr::mutate(Column=substr(Well,2,nchar(Well)))
+barcode_pairs<- barcode_matches$BarcodePair
+
+data <- tibble::rownames_to_column(data, "samples")
+colnames(data)[colnames(data) == "samples"] <- "sample_id"
+missing_wells = barcode_matches$sample_id[which(barcode_matches$BarcodePair == 'NULL.NULL')]
+
+contamination.report<-function(Name){
+  #finding the expected barcode pair for a sample
+  expectedpairframe<- barcode_matches %>% dplyr::filter(sample_id==Name)
+  expectedpair<- expectedpairframe[1,5]
+  samplewell<- barcode_matches$Well[barcode_matches$sample_id==Name]
+  #filtering and transforming the data to get a dataframe with the barcode and percentage of each barcode pair that appeared >0 in the data set for a single sample
+  a<- data %>% dplyr::filter(sample_id==Name)
+  b<-a %>% dplyr::select(-c(sample_id,Productivity_Flag,Wrong_Barcode_Comb_Flag,Flagged_well,Well_Productivity))#rewrite to ignore based on name of column
+  #Some of the samples have missing data/didn't work. This code subsets those samples and creates a special table for them.
+  if(is.na(b[1,1])){
+    missingdatasamples<-data.frame(ErrorMessage="Data Missing For this Sample")
+    g<-(missingdatasamples |> gt()|>
+          tab_header(
+            title =paste("SampleName:",Name),
+            subtitle = paste("SampleWell:",samplewell)))
+  }else{
+    #transforming the table for each sample to only include barcodes that show up in the merged table - if the expected pair does not show up, it is added in later
+    c<-t(b)
+    d<-as.data.frame(c)
+    e<- tibble::rownames_to_column(d, "BarcodePair")
+    f<- e %>% dplyr::filter(V1>0)
+    #to deal with barcodes that have NULL make a table that has the barcode pair and a column for each forward and reverse primer
+    g<- f %>%
+      dplyr::select(BarcodePair) %>%
+      dplyr::mutate(Forward=str_split(BarcodePair, "/") %>% sapply(`[`, 1)) %>%
+      dplyr::mutate(Reverse=str_split(BarcodePair, "/") %>% sapply(`[`, 2))
+
+    # since there are six types of barcode origins (expected, contamination,forward-null, reverse-null,expected null-null and non expected null-null)
+    # separate each six cases to write each barcode origin. Combine the tables later.
+    forwardnull<- g %>%
+      dplyr::filter(Forward=="NULL"&Reverse!="NULL") %>%
+      dplyr::left_join(barcode_matches %>%
+                  dplyr::select(Reverse,Row),by="Reverse") %>%
+      unique() %>%
+      dplyr::mutate(BarcodeOrigin=paste("Reverse barcode from Row",Row)) %>%
+      dplyr::select(BarcodePair,BarcodeOrigin)
+
+    reversenull<- g %>%
+      dplyr::filter(Reverse=="NULL"&Forward!="NULL")%>%
+      dplyr::left_join(barcode_matches %>%
+                  dplyr::select(Forward,Column),by="Forward") %>%
+      unique() %>%
+      dplyr::mutate(BarcodeOrigin=paste("Forward barcode from Column",Column)) %>%
+      dplyr::select(BarcodePair,BarcodeOrigin)
+
+    nullnull.not.expected<- g %>%
+      dplyr::filter(Reverse=="NULL"&Forward=="NULL"&expectedpair!="NULL/NULL") %>%
+      dplyr::mutate(BarcodeOrigin="NULL-NULL not expected for this sample") %>%
+      dplyr::select(BarcodePair,BarcodeOrigin)
+
+    nullnull.expected<- g %>%
+      dplyr::filter(Reverse=="NULL"&Forward=="NULL"&expectedpair=="NULL/NULL") %>%
+      dplyr::mutate(BarcodeOrigin="NULL-NULL expected for this sample") %>%
+      dplyr::select(BarcodePair,BarcodeOrigin)
+
+    mismatch<- g %>%
+      dplyr::filter(Forward!="NULL"&Reverse!="NULL") %>%
+      dplyr::filter(BarcodePair!=expectedpair & BarcodePair %in% barcode_pairs) %>%
+      dplyr::left_join(barcode_matches
+                       %>% dplyr::select(BarcodePair,Well),by="BarcodePair") %>%
+      dplyr::mutate(BarcodeOrigin=paste("Contamination from Well",Well)) %>%
+      dplyr::select(BarcodePair,BarcodeOrigin)
+
+    match<- g %>%
+      dplyr::filter(Forward!="NULL"&Reverse!="NULL") %>%
+      dplyr::filter(BarcodePair==expectedpair) %>%
+      dplyr::left_join(barcode_matches
+                       %>% dplyr::select(BarcodePair,Well),by="BarcodePair") %>%
+      dplyr::mutate(BarcodeOrigin="Expected Barcode for this Sample") %>%
+      dplyr::select(BarcodePair,BarcodeOrigin)
+    expected<- match %>% rbind(nullnull.expected)
+    origin<- forwardnull %>% rbind(reversenull) %>% rbind(mismatch) %>% rbind(match) %>% rbind(nullnull.expected) %>% rbind(nullnull.not.expected)
+    origin = unique(origin) #Eliminate duplicated rows because of multiple experiments
+
+    # combining barcode pair and percentage with the barcode
+    message<- f %>% dplyr::left_join(origin,by="BarcodePair")
+
+    #Be mindful of the case where the expected barcodes don't show up with reads in a sample.
+    #Test for that by seeing if the expected dataframe has a row or not, if there is no row it means that the expected barcode pair did not show up.
+    #In that case I add a line with the barcode pair, its percentage (0) and saying this is the expected barcode pair from the sample.
+    if (nrow(expected)>0){
+      message<-message
+    }else{
+      missingbarcode<-e %>% dplyr::filter(BarcodePair==expectedpair) %>% dplyr::mutate(BarcodeOrigin="Expected Barcode Pair from the Sample")
+      message<- message %>% rbind(missingbarcode)
+    }
+
+    names(message) <- c("BarcodePair" = "Observed Barcode Pair",
+                    "V1" = "KELT Reads",
+                    "BarcodeOrigin" = "Origin of Barcode Pair")
+
+    #creating a gt table with the sample name and well in a title
+    g<-(message |> gt()|>
+          tab_header(
+            title =paste("SampleName:",Name),
+            subtitle=paste("SampleWell:",samplewell, " & ", "Reads:", number_of_mergers[number_of_mergers$Sample_Id %in% sample, "Number_of_mergers"], " & ", "Kelt mergers:", number_of_keltmergers[number_of_keltmergers$Sample_Id %in% sample, "Number_of_KELTmerger"])))
+  }
+}
+```
+
+```{r 'contamination report card', echo=FALSE, results='hide'}
+for (sample in barcode_matches$sample_id) {
+  well = barcode_matches$Well[barcode_matches$sample_id == sample]
+  outfile = file.path(out_dir, paste0(sample, "_", well, ".html"))
+  writeLines(as.character(gt:::as.tags.gt_tbl(contamination.report(sample))), outfile)
+}
+```
+
+# CONTAMINATION DISTRIBUTION ACROSS PLATE
+
+The following is a representation of a 96-well Illumina plate where wells are flagged to indicate low productivity and contamination. Specifically, there are two Flag:
+
+* Low Productivity Flag: Flag wells with less than the number of reads specified in minreads_threshold. The default value is set at <1000 read pairs to flag a well for low productivity.
+* Contamination Flag: Flag wells with less than a certain percent of expected reads. The default value is set at >0.5 (50%) read pairs originating from other wells to flag the well as contaminated.
+
+```{r 'load functions for plate scheme', echo=FALSE, results='hide'}
+set.seed(123)
+
+generate_vector <- function(letters, numbers) {
+  vector <- c()
+
+  for (letter in letters) {
+    for (number in numbers) {
+      element <- paste0(letter, number)
+      vector <- c(vector, element)
+    }
+  }
+
+  return(vector)
+}
+
+split_vector <- function(letters, numbers) {
+  vector <- generate_vector(letters, numbers)
+
+  split_letters <- as.numeric(substr(vector, 1, 1))
+  split_numbers <- as.numeric(substr(vector, 2, nchar(vector)))
+
+  return(list(letters = split_letters, numbers = split_numbers))
+}
+```
+
+```{r 'create framework for plate', echo=FALSE, results='hide'}
+v = 8:1
+h = 1:12
+
+data$well = generate_vector(v, h)
+
+result <- split_vector(v, h)
+letters_vector <- result$letters
+numbers_vector <- result$numbers
+
+data$v = letters_vector
+data$h = numbers_vector
+
+vertical_tubes = rev(c("A", "B", "C", "D", "E", "F", "G", "H"))
+horizontal_tubes = c(seq(1,12,1))
+
+barcodes = sample(turbo(12))
+
+#Replacing NA's with "Missing sample Data", except for Negative Controls, which are expected to have no reads
+df <- data
+df$Wrong_Barcode_Comb_Flag <- as.character(df$Wrong_Barcode_Comb_Flag)
+df$Wrong_Barcode_Comb_Flag <- ifelse(is.na(df$Wrong_Barcode_Comb_Flag) & grepl("Negative",df$sample_id),
+                                           "FALSE",
+                                           df$Wrong_Barcode_Comb_Flag)
+df$Wrong_Barcode_Comb_Flag <- df$Wrong_Barcode_Comb_Flag %>%
+  replace_na('Missing Sample Data')
+
+df$Productivity_Flag <- as.character(df$Productivity_Flag)
+df$Productivity_Flag <-df$Productivity_Flag %>% replace_na('Missing Sample Data')
+df$Productivity_Flag<- ifelse(grepl("Negative",df$sample_id),
+                                    "FALSE",
+                                    df$Productivity_Flag)
+```
+
+## Wells flagged for low productivity
+```{r 'plot the productivity flag plate', echo=FALSE, results='hide'}
+create_plate_plot <- function(df, h, v, Productivity_Flag, vertical_tubes, horizontal_tubes, barcodes) {
+
+  df$Productivity_Flag <- factor(df$Productivity_Flag, levels = c("FALSE", "TRUE", "Missing Sample Data"))
+  
+  # Create the base plot
+  p <- ggplot(data = df, aes(x = h, y = v, color = Productivity_Flag, fill = Productivity_Flag)) +
+    geom_point(shape = 21, size = 12) +
+    scale_y_continuous(breaks = seq(1, 8), labels = vertical_tubes) +
+    scale_x_continuous(breaks = seq(1, 12), labels = horizontal_tubes, position = "top") +
+    scale_color_manual(name = "Low Read Count:", values = rep("black", 3)) +
+    scale_fill_manual(name = "Low Read Count:",
+                      values = c("FALSE" = "#0079C2", "TRUE" = "red", "Missing Sample Data" = "black")) +
+    expand_limits(y = c(0.8, 8.2)) +
+    theme(
+      axis.title = element_blank(),
+      axis.text.x = element_text(face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      panel.grid.minor = element_line(colour = "transparent"),
+      panel.grid.major = element_line(colour = "transparent"),
+      legend.key = element_rect(fill = "transparent"),
+      legend.position = "bottom",
+      plot.title = element_text(size = 16, face = "bold"),
+      panel.background = element_rect(fill = "white", colour = NA),  # Set panel background to white
+      plot.background = element_rect(fill = "white", colour = NA)  # Set plot background to white
+    )
+  
+  # Create rounded border using annotation_custom and roundrectGrob
+  rounded_border <- annotation_custom(
+    grob = roundrectGrob(
+      gp = gpar(fill = NA, col = "black", lwd = 2),  # Define border properties
+      r = unit(0.1, "snpc")  # Define corner radius (0.1 is moderate rounding)
+    ),
+    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+  )
+  
+  # Add the rounded border annotation to the plot
+  p <- p + rounded_border
+
+  options(repr.plot.width = 12, repr.plot.height = 8)
+  
+  return(p)
+}
+
+p = list()
+# Loop through each chunk
+for (i in seq_len(nrow(df)/96)) {
+  # Get the row indices for the current chunk
+  start_row <- (i - 1) * 96 + 1
+  end_row <- min(i * 96, nrow(df))
+    
+  # Extract the chunk of data (subset the dataframe)
+  df_chunk <- df[start_row:end_row, ]
+    
+  # Pass the chunk through the plotting function
+  plot <- create_plate_plot(df_chunk, h, v, Productivity_Flag, vertical_tubes, horizontal_tubes, barcodes)
+    
+  # Store the plot in the list
+  p[[i]] <- plot
+}
+```
+
+```{r 'display the productivity flag plate', echo=FALSE}
+for (i in seq_along(p)) {
+  print(p[[i]])  # Use print to display each plot
+}
+```
+
+## Wells flagged for contamination
+```{r 'plot the contamination flag plate', echo=FALSE, results='hide'}
+create_plate_plot <- function(df, h, v, Wrong_Barcode_Comb_Flag, vertical_tubes, horizontal_tubes, barcodes) {
+
+  df$Wrong_Barcode_Comb_Flag <- factor(df$Wrong_Barcode_Comb_Flag, levels = c("FALSE", "TRUE", "Missing Sample Data"))
+  
+  # Create the base plot
+  p <- ggplot(data = df, aes(x = h, y = v, color = Wrong_Barcode_Comb_Flag, fill = Wrong_Barcode_Comb_Flag)) +
+    geom_point(shape = 21, size = 12) +
+    scale_y_continuous(breaks = seq(1, 8), labels = vertical_tubes) +
+    scale_x_continuous(breaks = seq(1, 12), labels = horizontal_tubes, position = "top") +
+    scale_color_manual(name = "Contaminated:", values = rep("black", 3)) +
+    scale_fill_manual(name = "Contaminated:",
+                      values = c("FALSE" = "#0079C2", "TRUE" = "red", "Missing Sample Data" = "black")) +
+    expand_limits(y = c(0.8, 8.2)) +
+    theme(
+      axis.title = element_blank(),
+      axis.text.x = element_text(face = "bold"),
+      axis.text.y = element_text(face = "bold"),
+      panel.grid.minor = element_line(colour = "transparent"),
+      panel.grid.major = element_line(colour = "transparent"),
+      legend.key = element_rect(fill = "transparent"),
+      legend.position = "bottom",
+      plot.title = element_text(size = 16, face = "bold"),
+      panel.background = element_rect(fill = "white", colour = NA),  # Set panel background to white
+      plot.background = element_rect(fill = "white", colour = NA)  # Set plot background to white
+    )
+  
+  # Create rounded border using annotation_custom and roundrectGrob
+  rounded_border <- annotation_custom(
+    grob = roundrectGrob(
+      gp = gpar(fill = NA, col = "black", lwd = 2),  # Define border properties
+      r = unit(0.1, "snpc")  # Define corner radius (0.1 is moderate rounding)
+    ),
+    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf
+  )
+  
+  # Add the rounded border annotation to the plot
+  p <- p + rounded_border
+
+  options(repr.plot.width = 12, repr.plot.height = 8)
+  
+  return(p)
+}
+
+# Loop through each chunk
+for (i in seq_len(nrow(df)/96)) {
+  # Get the row indices for the current chunk
+  start_row <- (i - 1) * 96 + 1
+  end_row <- min(i * 96, nrow(df))
+    
+  # Extract the chunk of data (subset the dataframe)
+  df_chunk <- df[start_row:end_row, ]
+    
+  # Pass the chunk through the plotting function
+  plot <- create_plate_plot(df_chunk, h, v, Wrong_Barcode_Comb_Flag, vertical_tubes, horizontal_tubes, barcodes)
+    
+  # Store the plot in the list
+  p[[i]] <- plot
+}
+```
+
+```{r 'display the contamination flag plate', echo=FALSE}
+for (i in seq_along(p)) {
+  print(p[[i]])  # Use print to display each plot
+}
+```
