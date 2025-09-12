@@ -13,6 +13,7 @@ task contamination_detection {
 		Int contamination_threshold = 0
 		Int primer_distance_threshold = 2
 	}
+	Int total_size = ceil(length(adaptor_rem1s))
 
 	command <<<
 	export TMPDIR=tmp
@@ -67,7 +68,7 @@ task contamination_detection {
 	runtime {
 		cpu: 1
 		memory: "15 GiB"
-		disks: "local-disk 10 HDD"
+		disks: "local-disk " + total_size + " HDD"
 		bootDiskSizeGb: 10
 		preemptible: 3
 		maxRetries: 1
